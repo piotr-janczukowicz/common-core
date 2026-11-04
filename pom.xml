@@ -18,7 +18,7 @@
   <url>https://github.com/piotr-janczukowicz/common-core</url>
 
   <properties>
-    <common-test-support.version>8</common-test-support.version>
+    <common-test-support.version>9</common-test-support.version>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.core=jdk.httpserver</test.module.args>
   </properties>
 
@@ -48,17 +48,6 @@
       <artifactId>common-test-support</artifactId>
       <version>${common-test-support.version}</version>
       <scope>test</scope>
-      <!-- BOOTSTRAP: remove exclusions in common-core:2 -->
-      <exclusions>
-        <exclusion>
-          <groupId>io.github.piotr-janczukowicz</groupId>
-          <artifactId>common-util</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>io.github.piotr-janczukowicz</groupId>
-          <artifactId>common-json</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.wiremock</groupId>
@@ -120,8 +109,6 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <excludedGroups>integration</excludedGroups>
-          <!-- BOOTSTRAP: remove useModulePath in common-core:2 -->
-          <useModulePath>false</useModulePath>
         </configuration>
       </plugin>
       <plugin>
@@ -129,8 +116,6 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <configuration>
           <groups>integration</groups>
-          <!-- BOOTSTRAP: remove useModulePath in common-core:2 -->
-          <useModulePath>false</useModulePath>
           <includes>
             <include>**/*Test.java</include>
             <include>**/*IT.java</include>
