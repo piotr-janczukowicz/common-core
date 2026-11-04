@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   publish:
-    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-publish.yml@fe405361177409155ca46773fdb6b9090ffad722 # v13
+    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-publish.yml@3d6301d04e0f494f8144e0f0523cf942c1ffce2d # v15
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit

@@ -18,9 +18,12 @@ class path. It is published on
 <dependency>
   <groupId>io.github.piotr-janczukowicz</groupId>
   <artifactId>common-json</artifactId>
-  <version>8</version>
+  <version>LATEST_VERSION</version>
 </dependency>
 ```
+
+Replace `LATEST_VERSION` with the version in the Maven Central badge at the top of this page, or with the newest entry on
+the [releases page](https://github.com/piotr-janczukowicz/common-json/releases).
 
 ## Usage
 

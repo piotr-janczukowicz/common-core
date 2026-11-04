@@ -15,3 +15,7 @@ release.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Build caches that live outside target (common-parent 15)
+.spotless-index
+.checkstyle-cache
