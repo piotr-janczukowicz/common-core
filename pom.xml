@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.piotr-janczukowicz</groupId>
+    <artifactId>common-parent</artifactId>
+    <version>15</version>
+    <relativePath/>
+  </parent>
+
+  <artifactId>common-core</artifactId>
+  <version>1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>common-core</name>
+  <description>Shared Java utilities and annotations, a Jackson-free JsonCodec contract with Jackson 3 adapters, and an HTTP client with an OkHttp transport, authentication, origin guard and polling</description>
+  <url>https://github.com/piotr-janczukowicz/common-core</url>
+
+  <properties>
+    <common-test-support.version>8</common-test-support.version>
+    <test.module.args>--add-modules jdk.httpserver --add-reads common.core=jdk.httpserver</test.module.args>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp-jvm</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.soabase.record-builder</groupId>
+      <artifactId>record-builder-core</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.piotr-janczukowicz</groupId>
+      <artifactId>common-test-support</artifactId>
+      <version>${common-test-support.version}</version>
+      <scope>test</scope>
+      <!-- BOOTSTRAP: remove exclusions in common-core:2 -->
+      <exclusions>
+        <exclusion>
+          <groupId>io.github.piotr-janczukowicz</groupId>
+          <artifactId>common-util</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.github.piotr-janczukowicz</groupId>
+          <artifactId>common-json</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.hakky54</groupId>
+      <artifactId>logcaptor</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>io/github/piotr_janczukowicz/test/http/**</include>
+              </includes>
+              <excludes>
+                <exclude>**/*Test.class</exclude>
+              </excludes>
+              <archive>
+                <manifestEntries>
+                  <Automatic-Module-Name>common.core.test</Automatic-Module-Name>
+                </manifestEntries>
+              </archive>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-testCompile</id>
+            <configuration>
+              <compilerArgs>
+                <arg>--add-modules</arg>
+                <arg>jdk.httpserver</arg>
+                <arg>--add-reads</arg>
+                <arg>common.core=jdk.httpserver</arg>
+              </compilerArgs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludedGroups>integration</excludedGroups>
+          <!-- BOOTSTRAP: remove useModulePath in common-core:2 -->
+          <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <groups>integration</groups>
+          <!-- BOOTSTRAP: remove useModulePath in common-core:2 -->
+          <useModulePath>false</useModulePath>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*IT.java</include>
+            <include>**/*ITCase.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
