@@ -5,7 +5,7 @@
   <parent>
     <groupId>io.github.piotr-janczukowicz</groupId>
     <artifactId>common-parent</artifactId>
-    <version>13</version>
+    <version>14</version>
     <relativePath/>
   </parent>
 
@@ -20,7 +20,7 @@
   <properties>
     <common-util.version>9</common-util.version>
     <common-json.version>8</common-json.version>
-    <common-test-support.version>5</common-test-support.version>
+    <common-test-support.version>7</common-test-support.version>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
   </properties>
 
