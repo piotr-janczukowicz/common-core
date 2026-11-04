@@ -19,6 +19,7 @@
 
   <properties>
     <common-test-support.version>9</common-test-support.version>
+    <junit.parallel.enabled>true</junit.parallel.enabled>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.core=jdk.httpserver</test.module.args>
   </properties>
 
