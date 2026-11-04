@@ -19,9 +19,12 @@ its one dependency is the [JSpecify](https://jspecify.dev) nullness annotations.
 <dependency>
     <groupId>io.github.piotr-janczukowicz</groupId>
     <artifactId>common-util</artifactId>
-    <version>9</version>
+    <version>LATEST_VERSION</version>
 </dependency>
 ```
+
+Replace `LATEST_VERSION` with the version in the Maven Central badge at the top of this page, or with the newest entry on
+the [releases page](https://github.com/piotr-janczukowicz/common-util/releases).
 
 `org.jspecify` and `record-builder-core` are `requires static` in the module descriptor: nothing needs them at run time
 except your own use of the `@RecordBuilder` annotation processor.
