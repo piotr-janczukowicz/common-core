@@ -51,9 +51,11 @@ import java.util.random.RandomGenerator;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.mockito.Mockito;
 
 @UnitTest
+@Isolated
 class RetryingHttpTransportRateLimitTest {
 
     private static final Instant START = Instant.parse("2026-10-09T12:00:00Z");
