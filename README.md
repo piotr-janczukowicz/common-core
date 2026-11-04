@@ -19,9 +19,12 @@ a base URI, authentication, redirect handling, an origin guard, error mapping an
 <dependency>
   <groupId>io.github.piotr-janczukowicz</groupId>
   <artifactId>common-http</artifactId>
-  <version>6</version>
+  <version>LATEST_VERSION</version>
 </dependency>
 ```
+
+Replace `LATEST_VERSION` with the version in the Maven Central badge at the top of this page, or with the newest entry on
+the [releases page](https://github.com/piotr-janczukowicz/common-http/releases).
 
 OkHttp and [`common-json`](https://github.com/piotr-janczukowicz/common-json) come with it. The library has no JSON mapper of
 its own: you pass a `JsonCodec` (the contract of `common-json`) that reads and writes bytes with the mapper you use.
