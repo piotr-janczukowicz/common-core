@@ -18,9 +18,8 @@
   <url>https://github.com/piotr-janczukowicz/common-core</url>
 
   <properties>
-    <common-test-support.version>9</common-test-support.version>
     <junit.parallel.enabled>true</junit.parallel.enabled>
-    <test.module.args>--add-modules jdk.httpserver --add-reads common.core=jdk.httpserver</test.module.args>
+    <test.module.args>--add-modules jdk.httpserver,java.net.http --add-reads common.core=jdk.httpserver,java.net.http</test.module.args>
   </properties>
 
   <dependencies>
@@ -45,9 +44,13 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.github.piotr-janczukowicz</groupId>
-      <artifactId>common-test-support</artifactId>
-      <version>${common-test-support.version}</version>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit6</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -75,9 +78,22 @@
             <configuration>
               <includes>
                 <include>io/github/piotr_janczukowicz/test/http/**</include>
+                <include>io/github/piotr_janczukowicz/testsupport/**</include>
+                <include>META-INF/services/**</include>
+                <include>junit-platform.properties</include>
+                <include>logback-test.xml</include>
               </includes>
               <excludes>
-                <exclude>**/*Test.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/test/http/*Test.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/LoopbackHttpServerTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/LoopbackPortsTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/architecture/ImportedClassesTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/architecture/ModelArchitectureRulesTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/CatalogChecksPointersTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/CatalogChecksSuppressionTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/JavaDocsSchemaComparatorTest*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/Sample*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/*.json</exclude>
               </excludes>
               <archive>
                 <manifestEntries>
@@ -97,9 +113,9 @@
             <configuration>
               <compilerArgs>
                 <arg>--add-modules</arg>
-                <arg>jdk.httpserver</arg>
+                <arg>jdk.httpserver,java.net.http</arg>
                 <arg>--add-reads</arg>
-                <arg>common.core=jdk.httpserver</arg>
+                <arg>common.core=jdk.httpserver,java.net.http</arg>
               </compilerArgs>
             </configuration>
           </execution>
