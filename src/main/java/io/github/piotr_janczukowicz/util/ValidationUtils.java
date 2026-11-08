@@ -808,6 +808,30 @@ public final class ValidationUtils {
     }
 
     /**
+     * Requires {@code values} to contain no {@code null} element.
+     *
+     * <p>The elements are visited one by one, so a collection that rejects {@code contains(null)}, such as one made by
+     * {@link java.util.List#of()}, is checked too.
+     *
+     * @param values collection to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}
+     * @throws NullPointerException if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code values} contains a {@code null} element
+     */
+    public static <T extends Collection<?>> T requireNoNullElements(final T values, final String fieldName) {
+        requireNonNull(values, fieldName);
+
+        for (final Object value : values) {
+            if (value == null) {
+                throw invalid(fieldName, "must not contain null elements");
+            }
+        }
+        return values;
+    }
+
+    /**
      * Requires {@code value} to have length at most {@code max}.
      *
      * <p>Length is {@link String#length()} (UTF-16 code units), not Unicode code points. The maximum is inclusive.
