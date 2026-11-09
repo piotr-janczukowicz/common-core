@@ -953,6 +953,48 @@ class ValidationUtilsTest {
     }
 
     @Test
+    void requireNoNullElements_shouldReturnValue_whenNoElementIsNull() {
+        final List<String> values = List.of("a", "b");
+        final String fieldName = "items";
+
+        final List<String> result = ValidationUtils.requireNoNullElements(values, fieldName);
+
+        assertThat(result).isSameAs(values);
+    }
+
+    @Test
+    void requireNoNullElements_shouldReturnValue_whenEmpty() {
+        final List<String> values = List.of();
+        final String fieldName = "items";
+
+        final List<String> result = ValidationUtils.requireNoNullElements(values, fieldName);
+
+        assertThat(result).isSameAs(values);
+    }
+
+    @Test
+    void requireNoNullElements_shouldThrow_whenAnElementIsNull() {
+        final List<String> values = Arrays.asList("a", null);
+        final String fieldName = "items";
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireNoNullElements(values, fieldName));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("items must not contain null elements");
+    }
+
+    @Test
+    void requireNoNullElements_shouldThrow_whenValuesIsNull() {
+        final List<String> values = null;
+        final String fieldName = "items";
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireNoNullElements(values, fieldName));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("items must not be null");
+    }
+
+    @Test
     void requireUniqueItems_shouldReturnValue_whenUnique() {
         final List<String> values = List.of("a", "b");
         final String fieldName = "items";
