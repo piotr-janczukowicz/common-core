@@ -30,7 +30,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/** A client whose credential travels in a header of its own, such as GitLab's {@code JOB-TOKEN}. */
 @UnitTest
 class HttpClientHeaderCredentialTest {
 

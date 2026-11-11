@@ -766,7 +766,6 @@ class HttpHeadersTest {
         assertThat(hash).isEqualTo(other.hashCode());
     }
 
-    // Characterization: the name rule already hides the credential headers that GitLab documents.
     @Test
     void toString_shouldRedactCredentialHeaders_whenNamedAsGitLabDocumentsThem() {
         final HttpHeaders headers = HttpHeaders.of("JOB-TOKEN", "glcbt-abc", "PRIVATE-TOKEN", "glpat-abc");

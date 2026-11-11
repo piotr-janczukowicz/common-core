@@ -13,9 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/**
- * A credential carried in a header of its own, such as GitLab's {@code JOB-TOKEN}, instead of {@code Authorization}.
- */
 @UnitTest
 class AuthenticationHeaderCredentialTest {
 
