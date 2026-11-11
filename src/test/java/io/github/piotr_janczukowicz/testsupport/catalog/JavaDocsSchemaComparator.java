@@ -4,6 +4,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
@@ -1026,6 +1027,10 @@ public final class JavaDocsSchemaComparator {
             if (jsonIgnore(component)) {
                 continue;
             }
+            if (isUnwrapped(component)) {
+                fields.addAll(properties(MAPPER.constructType(component.getGenericType())));
+                continue;
+            }
             fields.add(new JsonField(
                     jsonName(component),
                     MAPPER.constructType(component.getGenericType()),
@@ -1034,6 +1039,20 @@ public final class JavaDocsSchemaComparator {
                     catalogSimpleXor(component)));
         }
         return List.copyOf(fields);
+    }
+
+    private static boolean isUnwrapped(final RecordComponent component) {
+        final JsonUnwrapped unwrapped = component.getAnnotation(JsonUnwrapped.class) != null
+                ? component.getAnnotation(JsonUnwrapped.class)
+                : component.getAccessor().getAnnotation(JsonUnwrapped.class);
+        if (unwrapped == null || !unwrapped.enabled()) {
+            return false;
+        }
+        if (!unwrapped.prefix().isEmpty() || !unwrapped.suffix().isEmpty()) {
+            throw new IllegalStateException(
+                    component.getName() + ": @JsonUnwrapped prefix and suffix are not supported");
+        }
+        return true;
     }
 
     private static String jsonName(final RecordComponent component) {
