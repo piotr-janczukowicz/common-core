@@ -19,7 +19,7 @@
 
   <properties>
     <junit.parallel.enabled>true</junit.parallel.enabled>
-    <test.module.args>--add-modules jdk.httpserver,java.net.http --add-reads common.core=jdk.httpserver,java.net.http</test.module.args>
+    <test.module.args>--add-modules jdk.httpserver,java.net.http --add-reads common.core=jdk.httpserver,java.net.http --add-opens common.core/io.github.piotr_janczukowicz.test.model=tools.jackson.databind</test.module.args>
   </properties>
 
   <dependencies>
