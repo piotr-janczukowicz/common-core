@@ -1,5 +1,6 @@
 package io.github.piotr_janczukowicz.http.client.authentication;
 
+import io.github.piotr_janczukowicz.http.HttpHeaderNames;
 import java.util.Optional;
 
 /**
@@ -28,6 +29,19 @@ public interface AuthenticationProvider {
      *     checked {@link java.io.IOException} from the call
      */
     Optional<Authentication> authentication();
+
+    /**
+     * Name of the header that carries the credentials this provider returns. The client reads it without asking for the
+     * credentials, so that a call that sets this header itself is recognized as having its own credentials, which are
+     * not the provider's to renew and never share the client's identity.
+     *
+     * @return {@code Authorization} by default; the header of a provider whose credentials are not sent as
+     *     {@code Authorization}, such as {@code JOB-TOKEN}. {@link #authentication()} must return credentials that name
+     *     this header, or the client refuses the request with an {@link IllegalStateException}
+     */
+    default String credentialHeaderName() {
+        return HttpHeaderNames.AUTHORIZATION;
+    }
 
     /**
      * Called when the server answered HTTP 401 to a request sent with {@code rejected}, so the provider can drop what

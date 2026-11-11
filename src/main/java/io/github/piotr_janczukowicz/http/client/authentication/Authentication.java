@@ -1,13 +1,21 @@
 package io.github.piotr_janczukowicz.http.client.authentication;
 
+import static io.github.piotr_janczukowicz.http.HttpHeaderNames.AUTHORIZATION;
+import static io.github.piotr_janczukowicz.http.HttpHeaderNames.COOKIE;
+import static io.github.piotr_janczukowicz.http.HttpHeaderNames.PROXY_AUTHORIZATION;
+import static io.github.piotr_janczukowicz.http.HttpHeaderNames.SET_COOKIE;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNotBlank;
 
 import io.github.piotr_janczukowicz.http.Digests;
+import io.github.piotr_janczukowicz.http.HttpHeaders;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Credentials of an HTTP request, sent as the {@code Authorization} header: a scheme and the credential that follows
@@ -21,16 +29,23 @@ import java.util.Optional;
  * process lives, and a different one in the next process, so an identity that reaches a log or an event cannot be
  * matched against guessed credentials. Do not store it or compare it across processes.
  *
+ * <p>A credential of type {@link Type#HEADER} is not sent as {@code Authorization}: it is the raw value of a header of
+ * its own, such as GitLab's {@code JOB-TOKEN}. It has the same guarantees as the others: it is never shown by
+ * {@link #toString()}, it names its principal with {@code identity}, and the client never sends it to another origin.
+ *
  * @param type scheme of the header; {@code null} is refused with a {@link NullPointerException}
- * @param value the raw credential after the scheme, which is the secret itself: it must not be logged, printed or put
- *     in an exception message; {@link #identity()} is the loggable key of the principal. Blank is refused with an
- *     {@link IllegalArgumentException}
+ * @param value the raw credential after the scheme (the whole header value for {@link Type#HEADER}), which is the
+ *     secret itself: it must not be logged, printed or put in an exception message; {@link #identity()} is the loggable
+ *     key of the principal. Blank is refused with an {@link IllegalArgumentException}
  * @param identity name of the principal, which must be unique per principal (two principals never share one), stable
  *     across credential rotation where the principal stays the same, and never a secret. The rate-limit gate and the
  *     conditional cache key their state by it, so a secret would leak into those keys, and a shared name would share
  *     limits and cached responses between principals. Blank is refused with an {@link IllegalArgumentException}
+ * @param headerName name of the header that carries the credential: {@code Authorization} for {@link Type#BASIC} and
+ *     {@link Type#BEARER}, and a header of its own, which is not another credential channel ({@code Authorization},
+ *     {@code Proxy-Authorization}, {@code Cookie}, {@code Set-Cookie}), for {@link Type#HEADER}
  */
-public record Authentication(Type type, String value, String identity) {
+public record Authentication(Type type, String value, String identity, String headerName) {
 
     /** Scheme name of HTTP Basic authentication, RFC 7617. */
     public static final String BASIC = "Basic";
@@ -38,12 +53,21 @@ public record Authentication(Type type, String value, String identity) {
     /** Scheme name of bearer token authentication, RFC 6750. */
     public static final String BEARER = "Bearer";
 
+    private static final String VALUE_PARAMETER = "value";
+
+    private static final Set<String> CREDENTIAL_CHANNELS = Stream.of(
+                    AUTHORIZATION, PROXY_AUTHORIZATION, COOKIE, SET_COOKIE)
+            .map(name -> name.toLowerCase(Locale.ROOT))
+            .collect(Collectors.toUnmodifiableSet());
+
     /** Authentication scheme. */
     public enum Type {
         /** HTTP Basic authentication: Base64 of {@code user:password}. */
         BASIC(Authentication.BASIC),
         /** Bearer token. */
-        BEARER(Authentication.BEARER);
+        BEARER(Authentication.BEARER),
+        /** The raw value of a header of its own, with no scheme. */
+        HEADER("");
 
         private final String scheme;
 
@@ -54,17 +78,58 @@ public record Authentication(Type type, String value, String identity) {
         /**
          * Scheme name as it appears in the header.
          *
-         * @return {@code Basic} or {@code Bearer}
+         * @return {@code Basic} or {@code Bearer}; empty for {@link #HEADER}, which has none
          */
         public String scheme() {
             return scheme;
         }
     }
 
+    /**
+     * Credentials sent as the {@code Authorization} header.
+     *
+     * @param type scheme of the header; {@link Type#HEADER} is refused, because its header is not {@code Authorization}
+     * @param value the raw credential after the scheme
+     * @param identity name of the principal
+     * @throws NullPointerException if an argument is {@code null}
+     * @throws IllegalArgumentException if {@code value} or {@code identity} is blank, or {@code type} is
+     *     {@link Type#HEADER}
+     */
+    public Authentication(final Type type, final String value, final String identity) {
+        this(type, value, identity, AUTHORIZATION);
+    }
+
     public Authentication {
         requireNonNull(type, "type");
-        requireNotBlank(value, "value");
+        requireNotBlank(value, VALUE_PARAMETER);
         requireNotBlank(identity, "identity");
+        requireNotBlank(headerName, "headerName");
+        if (type == Type.HEADER) {
+            requireOwnHeaderName(headerName);
+        } else if (!AUTHORIZATION.equalsIgnoreCase(headerName)) {
+            throw new IllegalArgumentException("a " + type.scheme() + " credential is sent as " + AUTHORIZATION);
+        }
+    }
+
+    /**
+     * A credential that is the raw value of a header of its own, such as {@code JOB-TOKEN}. Its identity is a keyed
+     * digest of the value, as for the other types; name the principal with {@link #withIdentity(String)} when the
+     * credential rotates.
+     *
+     * @param headerName name of the header; it must be a valid header name and not another credential channel
+     *     ({@code Authorization}, {@code Proxy-Authorization}, {@code Cookie}, {@code Set-Cookie})
+     * @param value the raw header value, a secret
+     * @return the credential
+     * @throws NullPointerException if an argument is {@code null}
+     * @throws IllegalArgumentException if {@code headerName} is not allowed, or {@code value} is blank or has a
+     *     character that a header value cannot hold; the message never contains {@code value}
+     */
+    public static Authentication ofHeader(final String headerName, final String value) {
+        requireNonNull(headerName, "headerName");
+        requireNotBlank(value, VALUE_PARAMETER);
+        requireOwnHeaderName(headerName);
+        HttpHeaders.of(headerName, value);
+        return new Authentication(Type.HEADER, value, Digests.keyedSha256Hex(value), headerName);
     }
 
     /**
@@ -140,29 +205,37 @@ public record Authentication(Type type, String value, String identity) {
      * @throws IllegalArgumentException if {@code identity} is blank
      */
     public Authentication withIdentity(final String identity) {
-        return new Authentication(type, value, identity);
+        return new Authentication(type, value, identity, headerName);
     }
 
     /**
-     * Value of the header: the scheme, a space and the credential.
+     * Value of the header: the scheme, a space and the credential; for {@link Type#HEADER} the raw value.
      *
-     * @return for example {@code Bearer abc}; it holds the secret, so keep it out of logs
+     * @return for example {@code Bearer abc}, or {@code abc} for a header credential; it holds the secret, so keep it
+     *     out of logs
      */
     public String headerValue() {
-        return type.scheme() + " " + value;
+        return type == Type.HEADER ? value : type.scheme() + " " + value;
     }
 
     /**
-     * Shows the scheme only.
+     * Shows the scheme, or the header name of a header credential, never the value.
      *
-     * @return {@code Authentication[Bearer]} or {@code Authentication[Basic]}
+     * @return {@code Authentication[Bearer]}, {@code Authentication[Basic]} or, for example,
+     *     {@code Authentication[JOB-TOKEN]}
      */
     @Override
     public String toString() {
-        return "Authentication[" + type.scheme() + "]";
+        return "Authentication[" + (type == Type.HEADER ? headerName : type.scheme()) + "]";
+    }
+
+    private static void requireOwnHeaderName(final String headerName) {
+        if (CREDENTIAL_CHANNELS.contains(headerName.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("headerName must not be " + headerName);
+        }
     }
 
     private static Authentication of(final Type type, final String value) {
-        return new Authentication(type, value, Digests.keyedSha256Hex(requireNotBlank(value, "value")));
+        return new Authentication(type, value, Digests.keyedSha256Hex(requireNotBlank(value, VALUE_PARAMETER)));
     }
 }

@@ -86,4 +86,21 @@ public final class AuthenticationProviders {
     public static AuthenticationProvider none() {
         return NoneAuthenticationProvider.INSTANCE;
     }
+
+    /**
+     * Fixed token sent as the raw value of a header of its own, for an API whose credential is not an
+     * {@code Authorization} scheme, such as GitLab's {@code JOB-TOKEN} and {@code PRIVATE-TOKEN}.
+     *
+     * @param headerName name of the header; a valid header name that is not another credential channel
+     *     ({@code Authorization}, {@code Proxy-Authorization}, {@code Cookie}, {@code Set-Cookie})
+     * @param token the header value, a secret
+     * @return provider that always sends {@code headerName: token}, whose
+     *     {@link AuthenticationProvider#credentialHeaderName()} is {@code headerName}; its {@code toString} does not
+     *     show the token
+     * @throws NullPointerException if an argument is {@code null}
+     * @throws IllegalArgumentException if {@code headerName} is not allowed or {@code token} is blank
+     */
+    public static AuthenticationProvider header(final String headerName, final String token) {
+        return new HeaderAuthenticationProvider(headerName, token);
+    }
 }
