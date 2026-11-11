@@ -9,6 +9,7 @@ import io.github.piotr_janczukowicz.http.transport.HttpTransports;
 import io.github.piotr_janczukowicz.test.http.ScriptedHttpServer;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.io.IOException;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 @UnitTest
@@ -43,7 +44,7 @@ class ScriptedHttpServerTest {
     }
 
     @Test
-    void close_shouldNotThrow_whenClientClosedTheConnection() throws IOException {
+    void close_shouldNotThrow_whenClientClosedTheConnection() throws IOException, InterruptedException {
         final ScriptedHttpServer server = new ScriptedHttpServer((call, exchange) -> {
             throw new IOException("client gone");
         });
@@ -51,8 +52,10 @@ class ScriptedHttpServerTest {
         final HttpRequest request = server.request();
         catchThrowable(() -> transport.execute(request));
 
+        final boolean isDisconnectSeen = server.awaitDisconnects(1, Duration.ofSeconds(10));
         final Throwable thrown = catchThrowable(server::close);
 
+        assertThat(isDisconnectSeen).isTrue();
         assertThat(thrown).isNull();
         assertThat(server.disconnects()).isEqualTo(1);
     }

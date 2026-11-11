@@ -2,9 +2,12 @@ package io.github.piotr_janczukowicz.http.uri;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -16,6 +19,7 @@ public final class HttpUris {
 
     private static final Pattern URI_TEMPLATE = Pattern.compile("\\{[^}]*}");
     private static final Pattern API_SCHEME = Pattern.compile("[A-Za-z][A-Za-z0-9+.-]*:");
+    private static final Pattern IPV4_LOOPBACK = Pattern.compile("127(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}");
     private static final String API_PATH_MESSAGE =
             "path must be a relative API path with no scheme, authority, query, fragment or dot segment";
     private static final String QUERY = "query";
@@ -43,6 +47,22 @@ public final class HttpUris {
             return "<unsupported-uri>";
         }
         return uri.getScheme() + "://" + authority + Objects.toString(uri.getRawPath(), "");
+    }
+
+    /**
+     * Whether {@code host} names the local machine: {@code localhost}, a name ending in {@code .localhost}, an IPv4
+     * address in {@code 127.0.0.0/8}, or an IPv6 loopback literal in brackets. An IP literal is parsed and never
+     * resolved, so a host name such as {@code 127.evil.example} cannot pass as one.
+     *
+     * @param host host as {@link URI#getHost()} returns it, with brackets around an IPv6 literal; may be {@code null}
+     * @return {@code true} if it is a loopback host; {@code false} for anything else, including {@code null}
+     */
+    public static boolean isLoopbackHost(final @Nullable String host) {
+        final String name = host == null ? "" : host;
+        return "localhost".equalsIgnoreCase(name)
+                || name.toLowerCase(Locale.ROOT).endsWith(".localhost")
+                || IPV4_LOOPBACK.matcher(name).matches()
+                || (name.startsWith("[") && name.endsWith("]") && isLoopbackIpv6(name));
     }
 
     /**
@@ -286,5 +306,14 @@ public final class HttpUris {
             throw new IllegalArgumentException(name + " must be an absolute HTTP(S) URL");
         }
         return url;
+    }
+
+    private static boolean isLoopbackIpv6(final String literal) {
+        try {
+            return InetAddress.getByName(literal).isLoopbackAddress();
+        } catch (final UnknownHostException unused) {
+            // Not an IPv6 literal.
+            return false;
+        }
     }
 }

@@ -2,6 +2,7 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import io.github.piotr_janczukowicz.http.Digests;
 import io.github.piotr_janczukowicz.http.HttpHeaderNames;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpRequest;
@@ -24,6 +25,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -294,12 +296,21 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
 
     // Credentials that the call set itself are not the provider's to renew: it would send the same ones again.
     private boolean isRenewable(final HttpCall call, final HttpRequest sent) {
-        return !hasOwnAuthorization(call)
-                && sent.headers()
-                        .get(HttpHeaderNames.AUTHORIZATION)
-                        .flatMap(Authentication::parse)
+        return !hasOwnCredentials(call)
+                && sentCredentials(sent)
                         .map(authenticationProvider::isRenewableAfterRejection)
                         .orElse(false);
+    }
+
+    // The credentials the provider put on a request: read from the header the provider declares.
+    private Optional<Authentication> sentCredentials(final HttpRequest sent) {
+        final String name = authenticationProvider.credentialHeaderName();
+        final boolean isAuthorization = HttpHeaderNames.AUTHORIZATION.equalsIgnoreCase(name);
+        return sent.headers()
+                .get(name)
+                .flatMap(value -> isAuthorization
+                        ? Authentication.parse(value)
+                        : Optional.of(Authentication.ofHeader(name, value)));
     }
 
     private static void logRenewal(final HttpRequest sent) {
@@ -377,23 +388,41 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
 
     private HttpRequest httpRequest(final HttpCall call) throws IOException {
         final ParsedUrl url = resolveUrl(call);
-        // A call that sets its own Authorization is sent for another principal than the client's. The client's
-        // credentials are not asked for, because that could fetch a token or fail. The request also must not share the
-        // identity of the client in the per-credential state of the transports.
-        final Authentication authentication = hasOwnAuthorization(call) ? null : authentication();
+        // A call that sets its own credentials, in Authorization or in the header the provider declares, is sent for
+        // another principal than the client's. The client's credentials are not asked for, because that could fetch a
+        // token or fail. The request also must not share the identity of the client in the per-credential state of the
+        // transports.
+        final Authentication authentication = hasOwnCredentials(call) ? null : authentication();
         final HttpHeaders headers = buildHeaders(call.headers(), authentication);
-        final String credentialId = authentication == null ? null : authentication.identity();
+        final String credentialId = authentication == null ? ownCredentialId(call) : authentication.identity();
         return new HttpRequest(call.method(), url, headers, call.body(), credentialId);
     }
 
-    private static boolean hasOwnAuthorization(final HttpCall call) {
-        return call.headers().get(HttpHeaderNames.AUTHORIZATION).isPresent();
+    private boolean hasOwnCredentials(final HttpCall call) {
+        return call.headers().get(HttpHeaderNames.AUTHORIZATION).isPresent()
+                || call.headers()
+                        .get(authenticationProvider.credentialHeaderName())
+                        .isPresent();
     }
 
-    // A replayed response carries the headers of an earlier one, and a call with its own Authorization reports the
+    // The key of a call that sets its own credentials in a header other than Authorization. HttpRequest keys the
+    // others by a digest of their Authorization header; this one would otherwise be keyed "anonymous" and share the
+    // per-credential state, such as cached responses and rate-limit blocks, of the requests that send no credentials.
+    private @Nullable String ownCredentialId(final HttpCall call) {
+        final String name = authenticationProvider.credentialHeaderName();
+        if (HttpHeaderNames.AUTHORIZATION.equalsIgnoreCase(name)) {
+            return null;
+        }
+        return call.headers()
+                .get(name)
+                .map(value -> "header:" + name.toLowerCase(Locale.ROOT) + ":" + Digests.keyedSha256Hex(value))
+                .orElse(null);
+    }
+
+    // A replayed response carries the headers of an earlier one, and a call with its own credentials reports the
     // quota of another principal; neither is new information about the client's own.
-    private static boolean isObserved(final HttpCall call, final boolean isSanitized, final HttpHeaders headers) {
-        return !isSanitized && !hasOwnAuthorization(call) && !RateLimitGateHeaders.isPresent(headers);
+    private boolean isObserved(final HttpCall call, final boolean isSanitized, final HttpHeaders headers) {
+        return !isSanitized && !hasOwnCredentials(call) && !RateLimitGateHeaders.isPresent(headers);
     }
 
     private ParsedUrl resolveUrl(final HttpCall call) {
@@ -417,7 +446,7 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
     private HttpHeaders buildHeaders(final HttpHeaders callHeaders, final @Nullable Authentication authentication) {
         final HttpHeaders authenticationHeaders = authentication == null
                 ? HttpHeaders.empty()
-                : HttpHeaders.of(HttpHeaderNames.AUTHORIZATION, authentication.headerValue());
+                : HttpHeaders.of(authentication.headerName(), authentication.headerValue());
         return clientConfiguration.defaultHeaders().merge(authenticationHeaders, callHeaders);
     }
 
@@ -427,11 +456,20 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
      */
     @SuppressWarnings("PMD.PreserveStackTrace") // the cause is rethrown as is; the unchecked wrapper only carries it
     private @Nullable Authentication authentication() throws IOException {
+        final Authentication authentication;
         try {
-            return authenticationProvider.authentication().orElse(null);
+            authentication = authenticationProvider.authentication().orElse(null);
         } catch (final UncheckedIOException failure) {
             throw failure.getCause();
         }
+        if (authentication != null
+                && !authentication.headerName().equalsIgnoreCase(authenticationProvider.credentialHeaderName())) {
+            // The client decides from the declared name whether a call has its own credentials, so the two must agree.
+            throw new IllegalStateException(
+                    "The authentication provider declares " + authenticationProvider.credentialHeaderName()
+                            + " as its credential header but returned a credential for " + authentication.headerName());
+        }
+        return authentication;
     }
 
     /** Client factory with the transport and configuration fixed and optional policies and observers. */
@@ -535,6 +573,11 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
         private Settings settings() {
             final HttpOriginGuard guard =
                     originGuard == null ? new HttpOriginGuard(configuration.baseUri()) : originGuard;
+            final String credentialHeader = auth.credentialHeaderName();
+            if (redirectPolicy.crossOriginHeaderNames().contains(credentialHeader.toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("redirectPolicy must not let " + credentialHeader
+                        + ", the header of the credentials, leave the origin on a redirect");
+            }
             return new Settings(
                     transport,
                     configuration,

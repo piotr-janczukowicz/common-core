@@ -7,6 +7,9 @@ import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.testsupport.LoopbackHttpServer;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -15,6 +18,7 @@ public final class ScriptedHttpServer implements AutoCloseable {
     private final LoopbackHttpServer server;
     private final AtomicInteger calls = new AtomicInteger();
     private final AtomicInteger disconnects = new AtomicInteger();
+    private final Semaphore disconnectSignal = new Semaphore(0);
     private final AtomicReference<Throwable> scriptFailure = new AtomicReference<>();
 
     @FunctionalInterface
@@ -26,14 +30,17 @@ public final class ScriptedHttpServer implements AutoCloseable {
     public ScriptedHttpServer(final Script script) throws IOException {
         this.server = LoopbackHttpServer.start("/", exchange -> {
             final int call = calls.incrementAndGet();
-            try (exchange) {
+            try {
                 script.run(call, exchange);
             } catch (final InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (final IOException clientGone) {
                 disconnects.incrementAndGet();
+                disconnectSignal.release();
             } catch (final Exception | AssertionError failure) {
                 scriptFailure.compareAndSet(null, failure);
+            } finally {
+                exchange.close();
             }
         });
     }
@@ -48,6 +55,24 @@ public final class ScriptedHttpServer implements AutoCloseable {
 
     public int calls() {
         return calls.get();
+    }
+
+    /**
+     * Waits until the server has seen at least {@code expected} clients close their connection. The client may return
+     * before the server thread has counted the disconnect, so a test that asserts {@link #disconnects()} waits here
+     * first.
+     *
+     * @param expected the number of disconnects to wait for
+     * @param timeout the longest time to wait
+     * @return {@code true} if at least {@code expected} disconnects were seen in time
+     * @throws InterruptedException if the thread is interrupted while it waits
+     */
+    public boolean awaitDisconnects(final int expected, final Duration timeout) throws InterruptedException {
+        if (!disconnectSignal.tryAcquire(expected, timeout.toNanos(), TimeUnit.NANOSECONDS)) {
+            return false;
+        }
+        disconnectSignal.release(expected);
+        return true;
     }
 
     public int disconnects() {
