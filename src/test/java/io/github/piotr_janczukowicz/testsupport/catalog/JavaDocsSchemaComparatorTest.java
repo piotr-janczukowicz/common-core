@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSimpleXor;
@@ -463,6 +464,34 @@ class JavaDocsSchemaComparatorTest {
                 .isEmpty();
     }
 
+    @Test
+    void diff_shouldFlattenUnwrappedComponents_whenTheSchemaIsFlat() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"a1":{"type":"string"},"a2":{"type":"integer"},"own":{"type":"string"}}}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(UnwrappedParent.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportMissingProperty_whenAnUnwrappedGroupLacksIt() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"a1":{"type":"string"},"a2":{"type":"integer"},"a3":{"type":"string"},"own":{"type":"string"}}}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(UnwrappedParent.class, schema))
+                .contains("a3: on docs schema, missing on java");
+    }
+
+    @Test
+    void diff_shouldCompareTypesInsideAnUnwrappedGroup_whenTheyDiffer() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"a1":{"type":"integer"},"a2":{"type":"integer"},"own":{"type":"string"}}}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(UnwrappedParent.class, schema)).isNotEmpty();
+    }
+
     record ScalarXor(@CatalogSimpleXor("string|integer") String id) {}
 
     record StringOrArrayXor(
@@ -649,6 +678,11 @@ class JavaDocsSchemaComparatorTest {
             int id, @Nullable String kind, @Nullable String a) {}
 
     record AnyOfPartialRequired(int id, @Nullable String a) {}
+
+    record UnwrappedGroup(@Nullable String a1, @Nullable Integer a2) {}
+
+    record UnwrappedParent(
+            @JsonUnwrapped UnwrappedGroup group, @Nullable String own) {}
 
     record Query(String q, @JsonIgnore boolean textMatch) {}
 
