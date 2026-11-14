@@ -1,5 +1,6 @@
 package io.github.piotr_janczukowicz.http;
 
+import io.github.piotr_janczukowicz.util.StringUtils;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -40,11 +41,7 @@ public final class HttpErrorBodies {
         if (text.length() <= MAX_MESSAGE_CHARS) {
             return text;
         }
-        int end = MAX_MESSAGE_CHARS;
-        if (Character.isHighSurrogate(text.charAt(end - 1))) {
-            end--;
-        }
-        return text.substring(0, end) + TRUNCATION_MARKER;
+        return StringUtils.limited(text, MAX_MESSAGE_CHARS) + TRUNCATION_MARKER;
     }
 
     /**
@@ -89,10 +86,6 @@ public final class HttpErrorBodies {
         if (body.length() <= MAX_RAW_BODY_CHARS) {
             return body;
         }
-        int end = MAX_RAW_BODY_CHARS;
-        if (Character.isHighSurrogate(body.charAt(end - 1))) {
-            end--;
-        }
-        return body.substring(0, end);
+        return StringUtils.limited(body, MAX_RAW_BODY_CHARS);
     }
 }

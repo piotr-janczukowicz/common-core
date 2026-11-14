@@ -13,7 +13,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @UnitTest
 class HttpHeadersTest {
@@ -828,5 +833,62 @@ class HttpHeadersTest {
         final Throwable thrown = catchThrowable(constructor::newInstance);
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"42,42", "' 7 ',7", "0,0", "-3,-3"})
+    void getInt_shouldReadAWholeNumber_whenTheHeaderHoldsOne(final String value, final int expected) {
+        final HttpHeaders headers = HttpHeaders.of("X-Count", value);
+
+        final OptionalInt number = headers.getInt("x-count");
+
+        assertThat(number).hasValue(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {" ", "abc", "1.5", "+5", "99999999999999999999"})
+    void getInt_shouldBeEmpty_whenTheHeaderIsNotAWholeNumber(final String value) {
+        final HttpHeaders headers = HttpHeaders.of("X-Count", value);
+
+        final OptionalInt number = headers.getInt("X-Count");
+
+        assertThat(number).isEmpty();
+    }
+
+    @Test
+    void getInt_shouldBeEmpty_whenTheHeaderIsAbsent() {
+        final HttpHeaders headers = HttpHeaders.empty();
+
+        final OptionalInt number = headers.getInt("X-Count");
+
+        assertThat(number).isEmpty();
+    }
+
+    @Test
+    void getLong_shouldReadAWholeNumber_whenTheHeaderHoldsOne() {
+        final HttpHeaders headers = HttpHeaders.of("RateLimit-Reset", "1609844400");
+
+        final OptionalLong number = headers.getLong("ratelimit-reset");
+
+        assertThat(number).hasValue(1_609_844_400L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"x", "+1", "9223372036854775808"})
+    void getLong_shouldBeEmpty_whenTheHeaderIsNotAWholeNumber(final String value) {
+        final HttpHeaders headers = HttpHeaders.of("X-Count", value);
+
+        final OptionalLong number = headers.getLong("X-Count");
+
+        assertThat(number).isEmpty();
+    }
+
+    @Test
+    void getLong_shouldThrow_whenNameNull() {
+        final HttpHeaders headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> headers.getLong(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("name");
     }
 }

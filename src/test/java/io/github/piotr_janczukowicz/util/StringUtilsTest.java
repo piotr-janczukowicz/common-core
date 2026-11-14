@@ -1,6 +1,7 @@
 package io.github.piotr_janczukowicz.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -122,5 +123,76 @@ class StringUtilsTest {
                 Arguments.of("\u2003a\u2003", "a"),
                 Arguments.of("a", "a"),
                 Arguments.of("\u00A0x\u00A0", "\u00A0x\u00A0"));
+    }
+
+    @Test
+    void replaceControlCharacters_shouldReplaceEachControlCharacter_whenTextHoldsThem() {
+        final String text = "a\nb\r\tc\u001b[0m\u0085d\u007f";
+
+        final String cleaned = StringUtils.replaceControlCharacters(text, ' ');
+
+        assertThat(cleaned).isEqualTo("a b  c [0m d ");
+    }
+
+    @Test
+    void replaceControlCharacters_shouldKeepTheSameInstance_whenTextHoldsNoControlCharacter() {
+        final String text = "plain   text   😀";
+
+        final String cleaned = StringUtils.replaceControlCharacters(text, '?');
+
+        assertThat(cleaned).isSameAs(text);
+    }
+
+    @Test
+    void replaceControlCharacters_shouldUseTheGivenReplacement_whenTextHoldsAControlCharacter() {
+        final String cleaned = StringUtils.replaceControlCharacters("a\nb", '_');
+
+        assertThat(cleaned).isEqualTo("a_b");
+    }
+
+    @Test
+    void replaceControlCharacters_shouldThrowNullPointerException_whenTextIsNull() {
+        final Throwable thrown = catchThrowable(() -> StringUtils.replaceControlCharacters(null, ' '));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("text");
+    }
+
+    @Test
+    void limited_shouldKeepTheSameInstance_whenTextFits() {
+        final String text = "abc";
+
+        final String limited = StringUtils.limited(text, 3);
+
+        assertThat(limited).isSameAs(text);
+    }
+
+    @Test
+    void limited_shouldCutTheText_whenItIsLonger() {
+        final String limited = StringUtils.limited("abcdef", 3);
+
+        assertThat(limited).isEqualTo("abc");
+    }
+
+    @Test
+    void limited_shouldDropTheWholePair_whenTheCutIsInsideASurrogatePair() {
+        final String limited = StringUtils.limited("ab\uD83D\uDE00cd", 3);
+
+        assertThat(limited).isEqualTo("ab");
+    }
+
+    @Test
+    void limited_shouldKeepThePair_whenTheCutIsAfterIt() {
+        final String limited = StringUtils.limited("ab\uD83D\uDE00cd", 4);
+
+        assertThat(limited).isEqualTo("ab\uD83D\uDE00");
+    }
+
+    @Test
+    void limited_shouldThrow_whenTheTextIsNullOrTheLimitIsNotPositive() {
+        final Throwable noText = catchThrowable(() -> StringUtils.limited(null, 3));
+        final Throwable noLimit = catchThrowable(() -> StringUtils.limited("abc", 0));
+
+        assertThat(noText).isInstanceOf(NullPointerException.class).hasMessageContaining("text");
+        assertThat(noLimit).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxChars");
     }
 }

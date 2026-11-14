@@ -7,6 +7,7 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.SET_COOKIE;
 import static io.github.piotr_janczukowicz.util.StringUtils.isBlank;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import io.github.piotr_janczukowicz.util.NumberUtils;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -15,6 +16,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
@@ -161,6 +164,31 @@ public final class HttpHeaders {
     public Optional<String> get(final String name) {
         requireNonNull(name, NAME);
         return Optional.ofNullable(headers.get(name));
+    }
+
+    /**
+     * Value for {@code name} as a whole {@code int}, read with {@link NumberUtils#parseInt(String)}: surrounding
+     * whitespace is ignored, and a leading {@code +} or a digit that is not ASCII is refused.
+     *
+     * @param name header name
+     * @return the number, or empty if the header is absent, blank, not a whole number or out of range
+     * @throws NullPointerException if {@code name} is {@code null}
+     */
+    public OptionalInt getInt(final String name) {
+        return NumberUtils.parseInt(get(name).orElse(null));
+    }
+
+    /**
+     * Value for {@code name} as a whole {@code long}, read with {@link NumberUtils#parseLong(String)}, for example a
+     * Unix time in seconds.
+     *
+     * @param name header name
+     * @return the number, or empty if the header is absent, blank, not a whole number or out of range
+     * @throws NullPointerException if {@code name} is {@code null}
+     * @see #getInt(String)
+     */
+    public OptionalLong getLong(final String name) {
+        return NumberUtils.parseLong(get(name).orElse(null));
     }
 
     /**

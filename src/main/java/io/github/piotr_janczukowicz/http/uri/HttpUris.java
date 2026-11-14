@@ -14,6 +14,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import okhttp3.HttpUrl;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Base-URI normalisation, resolve, query application, and log-safe URI description. */
 public final class HttpUris {
@@ -28,8 +30,41 @@ public final class HttpUris {
     private static final String PATH = "path";
     private static final String URI_ARG = "uri";
 
+    private static final Logger LOG = LoggerFactory.getLogger(HttpUris.class);
+
     private HttpUris() {
         throw new UnsupportedOperationException("Utility class");
+    }
+
+    /**
+     * Guards a base URI that credentials are sent to: {@code https} always passes, and so does {@code http} to a
+     * loopback host (see {@link #isLoopbackHost(String)}). Any other {@code http} URI is refused, unless the caller
+     * allowed it, in which case it passes with a warning in the log.
+     *
+     * @param baseUri base URI of the service
+     * @param serviceName name of the service in the messages, such as {@code GitHub}
+     * @param isInsecureHttpAllowed whether plain {@code http} to a host that is not loopback is allowed
+     * @throws NullPointerException if {@code baseUri} or {@code serviceName} is {@code null}
+     * @throws IllegalStateException if the URI is plain {@code http} to a host that is not loopback and
+     *     {@code isInsecureHttpAllowed} is {@code false}
+     */
+    public static void requireSecureOrAllowed(
+            final URI baseUri, final String serviceName, final boolean isInsecureHttpAllowed) {
+        requireNonNull(baseUri, BASE_URI);
+        requireNonNull(serviceName, "serviceName");
+        if (!"http".equalsIgnoreCase(baseUri.getScheme()) || isLoopbackHost(baseUri.getHost())) {
+            return;
+        }
+        if (!isInsecureHttpAllowed) {
+            throw new IllegalStateException(serviceName + " base URI " + describeSafe(baseUri)
+                    + " is plain http, which would send the credentials unencrypted;"
+                    + " use https, or call allowInsecureHttp(true) for a trusted network");
+        }
+        LOG.atWarn()
+                .setMessage("{} base URI {} is plain http: the credentials are sent unencrypted")
+                .addArgument(serviceName)
+                .addArgument(describeSafe(baseUri))
+                .log();
     }
 
     /**
@@ -218,6 +253,20 @@ public final class HttpUris {
      */
     public static Map<String, List<String>> unmodifiableQueryValues(final Map<String, List<String>> query) {
         return Collections.unmodifiableMap(copyQueryValues(query));
+    }
+
+    /**
+     * Whether {@code uri} has both a scheme and a host, so that {@link #originOf(URI)} can name its origin. A relative
+     * reference, an opaque URI such as {@code urn:example:x}, and a host that {@link URI#getHost()} cannot read, such
+     * as {@code my_host} with its underscore, have none.
+     *
+     * @param uri URI to inspect
+     * @return {@code true} if {@code uri} has a scheme and a host
+     * @throws NullPointerException if {@code uri} is {@code null}
+     */
+    public static boolean hasOrigin(final URI uri) {
+        requireNonNull(uri, URI_ARG);
+        return uri.getScheme() != null && uri.getHost() != null;
     }
 
     /**

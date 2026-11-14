@@ -1,10 +1,16 @@
 package io.github.piotr_janczukowicz.json.jackson;
 
+import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
+
 import io.github.piotr_janczukowicz.json.jackson.module.immutable.ImmutableCollectionsModule;
 import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JacksonModule;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.cfg.CoercionAction;
 import tools.jackson.databind.cfg.CoercionInputShape;
@@ -56,5 +62,27 @@ public final class JsonMappers {
                 .addModule(new OptionalNullModule())
                 .addModule(
                         new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()));
+    }
+
+    /**
+     * The Jackson modules of {@code providers}, in order, for a client that finds the modules of its models with a
+     * {@link java.util.ServiceLoader}: the caller keeps the {@code ServiceLoader.load} call, because the {@code uses}
+     * clause of its module descriptor belongs to it, and passes the result to {@link JsonMapper.Builder#addModules}.
+     *
+     * @param providers the providers, such as a {@code ServiceLoader}
+     * @param toModule reads the module of one provider
+     * @param <P> type of a provider
+     * @return an unmodifiable list with the module of each provider
+     * @throws NullPointerException if an argument is {@code null}, or {@code toModule} returns {@code null}
+     */
+    public static <P> List<JacksonModule> modulesOf(
+            final Iterable<? extends P> providers, final Function<? super P, ? extends JacksonModule> toModule) {
+        requireNonNull(providers, "providers");
+        requireNonNull(toModule, "toModule");
+        final List<JacksonModule> modules = new ArrayList<>();
+        for (final P provider : providers) {
+            modules.add(requireNonNull(toModule.apply(provider), "module"));
+        }
+        return List.copyOf(modules);
     }
 }
