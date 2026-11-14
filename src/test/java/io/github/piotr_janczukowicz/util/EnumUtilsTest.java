@@ -225,4 +225,34 @@ class EnumUtilsTest {
             return wireValue;
         }
     }
+
+    @Test
+    void requireFromWire_shouldReturnConstant_whenWireMatches() {
+        final EnumUtils.WireIndex<SampleWireEnum> index =
+                EnumUtils.index(SampleWireEnum.class, SampleWireEnum::wireValue);
+
+        final SampleWireEnum resolved = index.requireFromWire("User", "sample");
+
+        assertThat(resolved).isEqualTo(SampleWireEnum.USER);
+    }
+
+    @Test
+    void requireFromWire_shouldThrowWithLabelAndValue_whenWireDoesNotMatch() {
+        final EnumUtils.WireIndex<SampleWireEnum> index =
+                EnumUtils.index(SampleWireEnum.class, SampleWireEnum::wireValue);
+
+        final Throwable thrown = catchThrowable(() -> index.requireFromWire("nope", "job status"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage("Unknown job status: nope");
+    }
+
+    @Test
+    void requireFromWire_shouldThrowNullPointerException_whenValueIsNull() {
+        final EnumUtils.WireIndex<SampleWireEnum> index =
+                EnumUtils.index(SampleWireEnum.class, SampleWireEnum::wireValue);
+
+        final Throwable thrown = catchThrowable(() -> index.requireFromWire(null, "sample"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
 }

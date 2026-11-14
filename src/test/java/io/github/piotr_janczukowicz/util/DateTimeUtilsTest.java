@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
@@ -150,5 +151,56 @@ class DateTimeUtilsTest {
         final Optional<Instant> parsed = DateTimeUtils.parseRfc1123(text);
 
         assertThat(parsed).contains(instant);
+    }
+
+    @Test
+    void ofEpochSecond_shouldReturnInstant_whenSecondIsInRange() {
+        final Optional<Instant> instant = DateTimeUtils.ofEpochSecond(1_700_000_000L);
+
+        assertThat(instant).contains(Instant.ofEpochSecond(1_700_000_000L));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1L, 253_402_300_800L, Long.MAX_VALUE})
+    void ofEpochSecond_shouldReturnEmpty_whenSecondIsOutOfRange(final long epochSecond) {
+        final Optional<Instant> instant = DateTimeUtils.ofEpochSecond(epochSecond);
+
+        assertThat(instant).isEmpty();
+    }
+
+    @Test
+    void parseIsoDate_shouldReturnDate_whenTextIsAnIsoDate() {
+        final Optional<LocalDate> date = DateTimeUtils.parseIsoDate("2024-01-31");
+
+        assertThat(date).contains(LocalDate.of(2024, 1, 31));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "31/01/2024", "2024-13-01", "2024-01-31T00:00:00Z"})
+    void parseIsoDate_shouldReturnEmpty_whenTextIsNotAnIsoDate(final String text) {
+        final Optional<LocalDate> date = DateTimeUtils.parseIsoDate(text);
+
+        assertThat(date).isEmpty();
+    }
+
+    @Test
+    void parseIsoDate_shouldThrowNullPointerException_whenValueIsNull() {
+        final Throwable thrown = catchThrowable(() -> DateTimeUtils.parseIsoDate(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("value must not be null");
+    }
+
+    @Test
+    void startOfDayUtc_shouldReturnMidnightUtc_whenDateIsGiven() {
+        final Instant instant = DateTimeUtils.startOfDayUtc(LocalDate.of(2024, 1, 31));
+
+        assertThat(instant).isEqualTo(Instant.parse("2024-01-31T00:00:00Z"));
+    }
+
+    @Test
+    void startOfDayUtc_shouldThrowNullPointerException_whenDateIsNull() {
+        final Throwable thrown = catchThrowable(() -> DateTimeUtils.startOfDayUtc(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("date must not be null");
     }
 }

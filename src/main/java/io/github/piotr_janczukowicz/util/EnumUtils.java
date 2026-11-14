@@ -87,5 +87,18 @@ public final class EnumUtils {
 
             return fromWire(value).orElse(defaultValue);
         }
+
+        /**
+         * Returns the constant whose wire string equals {@code value}, or fails.
+         *
+         * @param value wire string to match
+         * @param label what the constant is, used in the exception message, for example {@code job status}
+         * @return matching constant
+         * @throws NullPointerException if {@code value} is {@code null}
+         * @throws IllegalArgumentException if no constant matches; the message is {@code Unknown <label>: <value>}
+         */
+        public E requireFromWire(final String value, final String label) {
+            return fromWire(value).orElseThrow(() -> new IllegalArgumentException("Unknown " + label + ": " + value));
+        }
     }
 }

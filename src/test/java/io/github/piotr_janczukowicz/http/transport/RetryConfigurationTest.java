@@ -412,15 +412,19 @@ class RetryConfigurationTest {
                 Duration.ofSeconds(20),
                 Duration.ofHours(1));
 
+        final Throwable thrown = getThrowable(valid, waits);
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxRateLimitWait");
+    }
+
+    private static Throwable getThrowable(RetryConfiguration valid, RetryConfiguration.WaitCaps waits) {
         final RetryConfiguration.AttemptBudgets attempts = valid.attempts();
         final RetryConfiguration.Jitter jitter = valid.jitter();
         final RetryConfiguration.Retryable retryable = valid.retryable();
         final RateLimitDetector rateLimitDetector = valid.rateLimitDetector();
         final RateLimitEventListener rateLimitEventListener = valid.rateLimitEventListener();
 
-        final Throwable thrown = catchThrowable(() -> new RetryConfiguration(
+        return catchThrowable(() -> new RetryConfiguration(
                 attempts, waits, jitter, retryable, rateLimitDetector, true, rateLimitEventListener, null));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxRateLimitWait");
     }
 }

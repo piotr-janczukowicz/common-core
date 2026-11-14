@@ -2,6 +2,7 @@ package io.github.piotr_janczukowicz.testsupport.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import org.junit.jupiter.api.Test;
@@ -37,9 +38,7 @@ class ImportedClassesTest {
 
         final JavaClasses production = imported.production("io.github.piotr_janczukowicz.pagination");
 
-        assertThat(production.stream()
-                        .map(javaClass -> javaClass.getPackageName())
-                        .distinct())
+        assertThat(production.stream().map(JavaClass::getPackageName).distinct())
                 .containsOnly("io.github.piotr_janczukowicz.pagination");
     }
 

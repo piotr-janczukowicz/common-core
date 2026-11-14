@@ -42,6 +42,7 @@ public abstract class AbstractEnumCatalogTest {
      *
      * @return the schema resource name, or {@code null} when the schemas come from {@link #schemaSource()}
      */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
     protected String schema() {
         return null;
     }
@@ -52,6 +53,7 @@ public abstract class AbstractEnumCatalogTest {
      *
      * @return the source, or {@code null} to check the single stored file of {@link #schema()}
      */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
     protected CatalogSchemaSource schemaSource() {
         return null;
     }

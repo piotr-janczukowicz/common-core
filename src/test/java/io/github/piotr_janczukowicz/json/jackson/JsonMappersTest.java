@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
 import java.lang.reflect.Constructor;
@@ -96,6 +97,20 @@ class JsonMappersTest {
         final Labels labels = mapper.readValue("{\"labels\":\"bug\"}", Labels.class);
 
         assertThat(labels.labels()).containsExactly("bug");
+    }
+
+    @Test
+    void defaults_shouldRegisterOptionalNull_whenDecodingAndEncoding() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+        record Patch(OptionalNull<String> displayName) {}
+
+        final Patch decoded = mapper.readValue("{\"display_name\":null}", Patch.class);
+        final String encoded = mapper.writeValueAsString(new Patch(OptionalNull.of("x")));
+
+        assertSoftly(softly -> {
+            softly.assertThat(decoded.displayName()).isEqualTo(OptionalNull.ofNull());
+            softly.assertThat(encoded).isEqualTo("{\"display_name\":\"x\"}");
+        });
     }
 
     @Test

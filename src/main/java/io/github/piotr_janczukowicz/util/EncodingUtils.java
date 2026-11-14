@@ -40,4 +40,35 @@ public final class EncodingUtils {
             throw new IllegalArgumentException(message);
         }
     }
+
+    /**
+     * Encodes {@code bytes} with the standard {@link Base64} encoder, with padding and without line breaks.
+     *
+     * @param bytes bytes to encode
+     * @return the Base64 text
+     * @throws NullPointerException if {@code bytes} is {@code null}
+     */
+    public static String encodeBase64(final byte[] bytes) {
+        requireNonNull(bytes, "bytes");
+
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    /**
+     * Decodes Base64 {@code value} after removing its line breaks, such as the wrapped text GitHub returns.
+     *
+     * <p>Only line feeds and carriage returns are removed; any other character that is not Base64 fails as in
+     * {@link #decodeBase64(String, String)}, which this method calls.
+     *
+     * @param value Base64 text, which may be wrapped over several lines
+     * @param message exception text
+     * @return the decoded bytes
+     * @throws NullPointerException if {@code value} or {@code message} is {@code null}
+     * @throws IllegalArgumentException if {@code message} is blank, or {@code value} is not valid Base64
+     */
+    public static byte[] decodeWrappedBase64(final String value, final String message) {
+        requireNonNull(value, "value");
+
+        return decodeBase64(value.replace("\n", "").replace("\r", ""), message);
+    }
 }

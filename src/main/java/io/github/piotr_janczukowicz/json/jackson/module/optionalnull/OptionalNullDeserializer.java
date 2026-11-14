@@ -1,4 +1,4 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.optionalnull;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 

@@ -7,7 +7,6 @@ import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.http.uri.HttpUris;
 import java.net.URI;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,7 @@ public record HttpCall(
         requireNonNull(target, "target");
         requireNonNull(headers, "headers");
         requireNonNull(body, "body");
-        query = Collections.unmodifiableMap(HttpUris.copyQueryValues(requireNonNull(query, "query")));
+        query = HttpUris.unmodifiableQueryValues(requireNonNull(query, "query"));
     }
 
     /**

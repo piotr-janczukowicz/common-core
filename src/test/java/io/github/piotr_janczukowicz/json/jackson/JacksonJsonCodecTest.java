@@ -307,7 +307,7 @@ class JacksonJsonCodecTest {
     void decode_shouldSurfaceAsDecodeFailure_whenACustomDeserializerThrowsAnUncheckedException() {
         record Thing(String name) {}
         final JsonMapper mapper = JsonMapper.builder()
-                .addModule(new SimpleModule().addDeserializer(Thing.class, new ValueDeserializer<Thing>() {
+                .addModule(new SimpleModule().addDeserializer(Thing.class, new ValueDeserializer<>() {
                     @Override
                     public Thing deserialize(final JsonParser parser, final DeserializationContext context) {
                         throw new IllegalStateException("rejected");

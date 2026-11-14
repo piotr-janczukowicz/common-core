@@ -58,4 +58,18 @@ public final class ListUtils {
         }
         return List.copyOf(values);
     }
+
+    /**
+     * Turns an absent list into an empty one, without copying a present one.
+     *
+     * @param values the list, or {@code null}
+     * @param <T> element type
+     * @return {@code values} itself, or an empty list if {@code values} is {@code null}
+     */
+    public static <T> List<T> orEmpty(@Nullable final List<T> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values;
+    }
 }

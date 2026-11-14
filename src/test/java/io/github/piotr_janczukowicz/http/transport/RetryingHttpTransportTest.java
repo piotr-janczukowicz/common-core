@@ -809,17 +809,15 @@ class RetryingHttpTransportTest {
     @Test
     void execute_shouldReturnLastBadGateway_whenAttemptsExhausted() throws Exception {
         final HttpRequest request = getRequest();
-        final HttpResponse first = new HttpResponse(HttpStatus.BAD_GATEWAY.code(), HttpHeaders.empty(), null);
-        final HttpResponse second = new HttpResponse(HttpStatus.BAD_GATEWAY.code(), HttpHeaders.empty(), null);
-        final HttpResponse last = new HttpResponse(HttpStatus.BAD_GATEWAY.code(), HttpHeaders.empty(), null);
-        when(delegate.execute(request)).thenReturn(first, second, last);
+        final HttpResponse httpResponse = new HttpResponse(HttpStatus.BAD_GATEWAY.code(), HttpHeaders.empty(), null);
+        when(delegate.execute(request)).thenReturn(httpResponse, httpResponse, httpResponse);
 
         final HttpResponse response;
         try (final RetryingHttpTransport transport = newTransport()) {
             response = transport.execute(request);
         }
 
-        assertThat(response).isSameAs(last);
+        assertThat(response).isSameAs(httpResponse);
         verify(delegate, times(3)).execute(request);
     }
 
