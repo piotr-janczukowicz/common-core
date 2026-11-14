@@ -1,6 +1,7 @@
 package io.github.piotr_janczukowicz.json.jackson;
 
 import io.github.piotr_janczukowicz.json.jackson.module.immutable.ImmutableCollectionsModule;
+import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
 import java.time.Instant;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.DeserializationFeature;
@@ -28,8 +29,9 @@ public final class JsonMappers {
      * <p>The mapper reads {@code snake_case} names as the camelCase components of a record; ignores properties the type
      * does not have; refuses a duplicate key and a fractional number for an integer; reads an unknown enum constant as
      * {@code null}; reads a single value where an array is expected; converts a JSON number or boolean to a
-     * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; and
-     * reads {@link Instant} values with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
+     * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; reads
+     * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; and reads
+     * {@link Instant} values with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
      *
      * @return a new builder with these settings
      */
@@ -51,6 +53,7 @@ public final class JsonMappers {
                         LogicalType.Collection,
                         cfg -> cfg.setCoercion(CoercionInputShape.String, CoercionAction.TryConvert))
                 .addModule(new ImmutableCollectionsModule())
+                .addModule(new OptionalNullModule())
                 .addModule(
                         new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()));
     }

@@ -2,8 +2,7 @@ package io.github.piotr_janczukowicz.json;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import io.github.piotr_janczukowicz.json.jackson.OptionalNullDeserializer;
-import io.github.piotr_janczukowicz.json.jackson.OptionalNullMixin;
+import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
 import java.util.function.Consumer;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
@@ -32,13 +31,12 @@ public final class JsonTestCodec implements JsonCodec {
 
     public static JsonTestCodec with(final Consumer<SimpleModule> customizer) {
         final SimpleModule module = new SimpleModule();
-        module.addDeserializer(OptionalNull.class, new OptionalNullDeserializer());
-        module.setMixInAnnotation(OptionalNull.class, OptionalNullMixin.class);
         customizer.accept(module);
         return new JsonTestCodec(JsonMapper.builder()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .addModule(new OptionalNullModule())
                 .addModule(module)
                 .build());
     }
