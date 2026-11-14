@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JavaType;
@@ -152,9 +153,9 @@ public final class JavaDocsSchemaComparator {
                 alignEnum(path, javaType.getRawClass(), mergedEnums, mismatches);
                 return;
             }
-            final List<String> xorKinds = simpleXorKinds(schema);
-            if (xorKinds != null) {
-                alignSimpleXor(path, javaType, xorKinds, simpleXor, mismatches);
+            final Optional<List<String>> xorKinds = simpleXorKinds(schema);
+            if (xorKinds.isPresent()) {
+                alignSimpleXor(path, javaType, xorKinds.get(), simpleXor, mismatches);
                 return;
             }
             if (javaType.isCollectionLikeType()) {
@@ -266,10 +267,7 @@ public final class JavaDocsSchemaComparator {
                 nonNullBranches++;
             }
         }
-        if (nonNullBranches < 2) {
-            return false;
-        }
-        return isAllNullable(javaType);
+        return nonNullBranches >= 2 && isAllNullable(javaType);
     }
 
     private static boolean hasProperties(final JsonNode schema) {
@@ -329,7 +327,7 @@ public final class JavaDocsSchemaComparator {
                 && properties.size() == 1;
     }
 
-    private static JsonNode exclusiveObjectBranch(final JsonNode schema) {
+    @Nullable private static JsonNode exclusiveObjectBranch(final JsonNode schema) {
         JsonNode objectBranch = null;
         for (final JsonNode branch : compositionBranches(schema)) {
             if (hasType(branch, "null") && !branch.has("properties")) {
@@ -346,7 +344,7 @@ public final class JavaDocsSchemaComparator {
         return objectBranch;
     }
 
-    private static JsonNode exclusiveArrayBranch(final JsonNode schema) {
+    @Nullable private static JsonNode exclusiveArrayBranch(final JsonNode schema) {
         JsonNode arrayBranch = null;
         for (final JsonNode branch : compositionBranches(schema)) {
             if (!hasType(branch, "array")) {
@@ -382,7 +380,7 @@ public final class JavaDocsSchemaComparator {
         return enums;
     }
 
-    private static @Nullable List<String> simpleXorKinds(final JsonNode schema) {
+    private static Optional<List<String>> simpleXorKinds(final JsonNode schema) {
         final List<String> kinds = new ArrayList<>();
         for (final JsonNode branch : compositionBranches(schema)) {
             if (hasType(branch, "null") && !hasType(branch, "array") && !hasType(branch, "string")) {
@@ -390,14 +388,14 @@ public final class JavaDocsSchemaComparator {
             }
             final String kind = simpleXorKind(branch);
             if (kind == null) {
-                return null;
+                return Optional.empty();
             }
             kinds.add(kind);
         }
         if (kinds.size() < 2) {
-            return null;
+            return Optional.empty();
         }
-        return List.copyOf(kinds);
+        return Optional.of(List.copyOf(kinds));
     }
 
     private static @Nullable String simpleXorKind(final JsonNode branch) {
@@ -509,7 +507,7 @@ public final class JavaDocsSchemaComparator {
         return common == null ? Set.of() : common;
     }
 
-    private static JsonNode mergeAllOf(final JsonNode schema) {
+    @Nullable private static JsonNode mergeAllOf(final JsonNode schema) {
         final JsonNode branches = schema.get("allOf");
         if (branches == null || !branches.isArray()) {
             return null;

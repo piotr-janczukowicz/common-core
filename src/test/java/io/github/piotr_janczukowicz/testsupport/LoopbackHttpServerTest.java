@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.http.HttpClient;
@@ -11,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +40,7 @@ class LoopbackHttpServerTest {
 
     @Test
     void uri_shouldUseGivenPath_whenOverloadCalled() throws IOException {
-        try (LoopbackHttpServer server = LoopbackHttpServer.start("/ping", exchange -> exchange.close())) {
+        try (LoopbackHttpServer server = LoopbackHttpServer.start("/ping", HttpExchange::close)) {
             assertSoftly(softly -> {
                 softly.assertThat(server.uri("/other").getPath()).isEqualTo("/other");
                 softly.assertThat(server.uri().getPort()).isEqualTo(server.port());
@@ -48,7 +50,7 @@ class LoopbackHttpServerTest {
 
     @Test
     void close_shouldFreePort_whenClosed() throws Exception {
-        final LoopbackHttpServer server = LoopbackHttpServer.start("/ping", exchange -> exchange.close());
+        final LoopbackHttpServer server = LoopbackHttpServer.start("/ping", HttpExchange::close);
         final HttpRequest request = HttpRequest.newBuilder(server.uri()).build();
         server.close();
 
@@ -60,10 +62,9 @@ class LoopbackHttpServerTest {
 
     @Test
     void close_shouldKeepExecutorRunning_whenExecutorSupplied() throws IOException {
-        final var executor = Executors.newSingleThreadExecutor();
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            LoopbackHttpServer.start("/ping", exchange -> exchange.close(), executor)
-                    .close();
+            LoopbackHttpServer.start("/ping", HttpExchange::close, executor).close();
 
             assertThat(executor.isShutdown()).isFalse();
         } finally {

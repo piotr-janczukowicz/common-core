@@ -30,17 +30,17 @@ public final class ScriptedHttpServer implements AutoCloseable {
     public ScriptedHttpServer(final Script script) throws IOException {
         this.server = LoopbackHttpServer.start("/", exchange -> {
             final int call = calls.incrementAndGet();
-            try {
-                script.run(call, exchange);
-            } catch (final InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (final IOException clientGone) {
-                disconnects.incrementAndGet();
-                disconnectSignal.release();
-            } catch (final Exception | AssertionError failure) {
-                scriptFailure.compareAndSet(null, failure);
-            } finally {
-                exchange.close();
+            try (exchange) {
+                try {
+                    script.run(call, exchange);
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (final IOException clientGone) {
+                    disconnects.incrementAndGet();
+                    disconnectSignal.release();
+                } catch (final Exception | AssertionError failure) {
+                    scriptFailure.compareAndSet(null, failure);
+                }
             }
         });
     }

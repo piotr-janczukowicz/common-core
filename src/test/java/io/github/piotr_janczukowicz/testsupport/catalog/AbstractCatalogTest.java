@@ -50,6 +50,7 @@ public abstract class AbstractCatalogTest {
      *
      * @return the schema resource name, or {@code null} when every pointer is compared
      */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
     protected String schema() {
         return null;
     }

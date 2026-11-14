@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
+import java.lang.reflect.Constructor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -34,7 +35,7 @@ class HttpUserAgentsTest {
 
     @Test
     void constructor_shouldRejectInstantiation_whenCalledViaReflection() throws Exception {
-        final var constructor = HttpUserAgents.class.getDeclaredConstructor();
+        final Constructor<HttpUserAgents> constructor = HttpUserAgents.class.getDeclaredConstructor();
         constructor.setAccessible(true);
 
         final Throwable thrown = catchThrowable(constructor::newInstance);

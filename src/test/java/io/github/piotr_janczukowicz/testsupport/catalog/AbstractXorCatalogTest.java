@@ -57,6 +57,7 @@ public abstract class AbstractXorCatalogTest {
      *
      * @return the schema resource name, or {@code null} when every pointer is compared
      */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
     protected String schema() {
         return null;
     }
@@ -77,7 +78,7 @@ public abstract class AbstractXorCatalogTest {
     @ParameterizedTest
     @MethodSource("cases")
     protected final void decode_shouldEqualExpected_whenFixtureDecoded(
-            final String fixture, final Object expected, final String[] exceptNullProperties) {
+            final String fixture, final Object expected, final String... exceptNullProperties) {
         final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
         requireNonNull(exceptNullProperties, "exceptNullProperties");
