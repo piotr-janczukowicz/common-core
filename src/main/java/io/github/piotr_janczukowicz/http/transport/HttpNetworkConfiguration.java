@@ -39,6 +39,7 @@ public record HttpNetworkConfiguration(
 
     private static final HttpNetworkConfiguration NONE = new HttpNetworkConfiguration(null, null, Map.of(), null);
     private static final String PIN_PREFIX = "sha256/";
+    private static final String PINS_FOR = "pins for ";
     private static final int SHA256_BYTES = 32;
 
     public HttpNetworkConfiguration {
@@ -46,9 +47,9 @@ public record HttpNetworkConfiguration(
         final Map<String, Set<String>> copy = new LinkedHashMap<>();
         certificatePins.forEach((pattern, pins) -> {
             requireNotBlank(pattern, "pin host pattern");
-            requireNonEmpty(pins, "pins for " + pattern);
+            requireNonEmpty(pins, PINS_FOR + pattern);
             pins.forEach(HttpNetworkConfiguration::requireValidPin);
-            copy.put(pattern, SetUtils.copyOf(pins, "pins for " + pattern));
+            copy.put(pattern, SetUtils.copyOf(pins, PINS_FOR + pattern));
         });
         certificatePins = MapUtils.copyOf(copy, "certificatePins");
     }
@@ -135,7 +136,7 @@ public record HttpNetworkConfiguration(
          */
         public Builder certificatePin(final String hostPattern, final String... pins) {
             requireNotBlank(hostPattern, "pin host pattern");
-            requireNonEmpty(pins, "pins for " + hostPattern);
+            requireNonEmpty(pins, PINS_FOR + hostPattern);
             final Set<String> all = certificatePins.computeIfAbsent(hostPattern, key -> new LinkedHashSet<>());
             for (final String pin : pins) {
                 all.add(requireNonNull(pin, "pin"));

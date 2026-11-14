@@ -140,7 +140,7 @@ public final class JavaDocsSchemaComparator {
         if ((schema.has("oneOf") || schema.has("anyOf")) && !schema.has("properties")) {
             final JsonNode objectBranch = exclusiveObjectBranch(schema);
             if (objectBranch != null) {
-                if (!javaSharesObjectProperties(javaType, objectBranch) && isXorWrapper(javaType, schema)) {
+                if (javaLacksObjectProperties(javaType, objectBranch) && isXorWrapper(javaType, schema)) {
                     return;
                 }
                 if (javaObjectBranchPropertyPresent(javaType, objectBranch)) {
@@ -243,7 +243,7 @@ public final class JavaDocsSchemaComparator {
             final JsonNode objectBranch = exclusiveObjectBranch(node);
             if (objectBranch == null
                     || !hasProperties(objectBranch)
-                    || !javaSharesObjectProperties(javaType, objectBranch) && isXorWrapper(javaType, node)) {
+                    || javaLacksObjectProperties(javaType, objectBranch) && isXorWrapper(javaType, node)) {
                 return null;
             }
             node = objectBranch;
@@ -252,7 +252,7 @@ public final class JavaDocsSchemaComparator {
             return null;
         }
         final JsonNode object = mergeCompositionIntoProperties(node);
-        return !javaSharesObjectProperties(javaType, object) && isAllNullable(javaType) ? null : object;
+        return javaLacksObjectProperties(javaType, object) && isAllNullable(javaType) ? null : object;
     }
 
     private static boolean isAllNullable(final JavaType javaType) {
@@ -283,8 +283,8 @@ public final class JavaDocsSchemaComparator {
         return hasType(schema, "object");
     }
 
-    private static boolean javaSharesObjectProperties(final JavaType javaType, final JsonNode objectBranch) {
-        return !sharedObjectBranchFields(javaType, objectBranch).isEmpty();
+    private static boolean javaLacksObjectProperties(final JavaType javaType, final JsonNode objectBranch) {
+        return sharedObjectBranchFields(javaType, objectBranch).isEmpty();
     }
 
     private static boolean javaObjectBranchPropertyPresent(final JavaType javaType, final JsonNode objectBranch) {
@@ -311,20 +311,20 @@ public final class JavaDocsSchemaComparator {
         return shared;
     }
 
-    private static boolean minItemsImpliesPresent(final JsonNode propertySchema) {
+    private static boolean minItemsAllowsAbsent(final JsonNode propertySchema) {
         final JsonNode minItems = propertySchema.get("minItems");
-        return minItems != null && minItems.isNumber() && minItems.intValue() >= 1;
+        return minItems == null || !minItems.isNumber() || minItems.intValue() < 1;
     }
 
-    private static boolean minPropertiesImpliesPresent(final JsonNode schema) {
+    private static boolean minPropertiesAllowsAbsent(final JsonNode schema) {
         final JsonNode minProperties = schema.get("minProperties");
         final JsonNode properties = schema.get("properties");
-        return minProperties != null
-                && minProperties.isNumber()
-                && minProperties.intValue() >= 1
-                && properties != null
-                && properties.isObject()
-                && properties.size() == 1;
+        return minProperties == null
+                || !minProperties.isNumber()
+                || minProperties.intValue() < 1
+                || properties == null
+                || !properties.isObject()
+                || properties.size() != 1;
     }
 
     @Nullable private static JsonNode exclusiveObjectBranch(final JsonNode schema) {
@@ -762,13 +762,10 @@ public final class JavaDocsSchemaComparator {
         final boolean primitive = javaType.isPrimitive();
         final JsonNode requiredNode = schema.get("required");
         if (requiredNode == null || requiredNode.isNull()) {
-            if (!nullable
-                    && !primitive
-                    && !minItemsImpliesPresent(propertySchema)
-                    && !minPropertiesImpliesPresent(schema)) {
+            if (!nullable && !primitive && minItemsAllowsAbsent(propertySchema) && minPropertiesAllowsAbsent(schema)) {
                 mismatches.add(path + ": docs omitted required, java missing @Nullable");
             }
-            if (primitive && !minItemsImpliesPresent(propertySchema) && !minPropertiesImpliesPresent(schema)) {
+            if (primitive && minItemsAllowsAbsent(propertySchema) && minPropertiesAllowsAbsent(schema)) {
                 mismatches.add(path + ": docs omitted required, java primitive cannot be absent");
             }
             return;
@@ -793,10 +790,10 @@ public final class JavaDocsSchemaComparator {
             }
             return;
         }
-        if (!nullable && !primitive && !minPropertiesImpliesPresent(schema)) {
+        if (!nullable && !primitive && minPropertiesAllowsAbsent(schema)) {
             mismatches.add(path + ": docs not required, java missing @Nullable");
         }
-        if (primitive && !minPropertiesImpliesPresent(schema)) {
+        if (primitive && minPropertiesAllowsAbsent(schema)) {
             mismatches.add(path + ": docs not required, java primitive cannot be absent");
         }
     }

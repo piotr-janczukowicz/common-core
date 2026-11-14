@@ -60,7 +60,7 @@ public final class Pages {
      */
     public static <T, P extends Page<T, P>> List<T> all(final P first) throws IOException {
         try {
-            return Pages.<T, P>items(first).toList();
+            return Pages.items(first).toList();
         } catch (final WalkFailure ex) {
             throw checked(ex);
         }
@@ -78,7 +78,7 @@ public final class Pages {
     public static <T, P extends Page<T, P>> void forEachPage(final P first, final Consumer<P> consumer)
             throws IOException {
         try {
-            Pages.<T, P>pages(first).forEach(consumer);
+            Pages.pages(first).forEach(consumer);
         } catch (final WalkFailure ex) {
             throw checked(ex);
         }

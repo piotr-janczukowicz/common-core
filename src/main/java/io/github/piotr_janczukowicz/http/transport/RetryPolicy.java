@@ -56,12 +56,8 @@ final class RetryPolicy {
     /** The highest level of an escalating wait; a higher level gives the wait of this one. */
     static final int MAX_LEVEL = MAX_SHIFT + 1;
 
-    private static final RandomGenerator DEFAULT_RANDOM = new RandomGenerator() {
-        @Override
-        public long nextLong() {
-            return ThreadLocalRandom.current().nextLong();
-        }
-    };
+    private static final RandomGenerator DEFAULT_RANDOM =
+            () -> ThreadLocalRandom.current().nextLong();
 
     private final RetryConfiguration.AttemptBudgets attempts;
     private final RetryConfiguration.WaitCaps waits;
