@@ -5,6 +5,8 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonEmpty;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNotBlank;
 
+import io.github.piotr_janczukowicz.util.MapUtils;
+import io.github.piotr_janczukowicz.util.SetUtils;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -46,9 +48,9 @@ public record HttpNetworkConfiguration(
             requireNotBlank(pattern, "pin host pattern");
             requireNonEmpty(pins, "pins for " + pattern);
             pins.forEach(HttpNetworkConfiguration::requireValidPin);
-            copy.put(pattern, Set.copyOf(pins));
+            copy.put(pattern, SetUtils.copyOf(pins, "pins for " + pattern));
         });
-        certificatePins = Map.copyOf(copy);
+        certificatePins = MapUtils.copyOf(copy, "certificatePins");
     }
 
     /**

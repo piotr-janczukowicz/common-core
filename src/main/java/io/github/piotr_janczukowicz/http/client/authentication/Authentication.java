@@ -9,8 +9,9 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNotBlank;
 
 import io.github.piotr_janczukowicz.http.Digests;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
+import io.github.piotr_janczukowicz.util.EncodingUtils;
+import io.github.piotr_janczukowicz.util.StringUtils;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -149,8 +150,7 @@ public record Authentication(Type type, String value, String identity, String he
             throw new IllegalArgumentException("user must not contain ':'");
         }
         requireNotBlank(password, "password");
-        final String encoded =
-                Base64.getEncoder().encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
+        final String encoded = EncodingUtils.encodeBase64((user + ":" + password).getBytes(StandardCharsets.UTF_8));
         return of(Type.BASIC, encoded);
     }
 
@@ -180,8 +180,8 @@ public record Authentication(Type type, String value, String identity, String he
         if (space < 0) {
             return Optional.empty();
         }
-        final String credential = headerValue.substring(space + 1).strip();
-        if (credential.isEmpty()) {
+        final String credential = StringUtils.stripToNull(headerValue.substring(space + 1));
+        if (credential == null) {
             return Optional.empty();
         }
         final String scheme = headerValue.substring(0, space).toLowerCase(Locale.ROOT);

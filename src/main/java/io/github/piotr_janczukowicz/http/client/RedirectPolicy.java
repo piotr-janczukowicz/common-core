@@ -9,6 +9,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireAtLeast;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import io.github.piotr_janczukowicz.http.HttpMethod;
+import io.github.piotr_janczukowicz.util.SetUtils;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,7 +36,7 @@ public record RedirectPolicy(int maxHops, Set<HttpMethod> crossOriginMethods, Se
 
     public RedirectPolicy {
         requireAtLeast(maxHops, 1, "maxHops");
-        crossOriginMethods = Set.copyOf(requireNonNull(crossOriginMethods, "crossOriginMethods"));
+        crossOriginMethods = SetUtils.copyOf(crossOriginMethods, "crossOriginMethods");
         requireNonNull(crossOriginHeaderNames, "crossOriginHeaderNames");
         crossOriginHeaderNames = crossOriginHeaderNames.stream()
                 .map(name -> requireNonNull(name, "header").toLowerCase(Locale.ROOT))

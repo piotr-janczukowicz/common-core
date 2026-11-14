@@ -8,6 +8,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requirePositive;
 
 import io.github.piotr_janczukowicz.http.HttpMethod;
+import io.github.piotr_janczukowicz.util.SetUtils;
 import java.time.Duration;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -210,7 +211,7 @@ public record RetryConfiguration(
             Set<Integer> retryableServerStatuses) {
         public Retryable {
             ioRetryableMethods = Set.copyOf(requireNonEmpty(ioRetryableMethods, "ioRetryableMethods"));
-            retryableServerStatuses = Set.copyOf(requireNonNull(retryableServerStatuses, "retryableServerStatuses"));
+            retryableServerStatuses = SetUtils.copyOf(retryableServerStatuses, "retryableServerStatuses");
             for (final int status : retryableServerStatuses) {
                 if (status < 400 || status > 599) {
                     throw new IllegalArgumentException(
@@ -346,7 +347,7 @@ public record RetryConfiguration(
          * @throws NullPointerException if {@code ioRetryableMethods} is {@code null}
          */
         public Builder ioRetryableMethods(final Set<HttpMethod> ioRetryableMethods) {
-            this.ioRetryableMethods = Set.copyOf(requireNonNull(ioRetryableMethods, "ioRetryableMethods"));
+            this.ioRetryableMethods = SetUtils.copyOf(ioRetryableMethods, "ioRetryableMethods");
             return this;
         }
 
@@ -440,8 +441,7 @@ public record RetryConfiguration(
          * @throws NullPointerException if {@code retryableServerStatuses} is {@code null}
          */
         public Builder retryableServerStatuses(final Set<Integer> retryableServerStatuses) {
-            this.retryableServerStatuses =
-                    Set.copyOf(requireNonNull(retryableServerStatuses, "retryableServerStatuses"));
+            this.retryableServerStatuses = SetUtils.copyOf(retryableServerStatuses, "retryableServerStatuses");
             return this;
         }
 
