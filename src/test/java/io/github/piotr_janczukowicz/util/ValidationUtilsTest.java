@@ -3,8 +3,10 @@ package io.github.piotr_janczukowicz.util;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -2150,5 +2152,116 @@ class ValidationUtilsTest {
 
     private static Stream<Duration> zeroAndPositiveDurations() {
         return Stream.of(Duration.ZERO, Duration.ofMillis(1));
+    }
+
+    @Test
+    void requireNotBlankElements_shouldReturnAnImmutableCopy_whenElementsAreNotBlank() {
+        final List<String> values = new ArrayList<>(List.of("a", " b "));
+
+        final List<String> checked = ValidationUtils.requireNotBlankElements(values, "values");
+        values.add("c");
+
+        assertSoftly(softly -> {
+            softly.assertThat(checked).containsExactly("a", " b ");
+            softly.assertThat(catchThrowable(() -> checked.add("d"))).isInstanceOf(UnsupportedOperationException.class);
+        });
+    }
+
+    @Test
+    void requireNotBlankElements_shouldAcceptAnEmptyCollection_whenValuesIsEmpty() {
+        final List<String> checked = ValidationUtils.requireNotBlankElements(List.of(), "values");
+
+        assertThat(checked).isEmpty();
+    }
+
+    @Test
+    void requireNotBlankElements_shouldThrowNullPointerException_whenValuesIsNull() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireNotBlankElements(null, "labels"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("labels must not be null");
+    }
+
+    @Test
+    void requireNotBlankElements_shouldThrowNullPointerException_whenAnElementIsNull() {
+        final List<String> values = Arrays.asList("a", null);
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireNotBlankElements(values, "labels"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("labels must not be null");
+    }
+
+    @Test
+    void requireNotBlankElements_shouldThrowIllegalArgumentException_whenAnElementIsBlank() {
+        final List<String> values = List.of("a", " ");
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireNotBlankElements(values, "labels"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage("labels must not be blank");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a", "src/main/App.java", "a//b", "/a/", "...", ".hidden", "a/.b/c"})
+    void requireSafePath_shouldReturnValue_whenPathIsSafe(final String path) {
+        final String checked = ValidationUtils.requireSafePath(path, "path");
+
+        assertThat(checked).isEqualTo(path);
+    }
+
+    @Test
+    void requireSafePath_shouldThrowNullPointerException_whenValueIsNull() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSafePath(null, "path"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("path must not be null");
+    }
+
+    @Test
+    void requireSafePath_shouldThrowIllegalArgumentException_whenValueIsBlank() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSafePath(" ", "path"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage("path must not be blank");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a\tb", "a\nb", "a\u007fb", "a\u0000b"})
+    void requireSafePath_shouldThrowIllegalArgumentException_whenPathHasAControlCharacter(final String path) {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSafePath(path, "path"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("path must not contain a control character");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {".", "..", "a/..", "../a", "a/./b", "a/../b"})
+    void requireSafePath_shouldThrowIllegalArgumentException_whenPathHasADotSegment(final String path) {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSafePath(path, "path"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("path must not have a . or .. segment: " + path);
+    }
+
+    @Test
+    void requireFilePath_shouldReturnValue_whenPathIsAFilePath() {
+        final String checked = ValidationUtils.requireFilePath("src/main/App.java", "path");
+
+        assertThat(checked).isEqualTo("src/main/App.java");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/a", "a/", "a//b"})
+    void requireFilePath_shouldThrowIllegalArgumentException_whenPathHasAnEmptySegment(final String path) {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireFilePath(path, "path"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("path must not have an empty segment: " + path);
+    }
+
+    @Test
+    void requireFilePath_shouldThrowIllegalArgumentException_whenPathHasADotSegment() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireFilePath("a/../b", "path"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("segment");
     }
 }

@@ -77,4 +77,41 @@ class EncodingUtilsTest {
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage(message);
     }
+
+    @Test
+    void encodeBase64_shouldReturnPaddedText_whenBytesAreGiven() {
+        final byte[] bytes = "hello!?".getBytes(StandardCharsets.UTF_8);
+
+        final String encoded = EncodingUtils.encodeBase64(bytes);
+
+        assertThat(encoded).isEqualTo("aGVsbG8hPw==");
+    }
+
+    @Test
+    void encodeBase64_shouldThrowNullPointerException_whenBytesIsNull() {
+        final Throwable thrown = catchThrowable(() -> EncodingUtils.encodeBase64(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("bytes must not be null");
+    }
+
+    @Test
+    void decodeWrappedBase64_shouldIgnoreLineBreaks_whenTextIsWrapped() {
+        final byte[] decoded = EncodingUtils.decodeWrappedBase64("aGVs\nbG8h\r\nPw==\n", "bad content");
+
+        assertThat(decoded).isEqualTo("hello!?".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void decodeWrappedBase64_shouldThrowTheMessage_whenTextIsNotBase64() {
+        final Throwable thrown = catchThrowable(() -> EncodingUtils.decodeWrappedBase64("a b", "bad content"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage("bad content");
+    }
+
+    @Test
+    void decodeWrappedBase64_shouldThrowNullPointerException_whenValueIsNull() {
+        final Throwable thrown = catchThrowable(() -> EncodingUtils.decodeWrappedBase64(null, "bad content"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("value must not be null");
+    }
 }

@@ -11,7 +11,7 @@ Shared building blocks for the `io.github.piotr-janczukowicz` libraries and any 
 Jackson 3, in one artifact:
 
 - **Utilities**: fail-fast argument checks, blank-safe string helpers, enum lookup from wire strings, bounded stream reads,
-  ISO-8601 and HTTP date handling, a memoized supplier, pagination settings and annotations such as `@RecordBuilder`.
+  ISO-8601 and HTTP date handling, a memoized supplier, immutable collection copies, pagination helpers and annotations such as `@RecordBuilder`.
 - **JSON**: a Jackson-free `JsonCodec` contract, an `OptionalNull` wrapper for PATCH-style payloads, Jackson adapters for
   union-shaped JSON, a module that reads collections as immutable ones, and a serializer that writes `5.0` as `5`.
 - **HTTP**: a small stack for REST clients, built on OkHttp, with immutable request and response types, a transport with
@@ -34,7 +34,9 @@ the [releases page](https://github.com/piotr-janczukowicz/common-core/releases).
 OkHttp, Jackson 3 (`tools.jackson`) and SLF4J come with it. `org.jspecify` and `record-builder-core` are `requires static` in
 the module descriptor: nothing needs them at run time except your own use of the `@RecordBuilder` annotation processor.
 
-The test helpers of the HTTP stack (scripted transports and servers) are published as a test-jar:
+The test helpers are published as a test-jar: scripted transports and loopback servers for the HTTP stack, a mutable clock,
+the `@UnitTest` and `@IntegrationTest` tags, ArchUnit rules for models, and the base classes of the catalog tests that check
+models against an API description:
 
 ```xml
 <dependency>
@@ -55,16 +57,22 @@ JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 
 | Class | What it does |
 |---|---|
-| [`ValidationUtils`](src/main/java/io/github/piotr_janczukowicz/util/ValidationUtils.java) | `require*` checks for arguments and configuration: not null, not blank, positive, at least, at most, between, non-empty, size, unique items, length, pattern, and group checks such as exactly one. Each returns the value so you can assign it |
+| [`ValidationUtils`](src/main/java/io/github/piotr_janczukowicz/util/ValidationUtils.java) | `require*` checks for arguments and configuration: not null, not blank, positive, at least, at most, between, non-empty, size, unique items, no blank or null elements, length, pattern, path safety (`requireSafePath`, `requireFilePath`), and group checks such as exactly one. Each returns the value so you can assign it |
+| [`ListUtils`](src/main/java/io/github/piotr_janczukowicz/util/ListUtils.java), [`SetUtils`](src/main/java/io/github/piotr_janczukowicz/util/SetUtils.java), [`MapUtils`](src/main/java/io/github/piotr_janczukowicz/util/MapUtils.java) | Unmodifiable copies: `copyOf` for a required collection, `copyOrNull` to keep an absent one absent, `copyOrEmpty` to turn it into an empty one, and `orEmpty` to do that without copying |
 | [`StringUtils`](src/main/java/io/github/piotr_janczukowicz/util/StringUtils.java) | `isBlank`, `isNotBlank` and `stripToNull`, with the semantics of Apache Commons Lang 3 and no dependency on it |
-| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `WireIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional` or a default for an unknown value |
+| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `WireIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional`, a default, or `requireFromWire`, which fails with `Unknown <label>: <value>` for an unknown value |
 | [`IoUtils`](src/main/java/io/github/piotr_janczukowicz/util/IoUtils.java) | `readAllBounded` and `copyBounded` stop with `BoundedReadLimitException` instead of reading past a limit |
-| [`DateTimeUtils`](src/main/java/io/github/piotr_janczukowicz/util/DateTimeUtils.java) | `Instant` to ISO-8601 UTC text, and `Instant` to and from RFC 1123 (HTTP dates) |
-| [`EncodingUtils`](src/main/java/io/github/piotr_janczukowicz/util/EncodingUtils.java) | Base64 decoding that reports your message and never echoes the input |
+| [`DateTimeUtils`](src/main/java/io/github/piotr_janczukowicz/util/DateTimeUtils.java) | `Instant` to ISO-8601 UTC text, `Instant` to and from RFC 1123 (HTTP dates), epoch seconds to `Instant` within a valid range, ISO dates and the start of a day in UTC |
+| [`EncodingUtils`](src/main/java/io/github/piotr_janczukowicz/util/EncodingUtils.java) | Base64 encoding, and decoding (also of text wrapped over several lines) that reports your message and never echoes the input |
+| [`NumberUtils`](src/main/java/io/github/piotr_janczukowicz/util/NumberUtils.java) | `parseInt` and `parseLong` for text from outside, such as a header: an empty result instead of an exception for text that is absent, blank, out of range, or not an optional `-` and ASCII digits |
 | [`FileUtils`](src/main/java/io/github/piotr_janczukowicz/util/FileUtils.java) | Reads a classpath resource as a string or bytes |
 | [`ConcurrencyUtils`](src/main/java/io/github/piotr_janczukowicz/util/ConcurrencyUtils.java) | Sleeps interruptibly and turns an interrupt into an `InterruptedIOException`, restoring the interrupt flag |
 | [`LazyValue`](src/main/java/io/github/piotr_janczukowicz/util/LazyValue.java) | A thread-safe memoized supplier; an exception is not cached |
 | [`PaginationConfiguration`](src/main/java/io/github/piotr_janczukowicz/pagination/PaginationConfiguration.java) | A page cap (none by default) and a default `per_page` between 1 and 100 for list pagination |
+| [`Page`](src/main/java/io/github/piotr_janczukowicz/pagination/Page.java) and [`Pages`](src/main/java/io/github/piotr_janczukowicz/pagination/Pages.java) | The page contract of a paginated list, and lazy sequential streams of its items or pages that load a page only when needed |
+| [`LinkHeader`](src/main/java/io/github/piotr_janczukowicz/pagination/LinkHeader.java) | Finds the `rel="next"` relation of an HTTP `Link` header, the link to the next page |
+| [`PageWalkGuard`](src/main/java/io/github/piotr_janczukowicz/pagination/PageWalkGuard.java) | Refuses a next link that was already followed, so a server cannot walk the caller in circles |
+| [`PageQueries`](src/main/java/io/github/piotr_janczukowicz/pagination/PageQueries.java) | `boundPerPage` picks the page size within an endpoint maximum, and `withParameters` adds page parameters to a base query |
 | `@RecordBuilder` | Generates a `RecordNameBuilder` for an annotated record at compile time, marked as generated for JaCoCo |
 | `@CatalogSchema`, `@CatalogSimpleXor`, `@SuppressSchemaTypeMismatch` | Runtime annotations that map a type to a schema, for tests that check models against an API description |
 
@@ -131,14 +139,9 @@ The `io.github.piotr_janczukowicz.json` package has no Jackson types: `JsonCodec
 ### OptionalNull
 
 `OptionalNull<T>` tells apart an absent field (Java `null`), an explicit JSON `null` (`OptionalNull.ofNull()`) and a value
-(`OptionalNull.of(value)`). Register both parts, and put `@JsonInclude(NON_NULL)` on the enclosing record so an absent field is
-omitted:
-
-```java
-SimpleModule module = new SimpleModule();
-module.addDeserializer(OptionalNull.class, new OptionalNullDeserializer());
-module.setMixInAnnotation(OptionalNull.class, OptionalNullMixin.class);
-```
+(`OptionalNull.of(value)`). `JsonMappers.snakeCase()` registers `OptionalNullModule`; on another mapper call
+`builder.addModule(new OptionalNullModule())`. Put `@JsonInclude(NON_NULL)` on the enclosing record so an absent field is
+omitted.
 
 A value that the inner deserializer reads as `null` (for example an unknown enum constant under
 `READ_UNKNOWN_ENUM_VALUES_AS_NULL`) fails instead of becoming `OptionalNull.ofNull()`, so a PATCH cannot clear a field by
@@ -170,12 +173,26 @@ fails to serialize instead of being written as `null`.
 ### Immutable collections
 
 `ImmutableCollectionsModule` makes `List`, `Collection`, `Set` and `Map` deserialize as immutable collections, keeping element
-types. JSON `null` and absent properties stay `null`. Null elements and map entries with a null value are dropped, and the
-iteration order of sets and maps is unspecified.
+types. JSON `null` and absent properties stay `null`. Null elements and map entries with a null value are kept, lists and maps keep
+the order of the JSON, and the iteration order of sets is unspecified.
 
 ```java
 JsonMapper mapper = JsonMapper.builder().addModule(new ImmutableCollectionsModule()).build();
 ```
+
+### Mapper defaults
+
+`JsonMappers.snakeCase()` returns a `JsonMapper.Builder` for APIs whose JSON uses `snake_case` names and add properties over
+time: unknown properties are ignored, duplicate keys and fractional numbers for integers are refused, an unknown enum constant
+reads as `null`, a single value reads as a one-element array, dates are written as text, collections are immutable,
+`OptionalNull` is registered, and `Instant` values are read with `FastInstantDeserializer`. Add your own modules and build the
+mapper once. `JacksonJsonCodec` is a `JsonCodec` over such a mapper.
+
+### Reading nodes and tokens
+
+`JsonNodes.textOrNull(node, field)` reads a string field and gives `null` for a missing or non-string one. `JsonTokens` checks
+the token a parser is on and reads an object unless it is empty. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
+field and then bind a type without building a tree.
 
 ### Integral doubles
 
@@ -203,11 +220,11 @@ mapper you use.
 
 | Package | Contents |
 | --- | --- |
-| `io.github.piotr_janczukowicz.http` | `HttpRequest`, `HttpResponse`, `HttpStreamResponse`, `HttpHeaders`, `HttpMethod`, `HttpStatus`, `HttpBody`, `MultipartFormData` and their exceptions |
-| `io.github.piotr_janczukowicz.http.transport` | `HttpTransport`, the OkHttp implementation (`HttpTransports`), the decorators, and the timeout, proxy, TLS and retry settings |
-| `io.github.piotr_janczukowicz.http.client` | `HttpClient`, the callers that send an `HttpCall` and decode the answer, redirect policy, origin guard, polling and call observers |
+| `io.github.piotr_janczukowicz.http` | `HttpRequest`, `HttpResponse`, `HttpStreamResponse`, `HttpHeaders` with `HttpHeaderNames` and `HttpHeadersValidator`, `HttpMethod`, `HttpStatus`, `HttpBody`, `MultipartFormData`, `HttpUserAgents`, `HttpErrorBodies` (bounded error text), `Digests` (keyed digests) and their exceptions |
+| `io.github.piotr_janczukowicz.http.transport` | `HttpTransport`, the OkHttp implementation (`HttpTransports`), the decorators, the rate-limit detection (`RateLimitDetector`, `RateLimitGate`), and the timeout, proxy, TLS and retry settings |
+| `io.github.piotr_janczukowicz.http.client` | `HttpClient`, the callers that send an `HttpCall` and decode the answer (`HttpClientCaller`, `AbstractHttpCaller`, `HttpResourceApi`), `HttpResult`, `HttpDownloads`, the error mapper, redirect policy, origin guard, polling and call observers |
 | `io.github.piotr_janczukowicz.http.client.authentication` | `AuthenticationProviders`: bearer, renewable bearer, basic and none |
-| `io.github.piotr_janczukowicz.http.uri`, `io.github.piotr_janczukowicz.uri` | `HttpUris`, `ParsedUrl`, `PathTemplate` and `PathSegments` |
+| `io.github.piotr_janczukowicz.http.uri`, `io.github.piotr_janczukowicz.uri` | `HttpUris` (resolving API paths, query copies, `originOf`), `ParsedUrl`, `PathTemplate` and `PathSegments` |
 
 The transport knows nothing about base URIs or credentials; the client knows nothing about connections. You compose the
 transport, hand it to the client, and the client owns it from then on: `close()` closes the whole stack.
@@ -233,8 +250,9 @@ try (HttpClient client = HttpClient.builder(
 
 A 2xx answer becomes an `HttpResponse` or a decoded value. Any other status becomes the unchecked exception that the client's
 `HttpErrorMapper` builds (an `HttpException` by default), and a failure of the network stays an `IOException`. The caller
-also has `fetchOptional` and `fetchOrEmpty` for answers that may be absent, `fetchResult` for the response headers next to
-the value (an `ETag`, say), `fetchByStatus`, `isExisting`, `stream`, `download` and `redirectLocation`.
+also has `fetchOptional`, `fetchOrEmpty` and `fetchUnless` for answers that may be absent, `fetchResult` for the response
+headers next to the value (an `ETag`, say), `fetchByStatus`, `isExisting`, `stream`, `download`, `redirectLocation` and
+`redirectLocationIfAny`, and `multipart` and `jsonIfPresent` to build a call.
 
 A client can be shared between threads when its transport, authentication provider and observers are.
 
@@ -268,6 +286,7 @@ without a named wait the transport waits 60, 120 and 240 seconds with some jitte
 | `AuthenticationProviders.bearer(supplier)` | A token read on every request |
 | `AuthenticationProviders.bearer(supplier, isRenewable)` | A token that expires: after a 401 the client sends the request once more if a different token is available |
 | `AuthenticationProviders.basic(user, password)` | A user and password, or a client ID and secret |
+| `AuthenticationProviders.header(name, token)` | A fixed token sent as the raw value of a header of its own, such as `PRIVATE-TOKEN` |
 | `AuthenticationProviders.none()` | No credentials |
 
 Default headers never replace an authentication header. Only a header set on one call can, which is how a single request

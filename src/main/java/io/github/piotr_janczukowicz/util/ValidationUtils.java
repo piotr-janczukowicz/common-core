@@ -1,8 +1,10 @@
 package io.github.piotr_janczukowicz.util;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -30,6 +32,10 @@ public final class ValidationUtils {
     private static final String MUST_BE_AT_MOST = "must be at most ";
     private static final String MUST_BE_POSITIVE = "must be positive";
     private static final String MUST_NOT_BE_EMPTY = "must not be empty";
+    private static final char FIRST_PRINTABLE = ' ';
+    private static final char DELETE = 127;
+    private static final String CURRENT_SEGMENT = ".";
+    private static final String PARENT_SEGMENT = "..";
 
     private ValidationUtils() {
         throw new UnsupportedOperationException("Utility class");
@@ -998,6 +1004,81 @@ public final class ValidationUtils {
             requireMatches(value, pattern, fieldName);
         }
         return value;
+    }
+
+    /**
+     * Requires {@code values} to be non-null with no blank element, and copies it.
+     *
+     * <p>An empty collection passes. Each element is checked with {@link #requireNotBlank(String, String)} under
+     * {@code fieldName}, so a {@code null} element fails with {@link NullPointerException} and a blank one with
+     * {@link IllegalArgumentException}. The input is not changed.
+     *
+     * @param values strings to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @return an unmodifiable copy of {@code values}, in iteration order
+     * @throws NullPointerException if {@code values} or one of its elements is {@code null}
+     * @throws IllegalArgumentException if an element is blank
+     */
+    public static List<String> requireNotBlankElements(final Collection<String> values, final String fieldName) {
+        requireNonNull(values, fieldName);
+
+        final List<String> checked = new ArrayList<>(values.size());
+        for (final String value : values) {
+            checked.add(requireNotBlank(value, fieldName));
+        }
+        return List.copyOf(checked);
+    }
+
+    /**
+     * Requires {@code value} to be a non-blank path with no control character and no {@code .} or {@code ..} segment.
+     *
+     * <p>A control character is one below {@code U+0020}, or {@code U+007F}. Segments are the parts between slashes;
+     * empty segments are allowed here, see {@link #requireFilePath(String, String)}.
+     *
+     * <p>This is not a complete URL-path check. It does not look at percent-encoded dot segments such as
+     * {@code %2e%2e}, a backslash, {@code ?} or {@code #}. A caller that puts the value into a URL still encodes it.
+     *
+     * @param value path to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws NullPointerException if {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code value} is blank, has a control character, or has a {@code .} or
+     *     {@code ..} segment
+     */
+    public static String requireSafePath(@Nullable final String value, final String fieldName) {
+        final String checked = requireNotBlank(value, fieldName);
+        for (int index = 0; index < checked.length(); index++) {
+            final char character = checked.charAt(index);
+            if (character < FIRST_PRINTABLE || character == DELETE) {
+                throw invalid(fieldName, "must not contain a control character");
+            }
+        }
+        for (final String segment : checked.split("/", -1)) {
+            if (CURRENT_SEGMENT.equals(segment) || PARENT_SEGMENT.equals(segment)) {
+                throw invalid(fieldName, "must not have a . or .. segment: " + checked);
+            }
+        }
+        return checked;
+    }
+
+    /**
+     * Requires {@code value} to be a file path inside a repository or tree.
+     *
+     * <p>It is a {@linkplain #requireSafePath(String, String) safe path} that also does not start or end with {@code /}
+     * and has no {@code //}.
+     *
+     * @param value path to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws NullPointerException if {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code value} is not a safe path, or has an empty segment
+     */
+    public static String requireFilePath(@Nullable final String value, final String fieldName) {
+        final String checked = requireSafePath(value, fieldName);
+        if (checked.startsWith("/") || checked.endsWith("/") || checked.contains("//")) {
+            throw invalid(fieldName, "must not have an empty segment: " + checked);
+        }
+        return checked;
     }
 
     /**

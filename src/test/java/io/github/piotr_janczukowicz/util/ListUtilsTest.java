@@ -109,4 +109,20 @@ class ListUtilsTest {
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void orEmpty_shouldReturnTheSameList_whenValuesIsGiven() {
+        final List<String> values = new ArrayList<>(List.of("a"));
+
+        final List<String> result = ListUtils.orEmpty(values);
+
+        assertThat(result).isSameAs(values);
+    }
+
+    @Test
+    void orEmpty_shouldReturnAnEmptyList_whenValuesIsNull() {
+        final List<String> result = ListUtils.orEmpty(null);
+
+        assertThat(result).isEmpty();
+    }
 }

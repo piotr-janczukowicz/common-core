@@ -457,4 +457,51 @@ class HttpUrisTest {
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("relative API path");
     }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://Example.COM/path, https://example.com:443",
+        "http://example.com/path, http://example.com:80",
+        "HTTP://example.com:8080/x, http://example.com:8080",
+        "https://example.com:8443, https://example.com:8443"
+    })
+    void originOf_shouldNameSchemeHostAndPort_whenUriIsAbsolute(final String uri, final String expected) {
+        final String origin = HttpUris.originOf(URI.create(uri));
+
+        assertThat(origin).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/path", "//host/path", "https:///path", "https://my_host/path"})
+    void originOf_shouldThrow_whenUriHasNoSchemeOrNoHost(final String uri) {
+        final URI target = URI.create(uri);
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.originOf(target));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage("uri must have a scheme and a host");
+    }
+
+    @Test
+    void originOf_shouldThrowNullPointerException_whenUriIsNull() {
+        final Throwable thrown = catchThrowable(() -> HttpUris.originOf(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void unmodifiableQueryValues_shouldKeepOrderAndRefuseChanges_whenQueryIsGiven() {
+        final Map<String, List<String>> query = new LinkedHashMap<>();
+        query.put("b", new ArrayList<>(List.of("1")));
+        query.put("a", List.of("2", "3"));
+
+        final Map<String, List<String>> copy = HttpUris.unmodifiableQueryValues(query);
+        query.get("b").add("changed");
+
+        assertSoftly(softly -> {
+            softly.assertThat(copy.keySet()).containsExactly("b", "a");
+            softly.assertThat(copy.get("b")).containsExactly("1");
+            softly.assertThat(catchThrowable(() -> copy.put("c", List.of())))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        });
+    }
 }

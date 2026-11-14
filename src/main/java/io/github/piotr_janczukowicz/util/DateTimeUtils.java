@@ -3,6 +3,7 @@ package io.github.piotr_janczukowicz.util;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -88,5 +89,48 @@ public final class DateTimeUtils {
         }
 
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(instant.atOffset(ZoneOffset.UTC));
+    }
+
+    /**
+     * Converts a count of seconds since the epoch, such as a rate-limit reset header, to an {@link Instant}.
+     *
+     * @param epochSecond seconds since {@code 1970-01-01T00:00:00Z}
+     * @return the instant, or empty if {@code epochSecond} is negative or after {@code 9999-12-31T23:59:59Z}
+     */
+    public static Optional<Instant> ofEpochSecond(final long epochSecond) {
+        if (epochSecond < 0 || epochSecond > MAX_SECOND) {
+            return Optional.empty();
+        }
+        return Optional.of(Instant.ofEpochSecond(epochSecond));
+    }
+
+    /**
+     * Parses an ISO-8601 calendar date such as {@code 2024-01-31} with {@link LocalDate#parse(CharSequence)}.
+     *
+     * @param value text to parse
+     * @return the date, or empty if {@code value} is not an ISO date
+     * @throws NullPointerException if {@code value} is {@code null}
+     */
+    public static Optional<LocalDate> parseIsoDate(final String value) {
+        requireNonNull(value, "value");
+
+        Optional<LocalDate> parsed;
+        try {
+            parsed = Optional.of(LocalDate.parse(value));
+        } catch (final DateTimeParseException notIsoDate) {
+            parsed = Optional.empty();
+        }
+        return parsed;
+    }
+
+    /**
+     * Returns the first instant of {@code date} in UTC.
+     *
+     * @param date calendar date
+     * @return {@code date} at {@code 00:00:00Z}
+     * @throws NullPointerException if {@code date} is {@code null}
+     */
+    public static Instant startOfDayUtc(final LocalDate date) {
+        return requireNonNull(date, "date").atStartOfDay(ZoneOffset.UTC).toInstant();
     }
 }

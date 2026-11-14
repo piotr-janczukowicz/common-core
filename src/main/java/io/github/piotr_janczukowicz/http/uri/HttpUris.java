@@ -5,6 +5,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -206,6 +207,40 @@ public final class HttpUris {
         final Map<String, List<String>> copy = new LinkedHashMap<>();
         query.forEach((name, values) -> copy.put(name, List.copyOf(values)));
         return copy;
+    }
+
+    /**
+     * Copies {@code query} like {@link #copyQueryValues(Map)}, and wraps the copy so that it cannot be changed.
+     *
+     * @param query name to values
+     * @return unmodifiable copy, in the order of {@code query}, with immutable value lists
+     * @throws NullPointerException if {@code query} is {@code null}
+     */
+    public static Map<String, List<String>> unmodifiableQueryValues(final Map<String, List<String>> query) {
+        return Collections.unmodifiableMap(copyQueryValues(query));
+    }
+
+    /**
+     * Names the origin of {@code uri} as {@code scheme://host:port}, in lower case, with the default port of the scheme
+     * when the URI has none: 443 for {@code https}, 80 otherwise.
+     *
+     * <p>Two URIs have the same origin exactly when the results are equal, so a URI without a scheme or a host, which
+     * has no origin, is refused.
+     *
+     * @param uri URI to inspect
+     * @return the origin text
+     * @throws NullPointerException if {@code uri} is {@code null}
+     * @throws IllegalArgumentException if {@code uri} has no scheme or no host
+     */
+    public static String originOf(final URI uri) {
+        requireNonNull(uri, URI_ARG);
+        if (uri.getScheme() == null || uri.getHost() == null) {
+            throw new IllegalArgumentException("uri must have a scheme and a host");
+        }
+        final String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+        final int defaultPort = "https".equals(scheme) ? 443 : 80;
+        final int port = uri.getPort() == -1 ? defaultPort : uri.getPort();
+        return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port;
     }
 
     /**
