@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.util;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -18,6 +20,8 @@ import java.util.Optional;
  * 1123 text, the form used by HTTP dates, to and from {@link Instant}.
  */
 public final class DateTimeUtils {
+
+    private static final String INSTANT = "instant";
 
     /** Epoch second of {@code 0000-01-01T00:00:00Z}, the earliest instant RFC 1123 text can print. */
     private static final long MIN_SECOND = -62_167_219_200L;
@@ -41,7 +45,7 @@ public final class DateTimeUtils {
      * @throws NullPointerException if {@code instant} is {@code null}
      */
     public static String toIso(final Instant instant) {
-        requireNonNull(instant, "instant");
+        requireNonNull(instant, INSTANT);
 
         return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
     }
@@ -83,12 +87,31 @@ public final class DateTimeUtils {
      *     cannot represent
      */
     public static String toRfc1123(final Instant instant) {
-        requireNonNull(instant, "instant");
+        requireNonNull(instant, INSTANT);
         if (instant.getEpochSecond() < MIN_SECOND || instant.getEpochSecond() > MAX_SECOND) {
             throw new IllegalArgumentException("instant must be between 0000-01-01T00:00:00Z and 9999-12-31T23:59:59Z");
         }
 
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(instant.atOffset(ZoneOffset.UTC));
+    }
+
+    /**
+     * Adds {@code delay} to {@code instant}, for a delay that a server chose, such as {@code Retry-After}, and that may
+     * be too large for an {@link Instant}.
+     *
+     * @param instant the start
+     * @param delay the time to add; may be negative
+     * @return the sum, or empty if it is not representable as an {@link Instant}
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public static Optional<Instant> tryPlus(final Instant instant, final Duration delay) {
+        requireNonNull(instant, INSTANT);
+        requireNonNull(delay, "delay");
+        try {
+            return Optional.of(instant.plus(delay));
+        } catch (final DateTimeException | ArithmeticException unrepresentable) {
+            return Optional.empty();
+        }
     }
 
     /**

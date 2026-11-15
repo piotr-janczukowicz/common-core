@@ -3,6 +3,7 @@ package io.github.piotr_janczukowicz.util;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -166,6 +167,26 @@ class DateTimeUtilsTest {
         final Optional<Instant> instant = DateTimeUtils.ofEpochSecond(epochSecond);
 
         assertThat(instant).isEmpty();
+    }
+
+    @Test
+    void tryPlus_shouldReturnSum_whenSumFitsAnInstant() {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+
+        final Optional<Instant> sum = DateTimeUtils.tryPlus(start, Duration.ofSeconds(30));
+
+        assertThat(sum).contains(Instant.parse("2024-01-01T00:00:30Z"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {Long.MAX_VALUE, Long.MIN_VALUE})
+    void tryPlus_shouldReturnEmpty_whenSumIsOutOfRange(final long seconds) {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration delay = Duration.ofSeconds(seconds);
+
+        final Optional<Instant> sum = DateTimeUtils.tryPlus(start, delay);
+
+        assertThat(sum).isEmpty();
     }
 
     @Test
