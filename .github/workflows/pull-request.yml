@@ -12,7 +12,38 @@ concurrency:
   group: pull-request-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# TEST: inlined copy of the proposed common-parent reusable-pull-request.yml (CodeQL observes the single Maven build).
 jobs:
   verify:
-    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-pull-request.yml@736dd7d218d81bcc26e0489f8853b711ad95f26d # v17
-    secrets: inherit
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ github.token }}
+      PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+      CODEQL: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Initialize CodeQL
+        if: env.CODEQL == 'true'
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+      - run: mvn -B -ntp -s .github/maven-settings.xml clean verify -Pjavadoc
+      - name: CodeQL analysis
+        if: env.CODEQL == 'true'
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:java-kotlin
