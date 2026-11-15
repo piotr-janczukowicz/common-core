@@ -606,4 +606,33 @@ class HttpUrisTest {
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("uri");
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ftp://host.example.test/api", "ws://host.example.test/api", "//host.example.test/api"})
+    void requireSecureOrAllowed_shouldThrowIllegalStateException_whenTheSchemeIsNotHttp(final String text) {
+        final URI baseUri = URI.create(text);
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, "GitLab", true));
+
+        assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("must use https");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://host.example.test/x", "HTTPS://host.example.test", "https://[::1]:8443/x"})
+    void isHttpUrl_shouldBeTrue_whenTheUriIsHttpOrHttpsWithAHost(final String text) {
+        assertThat(HttpUris.isHttpUrl(URI.create(text))).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///etc/x", "mailto:a@b.test", "ftp://host.example.test", "/relative", "https:opaque"})
+    void isHttpUrl_shouldBeFalse_whenTheUriIsNotAnHttpUrl(final String text) {
+        assertThat(HttpUris.isHttpUrl(URI.create(text))).isFalse();
+    }
+
+    @Test
+    void isHttpUrl_shouldThrowNullPointerException_whenTheUriIsNull() {
+        final Throwable thrown = catchThrowable(() -> HttpUris.isHttpUrl(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
 }

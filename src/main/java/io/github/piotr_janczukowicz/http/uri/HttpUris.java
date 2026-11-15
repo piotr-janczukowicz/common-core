@@ -29,6 +29,8 @@ public final class HttpUris {
     private static final String BASE_URI = "baseUri";
     private static final String PATH = "path";
     private static final String URI_ARG = "uri";
+    private static final String HTTP = "http";
+    private static final String HTTPS = "https";
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpUris.class);
 
@@ -46,13 +48,20 @@ public final class HttpUris {
      * @param isInsecureHttpAllowed whether plain {@code http} to a host that is not loopback is allowed
      * @throws NullPointerException if {@code baseUri} or {@code serviceName} is {@code null}
      * @throws IllegalStateException if the URI is plain {@code http} to a host that is not loopback and
-     *     {@code isInsecureHttpAllowed} is {@code false}
+     *     {@code isInsecureHttpAllowed} is {@code false}, or the scheme is neither {@code http} nor {@code https}
      */
     public static void requireSecureOrAllowed(
             final URI baseUri, final String serviceName, final boolean isInsecureHttpAllowed) {
         requireNonNull(baseUri, BASE_URI);
         requireNonNull(serviceName, "serviceName");
-        if (!"http".equalsIgnoreCase(baseUri.getScheme()) || isLoopbackHost(baseUri.getHost())) {
+        final String scheme = baseUri.getScheme();
+        if (HTTPS.equalsIgnoreCase(scheme)) {
+            return;
+        }
+        if (!HTTP.equalsIgnoreCase(scheme)) {
+            throw new IllegalStateException(serviceName + " base URI " + describeSafe(baseUri) + " must use https");
+        }
+        if (isLoopbackHost(baseUri.getHost())) {
             return;
         }
         if (!isInsecureHttpAllowed) {
@@ -256,6 +265,20 @@ public final class HttpUris {
     }
 
     /**
+     * Whether {@code uri} is an {@code http} or {@code https} URL with a host. A relative reference, another scheme
+     * such as {@code file} or {@code mailto}, and a URI without a readable host are not.
+     *
+     * @param uri URI to inspect
+     * @return {@code true} if the scheme is {@code http} or {@code https} (in any case) and the host is present
+     * @throws NullPointerException if {@code uri} is {@code null}
+     */
+    public static boolean isHttpUrl(final URI uri) {
+        requireNonNull(uri, URI_ARG);
+        final String scheme = uri.getScheme();
+        return uri.getHost() != null && (HTTP.equalsIgnoreCase(scheme) || HTTPS.equalsIgnoreCase(scheme));
+    }
+
+    /**
      * Whether {@code uri} has both a scheme and a host, so that {@link #originOf(URI)} can name its origin. A relative
      * reference, an opaque URI such as {@code urn:example:x}, and a host that {@link URI#getHost()} cannot read, such
      * as {@code my_host} with its underscore, have none.
@@ -287,7 +310,7 @@ public final class HttpUris {
             throw new IllegalArgumentException("uri must have a scheme and a host");
         }
         final String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
-        final int defaultPort = "https".equals(scheme) ? 443 : 80;
+        final int defaultPort = HTTPS.equals(scheme) ? 443 : 80;
         final int port = uri.getPort() == -1 ? defaultPort : uri.getPort();
         return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port;
     }

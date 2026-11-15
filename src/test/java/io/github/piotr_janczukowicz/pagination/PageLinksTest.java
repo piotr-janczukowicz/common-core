@@ -89,4 +89,71 @@ class PageLinksTest {
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
     }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://other.example.test/api/v4/projects, true",
+        "https://other.example.test/api/v4, true",
+        "https://other.example.test/api/v4-internal/projects, false",
+        "https://other.example.test/api/v4/../admin, false"
+    })
+    void differsOnlyByOrigin_shouldRespectPathSegments_whenTheOriginDiffers(final String link, final boolean expected) {
+        assertThat(PageLinks.differsOnlyByOrigin(BASE, URI.create(link))).isEqualTo(expected);
+    }
+
+    @Test
+    void differsOnlyByOrigin_shouldThrowIllegalArgumentException_whenTheBaseIsOpaque() {
+        final URI opaque = URI.create("urn:x");
+        final URI link = URI.create("https://other.example.test/api/v4/");
+
+        final Throwable thrown = catchThrowable(() -> PageLinks.differsOnlyByOrigin(opaque, link));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"file:///etc/passwd", "mailto:a@b.test", "ftp://host.example.test/x", "https:opaque", "http:opaque"})
+    void absolute_shouldThrowPaginationException_whenTheLinkIsNotHttp(final String link) {
+        final Throwable thrown = catchThrowable(() -> PageLinks.absolute(CURRENT, URI.create(link)));
+
+        assertThat(thrown).isInstanceOf(PaginationException.class).hasMessageContaining("not an http(s) URL");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://gitlab.example.test/api/v4/projects?page=2",
+        "https://GITLAB.example.test:443/elsewhere",
+    })
+    void requireSameOrigin_shouldPass_whenTheLinkIsOnTheOriginOfTheBase(final String link) {
+        final Throwable thrown = catchThrowable(() -> PageLinks.requireSameOrigin(BASE, URI.create(link)));
+
+        assertThat(thrown).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://evil.example.test/api/v4/projects?token=secret",
+        "http://gitlab.example.test/api/v4/projects",
+        "https://gitlab.example.test:8443/api/v4/projects",
+        "mailto:a@b.test"
+    })
+    void requireSameOrigin_shouldThrowPaginationException_whenTheLinkLeavesTheOrigin(final String link) {
+        final Throwable thrown = catchThrowable(() -> PageLinks.requireSameOrigin(BASE, URI.create(link)));
+
+        assertThat(thrown)
+                .isInstanceOf(PaginationException.class)
+                .hasMessageContaining("https://gitlab.example.test:443")
+                .hasMessageNotContaining("secret");
+    }
+
+    @Test
+    void requireSameOrigin_shouldThrowNullPointerException_whenAnArgumentIsNull() {
+        final Throwable noBase = catchThrowable(() -> PageLinks.requireSameOrigin(null, CURRENT));
+        final Throwable noLink = catchThrowable(() -> PageLinks.requireSameOrigin(BASE, null));
+
+        assertSoftly(softly -> {
+            softly.assertThat(noBase).isInstanceOf(NullPointerException.class);
+            softly.assertThat(noLink).isInstanceOf(NullPointerException.class);
+        });
+    }
 }

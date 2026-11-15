@@ -195,4 +195,50 @@ class QueryParametersTest {
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("attrs");
     }
+
+    @Test
+    void all_shouldLeaveOutNullValues_whenAnEntryHoldsOne() {
+        final Map<String, String> entries = new HashMap<>();
+        entries.put("a", null);
+        entries.put("b", "2");
+
+        final Map<String, String> query = QueryParameters.builder().all(entries).build();
+
+        assertThat(query).containsExactly(Map.entry("b", "2"));
+    }
+
+    @Test
+    void all_shouldRejectABlankName_whenAnEntryHoldsOne() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Throwable thrown = catchThrowable(() -> parameters.all(Map.of(" ", "1")));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void list_shouldLeaveOutTheParameter_whenTheListIsEmpty() {
+        final Map<String, String> query =
+                QueryParameters.builder().list("a", List.of()).build();
+
+        assertThat(query).isEmpty();
+    }
+
+    @Test
+    void wireList_shouldLeaveOutTheParameter_whenTheListIsEmpty() {
+        final Map<String, String> query = QueryParameters.builder()
+                .wireList("a", List.of(), String::length)
+                .build();
+
+        assertThat(query).isEmpty();
+    }
+
+    @Test
+    void wire_shouldRejectANullFunction_whenTheValueIsNull() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Throwable thrown = catchThrowable(() -> parameters.wire("a", null, null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
 }

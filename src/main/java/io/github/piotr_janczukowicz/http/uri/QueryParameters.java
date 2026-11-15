@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <ul>
  *   <li>a value that is {@code null} is left out;
- *   <li>a list is joined with commas, and a list that holds {@code null} is refused;
+ *   <li>a list is joined with commas, an empty list is left out, and a list that holds {@code null} is refused;
  *   <li>a map becomes one {@code name[key]=value} parameter per entry, and an entry whose value is {@code null} is left
  *       out;
  *   <li>a parameter name must not be blank.
@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 public final class QueryParameters {
 
     private static final String NAME = "name";
+    private static final String WIRE_VALUE = "wireValue";
 
     private final Map<String, String> query = new LinkedHashMap<>();
 
@@ -47,12 +48,14 @@ public final class QueryParameters {
     /**
      * Adds every entry of {@code parameters}.
      *
-     * @param parameters the entries to add; an entry of the same name is replaced
+     * @param parameters the entries to add, under the rules of {@link #text(String, String)}: an entry of the same name
+     *     is replaced, and one whose value is {@code null} is left out
      * @return this builder
-     * @throws NullPointerException if {@code parameters} is {@code null}
+     * @throws NullPointerException if {@code parameters} is {@code null}, or holds a {@code null} name
+     * @throws IllegalArgumentException if {@code parameters} holds a blank name
      */
     public QueryParameters all(final Map<String, String> parameters) {
-        query.putAll(requireNonNull(parameters, "parameters"));
+        requireNonNull(parameters, "parameters").forEach(this::text);
         return this;
     }
 
@@ -104,6 +107,7 @@ public final class QueryParameters {
      */
     public <E> QueryParameters wire(final String name, final @Nullable E value, final Function<E, ?> wireValue) {
         requireNotBlank(name, NAME);
+        requireNonNull(wireValue, WIRE_VALUE);
         if (value != null) {
             query.put(name, String.valueOf(requireNonNull(wireValue.apply(value), name + " wire value")));
         }
@@ -122,7 +126,7 @@ public final class QueryParameters {
      */
     public QueryParameters list(final String name, final @Nullable List<?> values) {
         requireNotBlank(name, NAME);
-        if (values != null) {
+        if (values != null && !values.isEmpty()) {
             requireNoNullElements(values, name);
             query.put(name, values.stream().map(String::valueOf).collect(Collectors.joining(",")));
         }
@@ -145,7 +149,8 @@ public final class QueryParameters {
     public <E> QueryParameters wireList(
             final String name, final @Nullable List<E> values, final Function<E, ?> wireValue) {
         requireNotBlank(name, NAME);
-        if (values != null) {
+        requireNonNull(wireValue, WIRE_VALUE);
+        if (values != null && !values.isEmpty()) {
             requireNoNullElements(values, name);
             query.put(
                     name,

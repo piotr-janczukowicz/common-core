@@ -20,13 +20,18 @@ public final class PageLinks {
      * @param link target of {@code Link rel="next"}
      * @return an absolute URI
      * @throws NullPointerException if an argument is {@code null}
-     * @throws PaginationException if a relative {@code link} cannot be resolved against {@code currentRequest}; the
-     *     message names the link without its query
+     * @throws PaginationException if an absolute {@code link} is not an {@code http} or {@code https} URL with a host,
+     *     or a relative one cannot be resolved against {@code currentRequest}; the message names the link without its
+     *     query
      */
     public static URI absolute(final URI currentRequest, final URI link) {
         requireNonNull(currentRequest, "currentRequest");
         requireNonNull(link, "link");
         if (link.isAbsolute()) {
+            if (!HttpUris.isHttpUrl(link)) {
+                throw new PaginationException(
+                        "Link rel=\"next\" is not an http(s) URL: " + HttpUris.describeSafe(link));
+            }
             return link;
         }
         try {
@@ -34,6 +39,27 @@ public final class PageLinks {
         } catch (final IllegalArgumentException ex) {
             throw new PaginationException(
                     "Link rel=\"next\" cannot be resolved against the request URI: " + HttpUris.describeSafe(link), ex);
+        }
+    }
+
+    /**
+     * Requires {@code link} to be on the origin of {@code base}, so that a walk never sends its credentials to the host
+     * that a server names in {@code Link rel="next"}. {@link #absolute(URI, URI)} does not check this.
+     *
+     * @param base base URI of the API
+     * @param link absolute target of {@code Link rel="next"}
+     * @throws NullPointerException if an argument is {@code null}
+     * @throws IllegalArgumentException if {@code base} has no scheme or no host
+     * @throws PaginationException if {@code link} has no scheme or no host, or another origin than {@code base}; the
+     *     message names both origins without query or user info
+     */
+    public static void requireSameOrigin(final URI base, final URI link) {
+        requireNonNull(base, "base");
+        requireNonNull(link, "link");
+        final String baseOrigin = HttpUris.originOf(base);
+        if (!HttpUris.hasOrigin(link) || !baseOrigin.equals(HttpUris.originOf(link))) {
+            throw new PaginationException(
+                    "Link rel=\"next\" leaves the origin " + baseOrigin + ": " + HttpUris.describeSafe(link));
         }
     }
 
@@ -53,8 +79,15 @@ public final class PageLinks {
     public static boolean differsOnlyByOrigin(final URI base, final URI link) {
         requireNonNull(base, "base");
         requireNonNull(link, "link");
-        return HttpUris.hasOrigin(link)
-                && link.getPath().startsWith(base.getPath())
-                && !HttpUris.originOf(base).equals(HttpUris.originOf(link));
+        final String baseOrigin = HttpUris.originOf(base);
+        if (!HttpUris.hasOrigin(link) || baseOrigin.equals(HttpUris.originOf(link))) {
+            return false;
+        }
+        final String basePath = withTrailingSlash(base.normalize().getPath());
+        return withTrailingSlash(link.normalize().getPath()).startsWith(basePath);
+    }
+
+    private static String withTrailingSlash(final String path) {
+        return path.endsWith("/") ? path : path + "/";
     }
 }

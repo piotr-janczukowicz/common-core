@@ -6,6 +6,7 @@ import io.github.piotr_janczukowicz.json.jackson.module.immutable.ImmutableColle
 import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import tools.jackson.core.StreamReadFeature;
@@ -83,6 +84,6 @@ public final class JsonMappers {
         for (final P provider : providers) {
             modules.add(requireNonNull(toModule.apply(provider), "module"));
         }
-        return List.copyOf(modules);
+        return Collections.unmodifiableList(modules);
     }
 }
