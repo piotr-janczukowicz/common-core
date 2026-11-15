@@ -14,7 +14,9 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.JacksonModule;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 @UnitTest
 class JsonMappersTest {
@@ -167,5 +169,45 @@ class JsonMappersTest {
         final Throwable thrown = catchThrowable(constructor::newInstance);
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void modulesOf_shouldReturnTheModuleOfEachProviderInOrder_whenProvidersAreGiven() {
+        final SimpleModule first = new SimpleModule("first");
+        final SimpleModule second = new SimpleModule("second");
+
+        final List<JacksonModule> modules = JsonMappers.modulesOf(List.of(first, second), provider -> provider);
+
+        assertThat(modules).containsExactly(first, second);
+    }
+
+    @Test
+    void modulesOf_shouldReturnAnUnmodifiableList_whenProvidersAreGiven() {
+        final List<JacksonModule> modules =
+                JsonMappers.modulesOf(List.of(new SimpleModule("first")), provider -> provider);
+
+        final Throwable thrown = catchThrowable(() -> modules.add(new SimpleModule("late")));
+
+        assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void modulesOf_shouldThrowNullPointerException_whenAnArgumentOrAModuleIsNull() {
+        final List<SimpleModule> providers = List.of(new SimpleModule("only"));
+        final List<SimpleModule> none = null;
+
+        final Throwable noProviders = catchThrowable(() -> JsonMappers.modulesOf(none, provider -> provider));
+        final Throwable noFunction = catchThrowable(() -> JsonMappers.modulesOf(providers, null));
+        final Throwable noModule = catchThrowable(() -> JsonMappers.modulesOf(providers, provider -> null));
+
+        assertSoftly(softly -> {
+            softly.assertThat(noProviders)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("providers");
+            softly.assertThat(noFunction)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("toModule");
+            softly.assertThat(noModule).isInstanceOf(NullPointerException.class).hasMessageContaining("module");
+        });
     }
 }

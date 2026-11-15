@@ -6,6 +6,7 @@ import io.github.piotr_janczukowicz.json.JsonCodec;
 import io.github.piotr_janczukowicz.json.JsonDecodeException;
 import io.github.piotr_janczukowicz.json.JsonEncodeException;
 import io.github.piotr_janczukowicz.json.JsonType;
+import io.github.piotr_janczukowicz.util.StringUtils;
 import java.lang.reflect.Type;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JacksonException;
@@ -124,13 +125,9 @@ public final class JacksonJsonCodec implements JsonCodec {
     // A key in the path comes from the response body, so it can hold line breaks and other control characters (log
     // forging) and be very long: both are limited before the path goes into a message.
     private static String safe(final String path) {
-        final String limited = path.length() > MAX_PATH_LENGTH ? path.substring(0, MAX_PATH_LENGTH) + "..." : path;
-        final StringBuilder clean = new StringBuilder(limited.length());
-        for (int index = 0; index < limited.length(); index++) {
-            final char c = limited.charAt(index);
-            clean.append(Character.isISOControl(c) ? '?' : c);
-        }
-        return clean.toString();
+        final String limited =
+                path.length() > MAX_PATH_LENGTH ? StringUtils.limited(path, MAX_PATH_LENGTH) + "..." : path;
+        return StringUtils.replaceControlCharacters(limited, '?');
     }
 
     // The type name is only built when the value is missing: it costs an allocation on every decode otherwise.

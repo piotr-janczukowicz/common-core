@@ -112,6 +112,26 @@ public final class MutationPacingHttpTransport implements HttpTransport {
     }
 
     /**
+     * Paces the {@link #DEFAULT_MUTATION_METHODS} on {@code delegate}, unless {@code minInterval} is zero, which turns
+     * pacing off and returns {@code delegate} itself. A client whose configuration allows a zero interval, such as a
+     * self-hosted server without a mutation limit, uses this to wrap its transport in one call.
+     *
+     * @param delegate transport that sends the requests; closed when the returned one is closed
+     * @param minInterval least time between the starts of two paced requests, or zero for no pacing
+     * @return {@code delegate} if {@code minInterval} is zero, otherwise a pacing transport over it
+     * @throws NullPointerException if {@code delegate} or {@code minInterval} is {@code null}
+     * @throws IllegalArgumentException if {@code minInterval} is negative
+     */
+    public static HttpTransport pacedBy(final HttpTransport delegate, final Duration minInterval) {
+        requireNonNull(delegate, DELEGATE_ARGUMENT);
+        requireNonNull(minInterval, "minInterval");
+        if (minInterval.isZero()) {
+            return delegate;
+        }
+        return new MutationPacingHttpTransport(delegate, minInterval, DEFAULT_MUTATION_METHODS);
+    }
+
+    /**
      * Waits until the next start is due when the request's method is paced, then sends it through the delegate.
      *
      * @param request request to send

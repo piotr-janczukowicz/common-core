@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import nl.altindag.log.LogCaptor;
 import okhttp3.HttpUrl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -503,5 +504,135 @@ class HttpUrisTest {
             softly.assertThat(catchThrowable(() -> copy.put("c", List.of())))
                     .isInstanceOf(UnsupportedOperationException.class);
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "https://gitlab.example.test/api",
+                "HTTPS://gitlab.example.test",
+                "http://localhost:8080/api",
+                "http://127.0.0.1/api",
+                "http://[::1]/api"
+            })
+    void requireSecureOrAllowed_shouldPass_whenTheUriIsHttpsOrLoopback(final String text) {
+        final URI baseUri = URI.create(text);
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, "GitLab", false));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
+    void requireSecureOrAllowed_shouldThrowIllegalStateException_whenPlainHttpIsNotAllowed() {
+        final URI baseUri = URI.create("http://user:secret@gitlab.example.test/api");
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, "GitLab", false));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("GitLab base URI http://gitlab.example.test")
+                .hasMessageContaining("allowInsecureHttp(true)")
+                .hasMessageNotContaining("secret");
+    }
+
+    @Test
+    void requireSecureOrAllowed_shouldWarnWithoutCredentials_whenPlainHttpIsAllowed() {
+        final URI baseUri = URI.create("http://user:secret@gitlab.example.test/api");
+        final Throwable thrown;
+        final List<String> warnings;
+
+        try (LogCaptor logs = LogCaptor.forClass(HttpUris.class)) {
+            thrown = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, "GitLab", true));
+            warnings = logs.getWarnLogs();
+        }
+
+        assertSoftly(softly -> {
+            softly.assertThat(thrown).isNull();
+            softly.assertThat(warnings)
+                    .singleElement()
+                    .asString()
+                    .contains("GitLab base URI http://gitlab.example.test")
+                    .contains("credentials are sent unencrypted")
+                    .doesNotContain("secret");
+        });
+    }
+
+    @Test
+    void requireSecureOrAllowed_shouldNotWarn_whenTheUriIsHttpsOrLoopback() {
+        final List<String> warnings;
+
+        try (LogCaptor logs = LogCaptor.forClass(HttpUris.class)) {
+            HttpUris.requireSecureOrAllowed(URI.create("https://gitlab.example.test"), "GitLab", true);
+            HttpUris.requireSecureOrAllowed(URI.create("http://localhost:8080"), "GitLab", true);
+            warnings = logs.getWarnLogs();
+        }
+
+        assertThat(warnings).isEmpty();
+    }
+
+    @Test
+    void requireSecureOrAllowed_shouldThrowNullPointerException_whenAnArgumentIsNull() {
+        final URI baseUri = URI.create("https://gitlab.example.test");
+
+        final Throwable noUri = catchThrowable(() -> HttpUris.requireSecureOrAllowed(null, "GitLab", false));
+        final Throwable noName = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, null, false));
+
+        assertSoftly(softly -> {
+            softly.assertThat(noUri).isInstanceOf(NullPointerException.class).hasMessageContaining("baseUri");
+            softly.assertThat(noName).isInstanceOf(NullPointerException.class).hasMessageContaining("serviceName");
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://gitlab.example.test/api", "http://localhost:8080", "ftp://files.example.test/x"})
+    void hasOrigin_shouldBeTrue_whenTheUriHasASchemeAndAHost(final String text) {
+        final boolean hasOrigin = HttpUris.hasOrigin(URI.create(text));
+
+        assertThat(hasOrigin).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v4/projects?page=2", "projects?page=2", "urn:example:next", "https://my_host/api"})
+    void hasOrigin_shouldBeFalse_whenTheUriHasNoSchemeOrNoReadableHost(final String text) {
+        final boolean hasOrigin = HttpUris.hasOrigin(URI.create(text));
+
+        assertThat(hasOrigin).isFalse();
+    }
+
+    @Test
+    void hasOrigin_shouldThrowNullPointerException_whenUriIsNull() {
+        final Throwable thrown = catchThrowable(() -> HttpUris.hasOrigin(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("uri");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ftp://host.example.test/api", "ws://host.example.test/api", "//host.example.test/api"})
+    void requireSecureOrAllowed_shouldThrowIllegalStateException_whenTheSchemeIsNotHttp(final String text) {
+        final URI baseUri = URI.create(text);
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.requireSecureOrAllowed(baseUri, "GitLab", true));
+
+        assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("must use https");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://host.example.test/x", "HTTPS://host.example.test", "https://[::1]:8443/x"})
+    void isHttpUrl_shouldBeTrue_whenTheUriIsHttpOrHttpsWithAHost(final String text) {
+        assertThat(HttpUris.isHttpUrl(URI.create(text))).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///etc/x", "mailto:a@b.test", "ftp://host.example.test", "/relative", "https:opaque"})
+    void isHttpUrl_shouldBeFalse_whenTheUriIsNotAnHttpUrl(final String text) {
+        assertThat(HttpUris.isHttpUrl(URI.create(text))).isFalse();
+    }
+
+    @Test
+    void isHttpUrl_shouldThrowNullPointerException_whenTheUriIsNull() {
+        final Throwable thrown = catchThrowable(() -> HttpUris.isHttpUrl(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 }

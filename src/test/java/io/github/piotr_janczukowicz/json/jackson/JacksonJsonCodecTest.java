@@ -19,6 +19,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DeserializationContext;
@@ -109,6 +110,22 @@ class JacksonJsonCodecTest {
                 .hasMessageContaining("count")
                 .hasMessageNotContaining("secret-value")
                 .hasCauseInstanceOf(JacksonException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\uD83D\uDE00", "x\uD83D\uDE00"})
+    void decode_shouldNotLeaveHalfAPair_whenTheFieldPathIsCutToItsLimit(final String unit) {
+        final JsonCodec codec = codec();
+        final JsonType<Map<String, Integer>> type = JsonTypes.mapOf(Integer.class);
+        final String key = unit.repeat(300);
+
+        final Throwable thrown =
+                catchThrowable(() -> codec.decode(("{\"" + key + "\":\"x\"}").getBytes(StandardCharsets.UTF_8), type));
+
+        final String message = thrown.getMessage();
+        assertThat(thrown).isInstanceOf(JsonDecodeException.class);
+        assertThat(message.chars().filter(c -> Character.isSurrogate((char) c)).count() % 2)
+                .isZero();
     }
 
     @Test

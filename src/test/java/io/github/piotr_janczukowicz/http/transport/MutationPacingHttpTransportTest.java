@@ -265,6 +265,51 @@ class MutationPacingHttpTransportTest {
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    void pacedBy_shouldReturnTheDelegate_whenTheIntervalIsZero() {
+        final HttpTransport delegate = ScriptedTransport.replying().transport();
+
+        final HttpTransport transport = MutationPacingHttpTransport.pacedBy(delegate, Duration.ZERO);
+
+        assertThat(transport).isSameAs(delegate);
+    }
+
+    @Test
+    void pacedBy_shouldWrapTheDelegate_whenTheIntervalIsPositive() {
+        final HttpTransport delegate = ScriptedTransport.replying().transport();
+
+        final HttpTransport transport = MutationPacingHttpTransport.pacedBy(delegate, INTERVAL);
+
+        assertThat(transport).isInstanceOf(MutationPacingHttpTransport.class).isNotSameAs(delegate);
+    }
+
+    @Test
+    void pacedBy_shouldThrowIllegalArgumentException_whenTheIntervalIsNegative() {
+        final HttpTransport delegate = ScriptedTransport.replying().transport();
+        final Duration interval = Duration.ofMillis(-1);
+
+        final Throwable thrown = catchThrowable(() -> MutationPacingHttpTransport.pacedBy(delegate, interval));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void pacedBy_shouldThrowNullPointerException_whenAnArgumentIsNull() {
+        final HttpTransport delegate = ScriptedTransport.replying().transport();
+
+        final Throwable noDelegate = catchThrowable(() -> MutationPacingHttpTransport.pacedBy(null, INTERVAL));
+        final Throwable noInterval = catchThrowable(() -> MutationPacingHttpTransport.pacedBy(delegate, null));
+
+        assertSoftly(softly -> {
+            softly.assertThat(noDelegate)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("delegate");
+            softly.assertThat(noInterval)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("minInterval");
+        });
+    }
+
     private static MutationPacingHttpTransport paced(
             final HttpTransport delegate, final Clock clock, final MutationPacingHttpTransport.Sleeper sleeper) {
         return new MutationPacingHttpTransport(
