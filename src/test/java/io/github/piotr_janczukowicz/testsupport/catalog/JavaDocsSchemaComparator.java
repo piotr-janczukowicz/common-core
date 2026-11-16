@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.testsupport.catalog;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -10,6 +12,7 @@ import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSimpleXor;
 import io.github.piotr_janczukowicz.openapi.model.SuppressSchemaTypeMismatch;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
@@ -1019,7 +1022,7 @@ public final class JavaDocsSchemaComparator {
         }
         final List<JsonField> fields = new ArrayList<>();
         for (final RecordComponent component : raw.getRecordComponents()) {
-            if (jsonIgnore(component)) {
+            if (jsonIgnore(component) || isAnyProperty(component, raw)) {
                 continue;
             }
             if (isUnwrapped(component)) {
@@ -1034,6 +1037,21 @@ public final class JavaDocsSchemaComparator {
                     catalogSimpleXor(component)));
         }
         return List.copyOf(fields);
+    }
+
+    private static boolean isAnyProperty(final RecordComponent component, final Class<?> owner) {
+        if (component.getAccessor().isAnnotationPresent(JsonAnyGetter.class)
+                || component.getAccessor().isAnnotationPresent(JsonAnySetter.class)
+                || component.isAnnotationPresent(JsonAnyGetter.class)
+                || component.isAnnotationPresent(JsonAnySetter.class)) {
+            return true;
+        }
+        try {
+            final Field field = owner.getDeclaredField(component.getName());
+            return field.isAnnotationPresent(JsonAnyGetter.class) || field.isAnnotationPresent(JsonAnySetter.class);
+        } catch (NoSuchFieldException e) {
+            return false;
+        }
     }
 
     private static boolean isUnwrapped(final RecordComponent component) {

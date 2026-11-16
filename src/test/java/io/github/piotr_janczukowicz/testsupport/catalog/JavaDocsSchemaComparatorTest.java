@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.testsupport.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -62,6 +64,26 @@ class JavaDocsSchemaComparatorTest {
                 """);
 
         assertThat(JavaDocsSchemaComparator.diff(Query.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldSkipAnySetterAndAnyGetterComponent_whenMissingOnDocsSchema() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"type":{"type":"string"}},"required":["type"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AnyBody.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldStillCompareOtherProperties_whenRecordHasAnyBody() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"type":{"type":"string"},"extra":{"type":"string"}},"required":["type"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AnyBody.class, schema))
+                .anyMatch(difference -> difference.contains("extra"))
+                .noneMatch(difference -> difference.contains("body"));
     }
 
     @Test
@@ -683,6 +705,9 @@ class JavaDocsSchemaComparatorTest {
 
     record UnwrappedParent(
             @JsonUnwrapped UnwrappedGroup group, @Nullable String own) {}
+
+    record AnyBody(
+            String type, @JsonAnySetter @JsonAnyGetter Map<String, Object> body) {}
 
     record Query(String q, @JsonIgnore boolean textMatch) {}
 
