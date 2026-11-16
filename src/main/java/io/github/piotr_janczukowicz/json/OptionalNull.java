@@ -6,17 +6,19 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Three-state JSON field of a request body, for a property that can be cleared.
+ * Three-state JSON property: absent, JSON {@code null}, or a value.
  *
  * <ul>
- *   <li>absent: a {@code null} wrapper leaves the property out, so the server keeps its value;
- *   <li>{@code null}: {@link #ofNull()} sends JSON {@code null} to clear it;
- *   <li>a value: {@link #of(Object)} sends the wrapped value.
+ *   <li>absent: a {@code null} wrapper; the property is left out when writing;
+ *   <li>{@code null}: {@link #ofNull()}; the property is written as JSON {@code null};
+ *   <li>a value: {@link #of(Object)}; the wrapped value is written.
  * </ul>
  *
- * <p>A required property must be sent: its wrapper is never {@code null}, and {@link #ofNull()} still sends JSON
- * {@code null} to clear it. Reading a JSON body works the same way (with the Jackson {@code OptionalNullModule}): an
- * absent property stays a {@code null} wrapper and JSON {@code null} becomes {@link #ofNull()}.
+ * <p>Reading works the same way (with the Jackson {@code OptionalNullModule}): an absent property stays a {@code null}
+ * wrapper, JSON {@code null} becomes {@link #ofNull()}, and any other value becomes {@link #of(Object)}.
+ *
+ * <p>Note: generated records reject a {@code null} wrapper for a required property, so a required property is always
+ * written, as JSON {@code null} or a value.
  *
  * @param <T> value type
  */
