@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
@@ -19,20 +20,31 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li>a value that is {@code null} is left out;
  *   <li>a list is joined with commas, an empty list is left out, and a list that holds {@code null} is refused;
+ *   <li>a repeated list becomes one value per item, sent as {@code name=a&name=b}: an item that is {@code null} is left
+ *       out, and a list that is empty or holds only {@code null} is left out;
  *   <li>a map becomes one {@code name[key]=value} parameter per entry, and an entry whose value is {@code null} is left
  *       out;
- *   <li>a parameter name must not be blank.
+ *   <li>a parameter name must not be blank;
+ *   <li>a name added again replaces the earlier value.
  * </ul>
  *
- * <p>The builder is not thread-safe. The built map is unmodifiable, and the values are not encoded: encoding is left to
- * the request that sends them.
+ * <p>{@link #buildValues()} gives every parameter as a list of values, for a request that sends a repeated parameter
+ * once per value. {@link #build()} gives one value per name, and refuses a repeated parameter that holds more than one
+ * value rather than join it.
+ *
+ * <p>The builder is not thread-safe. The built maps are unmodifiable, and the values are not encoded: encoding is left
+ * to the request that sends them.
  */
 public final class QueryParameters {
 
     private static final String NAME = "name";
     private static final String WIRE_VALUE = "wireValue";
+    private static final int SINGLE_VALUE = 1;
 
-    private final Map<String, String> query = new LinkedHashMap<>();
+    // a String per single parameter, an unmodifiable List<String> per repeated one, in the order they were added
+    private final Map<String, Object> query = new LinkedHashMap<>();
+    // set once a repeated parameter is added: until then build() is one copy of the map, as for a builder without them
+    private boolean hasRepeated;
 
     private QueryParameters() {}
 
@@ -187,11 +199,116 @@ public final class QueryParameters {
     }
 
     /**
-     * The parameters, in the order they were added.
+     * Adds a list sent once per item, as {@code name=a&name=b}, each item with its {@code String.valueOf}. Only
+     * {@link #buildValues()} keeps more than one value.
+     *
+     * @param name the parameter name
+     * @param values the items, or {@code null} to leave the parameter out; an item that is {@code null} is left out,
+     *     and the parameter is left out when no item is left
+     * @return this builder
+     * @throws NullPointerException if {@code name} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is blank
+     */
+    public QueryParameters repeated(final String name, final @Nullable List<?> values) {
+        requireNotBlank(name, NAME);
+        if (values != null) {
+            putRepeated(
+                    name,
+                    values.stream()
+                            .filter(Objects::nonNull)
+                            .map(String::valueOf)
+                            .toList());
+        }
+        return this;
+    }
+
+    /**
+     * Adds a list of enum constants sent once per item, as {@code name=a&name=b}, each by its wire value. Only
+     * {@link #buildValues()} keeps more than one value.
+     *
+     * @param name the parameter name
+     * @param values the constants, or {@code null} to leave the parameter out; an item that is {@code null} is left
+     *     out, and the parameter is left out when no item is left
+     * @param wireValue gives the wire value of a constant
+     * @param <E> the enum type
+     * @return this builder
+     * @throws NullPointerException if {@code name} or {@code wireValue} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is blank
+     * @throws NullPointerException if {@code wireValue} returns {@code null} for an item
+     */
+    public <E> QueryParameters wireRepeated(
+            final String name, final @Nullable List<E> values, final Function<E, ?> wireValue) {
+        requireNotBlank(name, NAME);
+        requireNonNull(wireValue, WIRE_VALUE);
+        if (values != null) {
+            putRepeated(
+                    name,
+                    values.stream()
+                            .filter(Objects::nonNull)
+                            .map(item -> wired(name, item, wireValue))
+                            .toList());
+        }
+        return this;
+    }
+
+    /**
+     * The parameters, one value per name, in the order they were added.
      *
      * @return an unmodifiable map
+     * @throws IllegalStateException if a parameter added with {@link #repeated(String, List)} or
+     *     {@link #wireRepeated(String, List, Function)} holds more than one value: its values are not joined, so the
+     *     request must take {@link #buildValues()}
      */
     public Map<String, String> build() {
-        return Collections.unmodifiableMap(new LinkedHashMap<>(query));
+        if (!hasRepeated) {
+            // every value is a String until a repeated parameter is added
+            @SuppressWarnings("unchecked")
+            final Map<String, String> single = (Map<String, String>) (Map<String, ?>) query;
+            return Collections.unmodifiableMap(new LinkedHashMap<>(single));
+        }
+        final Map<String, String> single = new LinkedHashMap<>();
+        query.forEach((name, value) -> single.put(name, oneValue(name, value)));
+        return Collections.unmodifiableMap(single);
+    }
+
+    /**
+     * Every parameter as its list of values, in the order they were added: a repeated parameter holds one value per
+     * item, every other parameter holds one value.
+     *
+     * @return an unmodifiable map of unmodifiable lists
+     */
+    public Map<String, List<String>> buildValues() {
+        final Map<String, List<String>> values = new LinkedHashMap<>();
+        query.forEach((name, value) -> values.put(name, values(value)));
+        return Collections.unmodifiableMap(values);
+    }
+
+    private void putRepeated(final String name, final List<String> values) {
+        if (!values.isEmpty()) {
+            query.put(name, values);
+            hasRepeated = true;
+        }
+    }
+
+    private static String oneValue(final String name, final Object value) {
+        if (value instanceof String text) {
+            return text;
+        }
+        final List<String> values = values(value);
+        if (values.size() > SINGLE_VALUE) {
+            throw new IllegalStateException("query parameter " + name + " holds " + values.size()
+                    + " values; take buildValues() to send it once per value");
+        }
+        return values.getFirst();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> values(final Object value) {
+        // a repeated parameter is stored as an unmodifiable List<String> (putRepeated), any other as a String
+        return value instanceof String text ? List.of(text) : (List<String>) value;
+    }
+
+    private static <E> String wired(final String name, final E value, final Function<E, ?> wireValue) {
+        return String.valueOf(requireNonNull(wireValue.apply(value), name + " wire value"));
     }
 }
