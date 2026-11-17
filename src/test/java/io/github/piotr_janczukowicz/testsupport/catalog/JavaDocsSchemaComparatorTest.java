@@ -48,6 +48,34 @@ class JavaDocsSchemaComparatorTest {
     }
 
     @Test
+    void diff_shouldAcceptNonNull_whenNameRequiredInAllOfBranchBesideOwnProperties() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"x":{"type":"string"},"y":{"type":"string"}},"required":["y"],"allOf":[{"required":["x"]}]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AllOfRequired.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldAcceptNonNull_whenNameRequiredInNestedAllOfBranch() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"allOf":[{"type":"object","properties":{"y":{"type":"string"}},"required":["y"]},{"allOf":[{"type":"object","properties":{"x":{"type":"string"}},"required":["x"]}]}]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AllOfRequired.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportMissingNullable_whenNameRequiredOnlyInOneOfBranch() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"x":{"type":"string"},"y":{"type":"string"}},"required":["y"],"oneOf":[{"required":["x"]},{"required":["y"]}]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AllOfRequired.class, schema))
+                .contains("x: docs not required, java missing @Nullable");
+    }
+
+    @Test
     void diff_shouldRequireNullable_whenNameRequiredInOnlySomeAnyOfBranches() {
         final JsonNode schema = MAPPER.readTree("""
                 {"anyOf":[{"type":"object","properties":{"id":{"type":"integer"},"a":{"type":"string"}},"required":["id","a"]},{"type":"object","properties":{"id":{"type":"integer"},"a":{"type":"string"}},"required":["id"]}]}
@@ -693,6 +721,8 @@ class JavaDocsSchemaComparatorTest {
     record PagesUpdate(
             @Nullable Boolean httpsEnforced,
             @Nullable @JsonProperty("public") Boolean sitePublic) {}
+
+    record AllOfRequired(String x, String y) {}
 
     record AnyOfRequired(int id, String kind, @Nullable String a) {}
 

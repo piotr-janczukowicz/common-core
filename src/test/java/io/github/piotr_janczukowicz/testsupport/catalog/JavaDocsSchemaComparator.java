@@ -478,7 +478,32 @@ public final class JavaDocsSchemaComparator {
         collectBranchProperties(copy.get("oneOf"), properties);
         collectBranchProperties(copy.get("anyOf"), properties);
         collectBranchProperties(copy.get("allOf"), properties);
+        final Set<String> required = new LinkedHashSet<>(requiredNames(copy.get("required")));
+        required.addAll(allOfRequired(copy));
+        setRequired((ObjectNode) copy, required);
         return copy;
+    }
+
+    private static void setRequired(final ObjectNode node, final Set<String> required) {
+        if (required.isEmpty()) {
+            return;
+        }
+        final ArrayNode requiredNode = node.putArray("required");
+        required.forEach(requiredNode::add);
+    }
+
+    /** Names required by the {@code allOf} branches of a schema, including nested {@code allOf} branches. */
+    private static Set<String> allOfRequired(final JsonNode schema) {
+        final Set<String> required = new LinkedHashSet<>();
+        final JsonNode branches = schema.get("allOf");
+        if (branches == null || !branches.isArray()) {
+            return required;
+        }
+        for (final JsonNode branch : branches) {
+            required.addAll(requiredNames(branch.get("required")));
+            required.addAll(allOfRequired(branch));
+        }
+        return required;
     }
 
     private static JsonNode compositionUnion(final JsonNode schema) {
@@ -518,20 +543,8 @@ public final class JavaDocsSchemaComparator {
         final ObjectNode merged = MAPPER.createObjectNode();
         merged.put("type", "object");
         final ObjectNode properties = merged.putObject("properties");
-        final ArrayNode required = MAPPER.createArrayNode();
         collectBranchProperties(branches, properties);
-        for (final JsonNode branch : branches) {
-            final JsonNode branchRequired = branch.get("required");
-            if (branchRequired == null || !branchRequired.isArray()) {
-                continue;
-            }
-            for (final JsonNode name : branchRequired) {
-                required.add(name);
-            }
-        }
-        if (!required.isEmpty()) {
-            merged.set("required", required);
-        }
+        setRequired(merged, allOfRequired(schema));
         if (properties.isEmpty()) {
             return null;
         }
@@ -801,8 +814,11 @@ public final class JavaDocsSchemaComparator {
         }
     }
 
-    private static Set<String> requiredNames(final JsonNode required) {
+    private static Set<String> requiredNames(final @Nullable JsonNode required) {
         final Set<String> names = new LinkedHashSet<>();
+        if (required == null || !required.isArray()) {
+            return names;
+        }
         for (final JsonNode item : required) {
             if (item.isString()) {
                 names.add(item.asString());
