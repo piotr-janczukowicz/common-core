@@ -147,7 +147,7 @@ public final class Variables {
         requireNonNull(name, NAME);
         requireNonNull(mapper, MAPPER);
         if (value != null) {
-            final @Nullable T wrapped = value.value();
+            final T wrapped = value.value();
             put(name, wrapped == null ? null : requireNonNull(mapper.apply(wrapped), name + VALUE));
         }
         return this;
