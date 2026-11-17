@@ -8,6 +8,7 @@ module common.core {
     requires static java.compiler;
 
     exports io.github.piotr_janczukowicz.annotation;
+    exports io.github.piotr_janczukowicz.graphql;
     exports io.github.piotr_janczukowicz.openapi.model;
     exports io.github.piotr_janczukowicz.pagination;
     exports io.github.piotr_janczukowicz.util;
