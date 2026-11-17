@@ -126,11 +126,12 @@ class VariablesTest {
     }
 
     @Test
-    void value_shouldAcceptTheName_whenTheEarlierValueWasLeftOut() {
-        final Map<String, Object> built =
-                Variables.builder().value("a", null).value("a", 2).build();
+    void value_shouldRefuseTheName_whenAnEarlierValueWasLeftOut() {
+        final Variables variables = Variables.builder().value("a", null);
 
-        assertThat(built).containsExactly(entry("a", 2));
+        final Throwable thrown = catchThrowable(() -> variables.value("a", 2));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("'a'");
     }
 
     @Test

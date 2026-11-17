@@ -5,9 +5,11 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
@@ -38,6 +40,7 @@ public final class Variables {
     private static final String VALUE = " value";
 
     private final Map<String, @Nullable Object> entries = new LinkedHashMap<>();
+    private final Set<String> names = new HashSet<>();
 
     private Variables() {}
 
@@ -51,17 +54,18 @@ public final class Variables {
     }
 
     /**
-     * Adds a value as it is: a string, a number, a boolean, or a list of them. A list is stored as an unmodifiable copy.
+     * Adds a value as it is: a string, a number, a boolean, or a list of them. A list is stored as an unmodifiable
+     * copy.
      *
      * @param name the variable name
      * @param value the value, or {@code null} to leave it out
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
-     * @throws IllegalArgumentException if {@code name} was already added, or {@code value} is a list that holds
-     *     {@code null}
+     * @throws IllegalArgumentException if {@code name} was given before, even with a value left out, or {@code value}
+     *     is a list that holds {@code null}
      */
     public Variables value(final String name, final @Nullable Object value) {
-        requireNonNull(name, NAME);
+        claim(name);
         if (value != null) {
             put(name, value instanceof List<?> list ? List.copyOf(requireNoNullElements(list, name)) : value);
         }
@@ -78,10 +82,10 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
-     * @throws IllegalArgumentException if {@code name} was already added
+     * @throws IllegalArgumentException if {@code name} was given before, even with a value left out
      */
     public <T> Variables value(final String name, final @Nullable T value, final Function<? super T, ?> mapper) {
-        requireNonNull(name, NAME);
+        claim(name);
         requireNonNull(mapper, MAPPER);
         if (value != null) {
             put(name, requireNonNull(mapper.apply(value), name + VALUE));
@@ -99,11 +103,12 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
-     * @throws IllegalArgumentException if {@code name} was already added, or {@code values} holds {@code null}
+     * @throws IllegalArgumentException if {@code name} was given before, even with a value left out, or {@code values}
+     *     holds {@code null}
      */
     public <T> Variables values(
             final String name, final @Nullable List<T> values, final Function<? super T, ?> mapper) {
-        requireNonNull(name, NAME);
+        claim(name);
         requireNonNull(mapper, MAPPER);
         if (values != null) {
             put(name, mapAll(name, values, mapper));
@@ -119,10 +124,10 @@ public final class Variables {
      * @param value the wrapper, or {@code null} to leave it out
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
-     * @throws IllegalArgumentException if {@code name} was already added
+     * @throws IllegalArgumentException if {@code name} was given before, even with a value left out
      */
     public Variables clearable(final String name, final @Nullable OptionalNull<?> value) {
-        requireNonNull(name, NAME);
+        claim(name);
         if (value != null) {
             put(name, value.value());
         }
@@ -140,11 +145,11 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
-     * @throws IllegalArgumentException if {@code name} was already added
+     * @throws IllegalArgumentException if {@code name} was given before, even with a value left out
      */
     public <T> Variables clearable(
             final String name, final @Nullable OptionalNull<T> value, final Function<? super T, ?> mapper) {
-        requireNonNull(name, NAME);
+        claim(name);
         requireNonNull(mapper, MAPPER);
         if (value != null) {
             final T wrapped = value.value();
@@ -162,10 +167,15 @@ public final class Variables {
         return Collections.unmodifiableMap(new LinkedHashMap<>(entries));
     }
 
-    private void put(final String name, final @Nullable Object value) {
-        if (entries.containsKey(name)) {
+    /** Refuses a name used before, also by a call whose value was left out: in generated code that is a bug. */
+    private void claim(final String name) {
+        requireNonNull(name, NAME);
+        if (!names.add(name)) {
             throw new IllegalArgumentException("Variable '" + name + "' was already added");
         }
+    }
+
+    private void put(final String name, final @Nullable Object value) {
         entries.put(name, value);
     }
 
