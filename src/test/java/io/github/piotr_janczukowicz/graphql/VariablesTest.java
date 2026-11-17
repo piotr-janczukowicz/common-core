@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.entry;
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -47,8 +48,8 @@ class VariablesTest {
                 .value("state", State.OPEN, State::wireValue)
                 .value("since", LocalDate.parse("2026-01-02"), Object::toString)
                 .values("states", List.of(State.OPEN, State.OPEN), State::wireValue)
-                .input("input", new Input("x"), Input::toVariable)
-                .inputs("inputs", List.of(new Input("y"), new Input("z")), Input::toVariable)
+                .value("input", new Input("x"), Input::toVariable)
+                .values("inputs", List.of(new Input("y"), new Input("z")), Input::toVariable)
                 .clearable("after", OptionalNull.of("c"))
                 .clearable("mapped", OptionalNull.of(State.OPEN), State::wireValue)
                 .build();
@@ -71,8 +72,6 @@ class VariablesTest {
     void build_shouldLeaveOutEveryNullValue_whenNothingIsSet() {
         final State noState = null;
         final List<State> noStates = null;
-        final Input noInput = null;
-        final List<Input> noInputs = null;
         final OptionalNull<String> noText = null;
         final OptionalNull<State> noWrappedState = null;
 
@@ -80,8 +79,6 @@ class VariablesTest {
                 .value("a", null)
                 .value("b", noState, State::wireValue)
                 .values("c", noStates, State::wireValue)
-                .input("d", noInput, Input::toVariable)
-                .inputs("e", noInputs, Input::toVariable)
                 .clearable("f", noText)
                 .clearable("g", noWrappedState, State::wireValue)
                 .build();
@@ -104,19 +101,68 @@ class VariablesTest {
         final Map<String, Object> built = Variables.builder()
                 .value("ids", List.of())
                 .values("states", List.<State>of(), State::wireValue)
-                .inputs("inputs", List.<Input>of(), Input::toVariable)
                 .build();
 
-        assertThat(built)
-                .containsExactly(entry("ids", List.of()), entry("states", List.of()), entry("inputs", List.of()));
+        assertThat(built).containsExactly(entry("ids", List.of()), entry("states", List.of()));
     }
 
     @Test
-    void build_shouldReplaceTheValue_whenANameIsAddedTwice() {
+    void value_shouldRejectTheName_whenItWasAlreadyAdded() {
+        final Variables variables = Variables.builder().value("a", 1);
+
+        final Throwable thrown = catchThrowable(() -> variables.value("a", 2));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("'a'");
+    }
+
+    @Test
+    void clearable_shouldRejectTheName_whenItWasAlreadyAdded() {
+        final Variables variables = Variables.builder().value("a", 1);
+        final OptionalNull<String> value = OptionalNull.ofNull();
+
+        final Throwable thrown = catchThrowable(() -> variables.clearable("a", value));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("'a'");
+    }
+
+    @Test
+    void value_shouldAcceptTheName_whenTheEarlierValueWasLeftOut() {
         final Map<String, Object> built =
-                Variables.builder().value("a", 1).value("a", 2).build();
+                Variables.builder().value("a", null).value("a", 2).build();
 
         assertThat(built).containsExactly(entry("a", 2));
+    }
+
+    @Test
+    void value_shouldStoreACopy_whenTheListChangesAfterwards() {
+        final List<String> ids = new ArrayList<>(List.of("a"));
+        final Map<String, Object> built = Variables.builder().value("ids", ids).build();
+
+        ids.add("b");
+
+        assertThat(built).containsExactly(entry("ids", List.of("a")));
+    }
+
+    @Test
+    void value_shouldStoreAnUnmodifiableList_whenTheValueIsAList() {
+        final List<?> stored = (List<?>) Variables.builder()
+                .value("ids", new ArrayList<>(List.of("a")))
+                .build()
+                .get("ids");
+
+        final Throwable thrown = catchThrowable(stored::clear);
+
+        assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void value_shouldRejectANullItem_whenTheListHoldsOne() {
+        final Variables variables = Variables.builder();
+        final List<String> ids = Arrays.asList("a", null);
+
+        final Throwable thrown = catchThrowable(() -> variables.value("ids", ids));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ids");
     }
 
     @Test
@@ -186,45 +232,6 @@ class VariablesTest {
     }
 
     @Test
-    void input_shouldRejectANullResult_whenTheMapperReturnsNull() {
-        final Variables variables = Variables.builder();
-        final Input value = new Input("x");
-
-        final Throwable thrown = catchThrowable(() -> variables.input("input", value, input -> null));
-
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("input");
-    }
-
-    @Test
-    void input_shouldRejectANullMapper_whenTheValueIsNull() {
-        final Variables variables = Variables.builder();
-
-        final Throwable thrown = catchThrowable(() -> variables.input("input", null, null));
-
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("toVariable");
-    }
-
-    @Test
-    void inputs_shouldRejectANullItem_whenTheListHoldsOne() {
-        final Variables variables = Variables.builder();
-        final List<Input> values = Arrays.asList(new Input("x"), null);
-
-        final Throwable thrown = catchThrowable(() -> variables.inputs("inputs", values, Input::toVariable));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("inputs");
-    }
-
-    @Test
-    void inputs_shouldRejectANullResult_whenTheMapperReturnsNull() {
-        final Variables variables = Variables.builder();
-        final List<Input> values = List.of(new Input("x"));
-
-        final Throwable thrown = catchThrowable(() -> variables.inputs("inputs", values, input -> null));
-
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("inputs");
-    }
-
-    @Test
     void clearable_shouldRejectANullResult_whenTheMapperReturnsNull() {
         final Variables variables = Variables.builder();
         final OptionalNull<State> value = OptionalNull.of(State.OPEN);
@@ -245,12 +252,12 @@ class VariablesTest {
     }
 
     @Test
-    void input_shouldKeepANullMapValue_whenTheMapHoldsOne() {
+    void value_shouldKeepANullMapValue_whenTheMappedInputHoldsOne() {
         final Map<String, Object> nested = new HashMap<>();
         nested.put("afterId", null);
 
         final Map<String, Object> built =
-                Variables.builder().input("input", nested, map -> map).build();
+                Variables.builder().value("input", nested, map -> map).build();
 
         assertThat(built).containsExactly(entry("input", nested));
     }

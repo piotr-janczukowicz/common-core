@@ -14,6 +14,7 @@ Jackson 3, in one artifact:
   ISO-8601 and HTTP date handling, a memoized supplier, immutable collection copies, pagination helpers and annotations such as `@RecordBuilder`.
 - **JSON**: a Jackson-free `JsonCodec` contract, an `OptionalNull` wrapper for PATCH-style payloads, Jackson adapters for
   union-shaped JSON, a module that reads collections as immutable ones, and a serializer that writes `5.0` as `5`.
+- **GraphQL**: `Variables`, a builder for the variables of a GraphQL request that keeps their JSON types.
 - **HTTP**: a small stack for REST clients, built on OkHttp, with immutable request and response types, a transport with
   composable decorators, and a client with authentication, redirects, an origin guard and polling.
 
@@ -205,6 +206,20 @@ value, including `NaN`, infinities, negative zero and values beyond the `long` r
 Do not enable default typing on a mapper that reads untrusted JSON. Keep Jackson's `StreamReadConstraints` at their defaults or
 tighter: they bound the size of numbers, and `ScalarUnionReaders` additionally rejects a number with an exponent beyond 1000
 decimal places.
+
+## GraphQL
+
+The `io.github.piotr_janczukowicz.graphql` package holds `Variables`, which builds the variables of a GraphQL request, or the
+fields of one input object, in the order they are added. A `null` value is left out, `clearable` writes JSON `null` for
+`OptionalNull.ofNull()`, lists are stored as unmodifiable copies without `null` items, and a name can be added only once:
+
+```java
+Map<String, @Nullable Object> variables = Variables.builder()
+        .value("owner", owner)
+        .values("states", states, State::wireValue)
+        .value("input", input, CreateLabelInput::toVariable)
+        .build();
+```
 
 ## HTTP
 

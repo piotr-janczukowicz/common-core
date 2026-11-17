@@ -19,10 +19,15 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li>a value that is {@code null} is left out;
  *   <li>JSON {@code null} is written only for {@link OptionalNull#ofNull()}, through {@code clearable};
- *   <li>a list is kept as a list, an empty one too, and a list that holds {@code null} is refused;
+ *   <li>{@code value(name, value)} stores a list as an unmodifiable copy and {@code values} stores an unmodifiable list
+ *       of the mapped items; an empty list is kept, and a list that holds {@code null} is refused;
+ *   <li>other values, and what a mapping function returns, are stored as they are;
  *   <li>a mapping function must not return {@code null};
- *   <li>a name added again replaces the earlier value.
+ *   <li>a name that was already added is refused; a value left out does not count as added.
  * </ul>
+ *
+ * <p>An input object is added through {@code value} or {@code values} with a mapping function that gives its fields,
+ * such as {@code value("input", input, CreateInput::toVariable)}.
  *
  * <p>The builder is not thread-safe. The built map is unmodifiable.
  */
@@ -30,7 +35,6 @@ public final class Variables {
 
     private static final String NAME = "name";
     private static final String MAPPER = "mapper";
-    private static final String TO_VARIABLE = "toVariable";
     private static final String VALUE = " value";
 
     private final Map<String, @Nullable Object> entries = new LinkedHashMap<>();
@@ -47,17 +51,19 @@ public final class Variables {
     }
 
     /**
-     * Adds a value as it is: a string, a number, a boolean, or a list of them.
+     * Adds a value as it is: a string, a number, a boolean, or a list of them. A list is stored as an unmodifiable copy.
      *
      * @param name the variable name
      * @param value the value, or {@code null} to leave it out
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
+     * @throws IllegalArgumentException if {@code name} was already added, or {@code value} is a list that holds
+     *     {@code null}
      */
     public Variables value(final String name, final @Nullable Object value) {
         requireNonNull(name, NAME);
         if (value != null) {
-            entries.put(name, value);
+            put(name, value instanceof List<?> list ? List.copyOf(requireNoNullElements(list, name)) : value);
         }
         return this;
     }
@@ -72,12 +78,13 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
+     * @throws IllegalArgumentException if {@code name} was already added
      */
     public <T> Variables value(final String name, final @Nullable T value, final Function<? super T, ?> mapper) {
         requireNonNull(name, NAME);
         requireNonNull(mapper, MAPPER);
         if (value != null) {
-            entries.put(name, requireNonNull(mapper.apply(value), name + VALUE));
+            put(name, requireNonNull(mapper.apply(value), name + VALUE));
         }
         return this;
     }
@@ -92,55 +99,16 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
-     * @throws IllegalArgumentException if {@code values} holds {@code null}
+     * @throws IllegalArgumentException if {@code name} was already added, or {@code values} holds {@code null}
      */
     public <T> Variables values(
             final String name, final @Nullable List<T> values, final Function<? super T, ?> mapper) {
         requireNonNull(name, NAME);
         requireNonNull(mapper, MAPPER);
         if (values != null) {
-            entries.put(name, mapAll(name, values, mapper));
+            put(name, mapAll(name, values, mapper));
         }
         return this;
-    }
-
-    /**
-     * Adds an input object as its fields.
-     *
-     * @param name the variable name
-     * @param value the input object, or {@code null} to leave it out
-     * @param toVariable gives the fields of the input object
-     * @param <T> the input object type
-     * @return this builder
-     * @throws NullPointerException if {@code name} or {@code toVariable} is {@code null}, or {@code toVariable} returns
-     *     {@code null}
-     */
-    public <T> Variables input(
-            final String name,
-            final @Nullable T value,
-            final Function<? super T, ? extends Map<String, ?>> toVariable) {
-        requireNonNull(toVariable, TO_VARIABLE);
-        return value(name, value, toVariable);
-    }
-
-    /**
-     * Adds a list of input objects, each as its fields.
-     *
-     * @param name the variable name
-     * @param values the input objects, or {@code null} to leave the list out
-     * @param toVariable gives the fields of an input object
-     * @param <T> the input object type
-     * @return this builder
-     * @throws NullPointerException if {@code name} or {@code toVariable} is {@code null}, or {@code toVariable} returns
-     *     {@code null}
-     * @throws IllegalArgumentException if {@code values} holds {@code null}
-     */
-    public <T> Variables inputs(
-            final String name,
-            final @Nullable List<T> values,
-            final Function<? super T, ? extends Map<String, ?>> toVariable) {
-        requireNonNull(toVariable, TO_VARIABLE);
-        return values(name, values, toVariable);
     }
 
     /**
@@ -151,11 +119,12 @@ public final class Variables {
      * @param value the wrapper, or {@code null} to leave it out
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
+     * @throws IllegalArgumentException if {@code name} was already added
      */
     public Variables clearable(final String name, final @Nullable OptionalNull<?> value) {
         requireNonNull(name, NAME);
         if (value != null) {
-            entries.put(name, value.value());
+            put(name, value.value());
         }
         return this;
     }
@@ -171,6 +140,7 @@ public final class Variables {
      * @return this builder
      * @throws NullPointerException if {@code name} or {@code mapper} is {@code null}, or {@code mapper} returns
      *     {@code null}
+     * @throws IllegalArgumentException if {@code name} was already added
      */
     public <T> Variables clearable(
             final String name, final @Nullable OptionalNull<T> value, final Function<? super T, ?> mapper) {
@@ -178,7 +148,7 @@ public final class Variables {
         requireNonNull(mapper, MAPPER);
         if (value != null) {
             final @Nullable T wrapped = value.value();
-            entries.put(name, wrapped == null ? null : requireNonNull(mapper.apply(wrapped), name + VALUE));
+            put(name, wrapped == null ? null : requireNonNull(mapper.apply(wrapped), name + VALUE));
         }
         return this;
     }
@@ -190,6 +160,13 @@ public final class Variables {
      */
     public Map<String, @Nullable Object> build() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(entries));
+    }
+
+    private void put(final String name, final @Nullable Object value) {
+        if (entries.containsKey(name)) {
+            throw new IllegalArgumentException("Variable '" + name + "' was already added");
+        }
+        entries.put(name, value);
     }
 
     private static <T> List<Object> mapAll(
