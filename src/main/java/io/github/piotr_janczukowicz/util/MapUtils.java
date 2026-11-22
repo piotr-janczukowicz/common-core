@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.util;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -24,6 +26,19 @@ public final class MapUtils {
      */
     public static <K, V> Map<K, V> copyOf(final Map<K, V> values, final String name) {
         return Map.copyOf(requireNonNull(values, name));
+    }
+
+    /**
+     * Copies a required map into an unmodifiable map that keeps the iteration order and accepts {@code null} keys and
+     * values, as a decoded JSON object does ({@link Map#copyOf} refuses both and loses the order).
+     *
+     * @param values the map to copy
+     * @param <K> key type
+     * @param <V> value type
+     * @return an unmodifiable copy of {@code values} in its iteration order
+     */
+    public static <K, V> Map<K, V> copyKeepingNulls(final Map<K, V> values) {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
     /**

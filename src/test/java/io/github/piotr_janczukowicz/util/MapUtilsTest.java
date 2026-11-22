@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,43 @@ class MapUtilsTest {
         final Throwable thrown = catchThrowable(() -> MapUtils.copyOf(null, "labels"));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("labels");
+    }
+
+    @Test
+    void copyKeepingNulls_shouldKeepTheOrderAndTheNulls_whenValuesHasThem() {
+        final Map<String, Object> values = new LinkedHashMap<>();
+        values.put("z", 1);
+        values.put("a", null);
+        values.put("m", "x");
+
+        final Map<String, Object> copy = MapUtils.copyKeepingNulls(values);
+
+        assertSoftly(softly -> {
+            softly.assertThat(copy).isEqualTo(values).isNotSameAs(values);
+            softly.assertThat(copy.keySet()).containsExactly("z", "a", "m");
+            softly.assertThat(copy).containsEntry("a", null);
+        });
+    }
+
+    @Test
+    void copyKeepingNulls_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+        final Map<String, Object> values = new HashMap<>(Map.of("a", "b"));
+
+        final Map<String, Object> copy = MapUtils.copyKeepingNulls(values);
+        values.put("c", "d");
+
+        assertSoftly(softly -> {
+            softly.assertThat(copy).containsOnlyKeys("a");
+            softly.assertThat(catchThrowable(() -> copy.put("e", "f")))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        });
+    }
+
+    @Test
+    void copyKeepingNulls_shouldThrow_whenValuesIsNull() {
+        final Throwable thrown = catchThrowable(() -> MapUtils.copyKeepingNulls(null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
