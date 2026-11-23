@@ -71,6 +71,19 @@ public final class JsonTypes {
     }
 
     /**
+     * Token for {@code List} of the generic type {@code elementType}, such as {@code List<List<Integer>>}.
+     *
+     * @param elementType token of the list element
+     * @param <T> element type
+     * @return token
+     * @throws NullPointerException if {@code elementType} is {@code null}
+     */
+    public static <T> JsonType<List<T>> listOf(final JsonType<T> elementType) {
+        requireNonNull(elementType, "elementType");
+        return new JsonType<>(new Parameterized(List.class, new Type[] {elementType.javaType()}));
+    }
+
+    /**
      * Token for {@code Map} of {@link String} keys to {@code valueType}.
      *
      * @param valueType map value class
@@ -81,6 +94,20 @@ public final class JsonTypes {
     public static <V> JsonType<Map<String, V>> mapOf(final Class<V> valueType) {
         requireNonNull(valueType, "valueType");
         return new JsonType<>(new Parameterized(Map.class, new Type[] {String.class, valueType}));
+    }
+
+    /**
+     * Token for {@code Map} of {@link String} keys to the generic type {@code valueType}, such as {@code Map<String,
+     * List<String>>}.
+     *
+     * @param valueType token of the map value
+     * @param <V> value type
+     * @return token
+     * @throws NullPointerException if {@code valueType} is {@code null}
+     */
+    public static <V> JsonType<Map<String, V>> mapOf(final JsonType<V> valueType) {
+        requireNonNull(valueType, "valueType");
+        return new JsonType<>(new Parameterized(Map.class, new Type[] {String.class, valueType.javaType()}));
     }
 
     private record Parameterized(Class<?> raw, Type[] arguments) implements ParameterizedType {

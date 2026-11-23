@@ -58,6 +58,46 @@ class JsonTypesTest {
     }
 
     @Test
+    void listOf_shouldEqualJdkParameterizedType_whenElementIsGeneric() throws Exception {
+        final Type jdkType = Holder.class.getDeclaredField("matrix").getGenericType();
+
+        final Type ours = JsonTypes.listOf(JsonTypes.listOf(Integer.class)).javaType();
+
+        assertSoftly(softly -> {
+            softly.assertThat(ours).isEqualTo(jdkType);
+            softly.assertThat(jdkType).isEqualTo(ours);
+            softly.assertThat(ours.hashCode()).isEqualTo(jdkType.hashCode());
+        });
+    }
+
+    @Test
+    void mapOf_shouldEqualJdkParameterizedType_whenValueIsGeneric() throws Exception {
+        final Type jdkType = Holder.class.getDeclaredField("lists").getGenericType();
+
+        final Type ours = JsonTypes.mapOf(JsonTypes.listOf(String.class)).javaType();
+
+        assertSoftly(softly -> {
+            softly.assertThat(ours).isEqualTo(jdkType);
+            softly.assertThat(jdkType).isEqualTo(ours);
+            softly.assertThat(ours.hashCode()).isEqualTo(jdkType.hashCode());
+        });
+    }
+
+    @Test
+    void listOf_shouldThrow_whenElementTokenIsNull() {
+        final Throwable thrown = catchThrowable(() -> JsonTypes.listOf((JsonType<String>) null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("elementType");
+    }
+
+    @Test
+    void mapOf_shouldThrow_whenValueTokenIsNull() {
+        final Throwable thrown = catchThrowable(() -> JsonTypes.mapOf((JsonType<String>) null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("valueType");
+    }
+
+    @Test
     void of_shouldThrow_whenRawTypeIsNull() {
         final Throwable thrown = catchThrowable(() -> JsonTypes.of(null, String.class));
 
@@ -73,14 +113,14 @@ class JsonTypesTest {
 
     @Test
     void listOf_shouldThrow_whenElementTypeIsNull() {
-        final Throwable thrown = catchThrowable(() -> JsonTypes.listOf(null));
+        final Throwable thrown = catchThrowable(() -> JsonTypes.listOf((Class<?>) null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("elementType");
     }
 
     @Test
     void mapOf_shouldThrow_whenValueTypeIsNull() {
-        final Throwable thrown = catchThrowable(() -> JsonTypes.mapOf(null));
+        final Throwable thrown = catchThrowable(() -> JsonTypes.mapOf((Class<?>) null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("valueType");
     }
@@ -211,5 +251,11 @@ class JsonTypesTest {
     private static final class Holder {
         @SuppressWarnings("unused")
         private List<String> names;
+
+        @SuppressWarnings("unused")
+        private List<List<Integer>> matrix;
+
+        @SuppressWarnings("unused")
+        private Map<String, List<String>> lists;
     }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -113,6 +114,53 @@ class JavaDocsSchemaComparatorTest {
         assertThat(JavaDocsSchemaComparator.diff(AnyBody.class, schema))
                 .anyMatch(difference -> difference.contains("extra"))
                 .noneMatch(difference -> difference.contains("body"));
+    }
+
+    @Test
+    void diff_shouldAcceptArrayShapedRecord_whenPositionsMatchPrefixItems() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"array","prefixItems":[{"type":"integer","format":"int64"},{"type":"string"}],"items":false,"minItems":2,"maxItems":2}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(SortPair.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportMismatch_whenArrayShapedRecordHasOtherNumberOfPositionsThanPrefixItems() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"array","prefixItems":[{"type":"integer","format":"int64"}]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(SortPair.class, schema))
+                .containsExactly(": docs tuple of 1, java 2 components");
+    }
+
+    @Test
+    void diff_shouldReportMismatch_whenArrayShapedRecordPositionDiffersFromPrefixItems() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"array","prefixItems":[{"type":"integer","format":"int64"},{"type":"integer"}]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(SortPair.class, schema)).isNotEmpty();
+    }
+
+    @Test
+    void diff_shouldReportMismatch_whenArrayShapedRecordMeetsASchemaWithoutPrefixItems() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"array","items":{"type":"integer"}}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(SortPair.class, schema))
+                .containsExactly(": java SortPair is an array-shaped record, docs has no prefixItems");
+    }
+
+    @Test
+    void diff_shouldComparePositions_whenArrayShapedRecordIsAListItem() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"sorts":{"type":"array","items":{"type":"array","prefixItems":[{"type":"integer"},{"type":"string"}]}}},"required":["sorts"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(SortList.class, schema)).isEmpty();
     }
 
     @Test
@@ -728,6 +776,11 @@ class JavaDocsSchemaComparatorTest {
             @Nullable String htmlUrl) {}
 
     record Licensed(LicenseSimple license) {}
+
+    @JsonFormat(shape = JsonFormat.Shape.ARRAY)
+    record SortPair(long fieldId, String direction) {}
+
+    record SortList(List<SortPair> sorts) {}
 
     record Count(int value) {
         @JsonValue

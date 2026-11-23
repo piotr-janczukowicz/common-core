@@ -4,6 +4,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -138,6 +139,10 @@ public final class JavaDocsSchemaComparator {
             alignValueUnion(path, javaType.getRawClass(), schema, mismatches);
             return;
         }
+        if (arrayShapedRecord(javaType.getRawClass())) {
+            alignTuple(path, javaType, schema, mismatches);
+            return;
+        }
         if (jsonValueScalar(javaType.getRawClass()) && !schema.has("properties")) {
             alignJsonValue(path, javaType, schema, mismatches, simpleXor);
             return;
@@ -254,6 +259,42 @@ public final class JavaDocsSchemaComparator {
             case "array" -> tokens.array();
             default -> tokens.object();
         };
+    }
+
+    /**
+     * A record written as a JSON array ({@code @JsonFormat(shape = ARRAY)}) is a tuple: each component is compared with
+     * the {@code prefixItems} entry at its position, and the counts must be equal.
+     */
+    private static void alignTuple(
+            final String path, final JavaType javaType, final JsonNode schema, final List<String> mismatches) {
+        final JsonNode prefixItems = schema.get("prefixItems");
+        if (prefixItems == null || !prefixItems.isArray()) {
+            mismatches.add(path + ": java " + javaType.getRawClass().getSimpleName()
+                    + " is an array-shaped record, docs has no prefixItems");
+            return;
+        }
+        final RecordComponent[] components = javaType.getRawClass().getRecordComponents();
+        if (components.length != prefixItems.size()) {
+            mismatches.add(
+                    path + ": docs tuple of " + prefixItems.size() + ", java " + components.length + " components");
+            return;
+        }
+        for (int position = 0; position < components.length; position++) {
+            align(
+                    path + "[" + position + "]",
+                    MAPPER.constructType(components[position].getGenericType()),
+                    prefixItems.get(position),
+                    mismatches,
+                    null);
+        }
+    }
+
+    private static boolean arrayShapedRecord(final Class<?> raw) {
+        if (!raw.isRecord()) {
+            return false;
+        }
+        final JsonFormat format = raw.getAnnotation(JsonFormat.class);
+        return format != null && format.shape() == JsonFormat.Shape.ARRAY;
     }
 
     private static void alignJsonValue(
