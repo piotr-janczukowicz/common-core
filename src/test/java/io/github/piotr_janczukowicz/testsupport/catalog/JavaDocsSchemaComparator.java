@@ -71,8 +71,9 @@ import tools.jackson.databind.node.ObjectNode;
  * is a JSON scalar, compared through its {@code @JsonValue} type (skipped when that type is {@code Object} or a
  * collection of {@code Object}). {@code additionalProperties} is an unconstrained map when {@code type} is
  * {@code object} or absent, including an empty {@code properties} object. A scalar {@code type} keeps its scalar check
- * even when {@code additionalProperties} is set. {@link SuppressSchemaTypeMismatch} skips the type check for that
- * component.
+ * even when {@code additionalProperties} is set. A record with no components matches an {@code object} schema with no
+ * {@code properties} (a bare object, {@code additionalProperties: false}, or {@code maxProperties: 0}).
+ * {@link SuppressSchemaTypeMismatch} skips the type check for that component.
  */
 public final class JavaDocsSchemaComparator {
 
@@ -185,6 +186,12 @@ public final class JavaDocsSchemaComparator {
                 align(path, javaType, merged, mismatches, simpleXor);
                 return;
             }
+        }
+        if (hasType(schema, "object")
+                && !hasProperties(schema)
+                && !allowsAdditionalProperties(schema)
+                && isEmptyRecord(javaType)) {
+            return;
         }
         if (schema.has("additionalProperties") && !hasProperties(schema) && additionalPropertiesMeansMap(schema)) {
             alignMap(path, javaType, schema, mismatches, simpleXor);
@@ -1212,6 +1219,16 @@ public final class JavaDocsSchemaComparator {
         final Set<String> names = new LinkedHashSet<>();
         properties.properties().forEach(entry -> names.add(entry.getKey()));
         return names;
+    }
+
+    private static boolean allowsAdditionalProperties(final JsonNode schema) {
+        final JsonNode additional = schema.get("additionalProperties");
+        return additional != null && !additional.isNull() && !(additional.isBoolean() && !additional.asBoolean());
+    }
+
+    private static boolean isEmptyRecord(final JavaType javaType) {
+        final Class<?> raw = javaType.getRawClass();
+        return raw.isRecord() && raw.getRecordComponents().length == 0;
     }
 
     private static boolean unconstrained(final JsonNode schema) {

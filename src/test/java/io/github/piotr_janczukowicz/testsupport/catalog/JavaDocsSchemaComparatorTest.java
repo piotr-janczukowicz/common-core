@@ -543,6 +543,39 @@ class JavaDocsSchemaComparatorTest {
         assertThat(JavaDocsSchemaComparator.diff(UnwrappedParent.class, schema)).isNotEmpty();
     }
 
+    @Test
+    void diff_shouldAcceptEmptyRecord_whenSchemaIsObjectWithoutProperties() {
+        final JsonNode bare = MAPPER.readTree("""
+                {"title":"PublicEvent","type":"object"}
+                """);
+        final JsonNode capped = MAPPER.readTree("""
+                {"type":"object","maxProperties":0,"additionalProperties":false,"description":"no properties"}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(EmptyRecord.class, bare)).isEmpty();
+        assertThat(JavaDocsSchemaComparator.diff(EmptyRecord.class, capped)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldMismatch_whenEmptyRecordMeetsAnotherSchemaOrObjectMeetsRecordWithComponents() {
+        final JsonNode string = MAPPER.readTree("""
+                {"type":"string"}
+                """);
+        final JsonNode object = MAPPER.readTree("""
+                {"type":"object"}
+                """);
+        final JsonNode open = MAPPER.readTree("""
+                {"type":"object","additionalProperties":true}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(EmptyRecord.class, string)).isNotEmpty();
+        assertThat(JavaDocsSchemaComparator.diff(EmptyRecord.class, open)).isNotEmpty();
+        assertThat(JavaDocsSchemaComparator.diff(SinglePropertyMode.class, object))
+                .isNotEmpty();
+    }
+
+    record EmptyRecord() {}
+
     record ScalarXor(@CatalogSimpleXor("string|integer") String id) {}
 
     record StringOrArrayXor(
