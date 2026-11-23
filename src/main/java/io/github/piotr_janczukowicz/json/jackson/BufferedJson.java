@@ -1,6 +1,8 @@
 package io.github.piotr_janczukowicz.json.jackson;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -269,6 +271,27 @@ public final class BufferedJson implements AutoCloseable {
         try (JsonParser parser = replay()) {
             return indexOfFirstNonNull(parser, fields);
         }
+    }
+
+    /**
+     * The top-level property names of an object in document order, each once (its first occurrence), with a
+     * {@code null} value too.
+     *
+     * @return the names; empty when the value is not an object
+     */
+    Set<String> names() {
+        final Set<String> found = new LinkedHashSet<>();
+        try (JsonParser parser = replay()) {
+            if (parser.currentToken() != JsonToken.START_OBJECT) {
+                return found;
+            }
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                found.add(parser.currentName());
+                parser.nextToken();
+                parser.skipChildren();
+            }
+        }
+        return found;
     }
 
     private <T> @Nullable T readLocated(final String field, final Function<JsonParser, T> reader) {

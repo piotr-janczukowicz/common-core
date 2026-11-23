@@ -169,6 +169,21 @@ public sealed interface Rule permits Rule.Text, RuleDetails {
 }
 ```
 
+### Presence unions
+
+`@PresenceUnion` marks an object union whose branch is picked by the names the object has, where Jackson's deduction
+cannot pick it (a branch with no property of its own beside properties several other branches share). `keys` names each
+property only one branch declares; the first of them in the object (document order) picks its branch. With none, the
+`fallback` is read when the object has every name of `fallbackRequires`; else the `unknown` class keeps the object as it
+came, and without it the object is refused. A name counts when present, also with `null`; a non-object value is refused.
+`ValueUnionModule` reads it too, so no other wiring is needed; the interface carries no `@JsonTypeInfo`.
+
+```java
+@PresenceUnion(keys = {@PresenceUnion.Key(name = "blob_url", type = Commit.class)},
+        fallback = ActionsLog.class, fallbackRequires = {"path", "start_line"}, unknown = LocationUnknown.class)
+public sealed interface Location permits Commit, ActionsLog, LocationUnknown {}
+```
+
 ### Union adapters
 
 | Adapter | Use it for |
