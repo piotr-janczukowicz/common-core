@@ -3,6 +3,8 @@ package io.github.piotr_janczukowicz.testsupport.catalog;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
@@ -10,6 +12,8 @@ import com.networknt.schema.dialect.Dialects;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.SuppressSchemaTypeMismatch;
 import io.github.piotr_janczukowicz.util.FileUtils;
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,6 +26,7 @@ import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Checks shared by the catalog test bases. */
 public final class CatalogChecks {
@@ -57,6 +62,156 @@ public final class CatalogChecks {
                 SchemaRegistry.withDialect(Dialects.getOpenApi31()).getSchema(schemaJson, InputFormat.JSON);
         schema.initializeValidators();
         return schema;
+    }
+
+    /**
+     * The schema of a pointer, ready to validate the whole encoded value of a type.
+     *
+     * <p>A top-level record component with {@code @JsonTypeInfo(include = EXTERNAL_PROPERTY)} is a union picked by a
+     * sibling value, and the spec's {@code oneOf} or {@code anyOf} of its branches may overlap, so "exactly one" says
+     * nothing about our code. That one keyword is removed from the property's node (the property is looked up in the
+     * root and in the root's {@code allOf} entries, through a nullable {@code anyOf}/{@code oneOf} of {@code null} and
+     * one schema); its other keywords stay, so the other properties and the sibling's enum are still checked. The
+     * branch itself is checked by {@link #selectedBranchFailures}. Unions with class-level type info stay strict.
+     *
+     * @param type the type under test
+     * @param schemaJson the schema of one pointer
+     * @return the schema unchanged when the type has no such component, else the relaxed copy
+     * @throws AssertionError when the schema has no property node for such a component
+     */
+    public static String holderSchemaJson(final Class<?> type, final String schemaJson) {
+        final List<RecordComponent> externals = externalComponents(type);
+        if (externals.isEmpty()) {
+            return schemaJson;
+        }
+        final JsonNode root = requireNonNull(TREE.readTree(schemaJson), "schema");
+        for (final RecordComponent component : externals) {
+            final String name = JavaDocsSchemaComparator.jsonName(component);
+            final ObjectNode node = propertyNode(root, name);
+            assertThat(node)
+                    .as("property %s of the holder schema (EXTERNAL_PROPERTY component of %s)", name, type.getName())
+                    .isNotNull();
+            relax(node);
+        }
+        return TREE.writeValueAsString(root);
+    }
+
+    /**
+     * Checks that each top-level {@code EXTERNAL_PROPERTY} component of the decoded value fits the branch Jackson
+     * picked: its encoded value must validate against every covered {@code @CatalogSchema} pointer of the runtime class
+     * of the decoded value. A record whose single component is {@code @JsonValue} is replaced by that value first. A
+     * class with no covered pointer, such as an Unknown, is a failure.
+     *
+     * @param type the type under test
+     * @param decoded the decoded fixture
+     * @param encoded the JSON the codec wrote for {@code decoded}
+     * @param source gives the schema of a pointer
+     * @return the failures, empty when every component fits its branch
+     */
+    public static List<String> selectedBranchFailures(
+            final Class<?> type, final Object decoded, final String encoded, final CatalogSchemaSource source) {
+        final List<String> failures = new ArrayList<>();
+        final JsonNode tree = requireNonNull(TREE.readTree(encoded), "encoded");
+        for (final RecordComponent component : externalComponents(type)) {
+            final String name = JavaDocsSchemaComparator.jsonName(component);
+            Object value = invoke(component.getAccessor(), decoded);
+            if (value == null) {
+                continue;
+            }
+            final Class<?> decodedClass = value.getClass();
+            while (value != null && jsonValueMethod(value.getClass()) != null) {
+                value = invoke(jsonValueMethod(value.getClass()), value);
+            }
+            final JsonNode subtree = tree.get(name);
+            if (value == null || subtree == null) {
+                failures.add(name + ": nothing to validate, the value or the encoded property is missing");
+                continue;
+            }
+            final Class<?> branch = value.getClass();
+            final List<String> pointers = jsonBodyPointers(branch, source);
+            if (pointers.isEmpty()) {
+                failures.add(name + ": " + decodedClass.getName()
+                        + (branch == decodedClass ? "" : " (wrapping " + branch.getName() + ")")
+                        + " has no covered @CatalogSchema pointer");
+                continue;
+            }
+            final String json = TREE.writeValueAsString(subtree);
+            for (final String pointer : pointers) {
+                compile(requireNonNull(source.schemaJson(pointer), "schema"))
+                        .validate(json, InputFormat.JSON)
+                        .forEach(error ->
+                                failures.add(name + " as " + branch.getSimpleName() + " " + pointer + ": " + error));
+            }
+        }
+        return failures;
+    }
+
+    private static List<RecordComponent> externalComponents(final Class<?> type) {
+        if (!type.isRecord()) {
+            return List.of();
+        }
+        return Arrays.stream(type.getRecordComponents())
+                .filter(component -> isExternal(component.getAnnotation(JsonTypeInfo.class))
+                        || isExternal(component.getAccessor().getAnnotation(JsonTypeInfo.class)))
+                .toList();
+    }
+
+    private static boolean isExternal(final @Nullable JsonTypeInfo info) {
+        return info != null && info.include() == JsonTypeInfo.As.EXTERNAL_PROPERTY;
+    }
+
+    private static @Nullable ObjectNode propertyNode(final JsonNode root, final String name) {
+        if (root.path("properties").get(name) instanceof ObjectNode node) {
+            return node;
+        }
+        for (final JsonNode part : root.path("allOf")) {
+            if (part.path("properties").get(name) instanceof ObjectNode node) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    private static void relax(final ObjectNode node) {
+        ObjectNode target = node;
+        for (final String keyword : List.of("anyOf", "oneOf")) {
+            final JsonNode parts = node.get(keyword);
+            if (parts != null && parts.size() == 2) {
+                final boolean firstNull = isNullSchema(parts.get(0));
+                final boolean secondNull = isNullSchema(parts.get(1));
+                if (firstNull != secondNull && parts.get(firstNull ? 1 : 0) instanceof ObjectNode other) {
+                    target = other;
+                    break;
+                }
+            }
+        }
+        target.remove("oneOf");
+        target.remove("anyOf");
+    }
+
+    private static boolean isNullSchema(final JsonNode schema) {
+        return schema.size() == 1 && "null".equals(schema.path("type").asString());
+    }
+
+    private static @Nullable Method jsonValueMethod(final Class<?> type) {
+        if (!type.isRecord() || type.getRecordComponents().length != 1) {
+            return null;
+        }
+        for (final Method method : type.getDeclaredMethods()) {
+            if (method.getParameterCount() == 0 && method.isAnnotationPresent(JsonValue.class)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable Object invoke(final Method method, final Object target) {
+        try {
+            method.setAccessible(true);
+            return method.invoke(target);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot read " + method, e);
+        }
     }
 
     /**

@@ -21,6 +21,10 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The encoded fixture must validate against <em>every</em> {@code @CatalogSchema} pointer of the type: several
  * pointers on one type say that the same shape sits at several nodes of the OpenAPI document. A type whose pointers
  * describe different branches of one union uses {@link AbstractXorCatalogTest}, where one pointer is enough.
+ *
+ * <p>A top-level component with {@code @JsonTypeInfo(include = EXTERNAL_PROPERTY)} is validated without the exactness
+ * of its {@code oneOf}/{@code anyOf} and against the {@code @CatalogSchema} pointers of the branch class that was
+ * decoded (see {@link CatalogChecks#holderSchemaJson} and {@link CatalogChecks#selectedBranchFailures}).
  */
 @CatalogTest
 public abstract class AbstractCatalogTest {
@@ -106,13 +110,16 @@ public abstract class AbstractCatalogTest {
         final String encoded = new String(codec().encode(decoded), StandardCharsets.UTF_8);
 
         final List<String> violated = pointers.stream()
-                .filter(pointer -> !CatalogChecks.compile(
-                                requireNonNull(schemaSource().schemaJson(pointer), "schema"))
+                .filter(pointer -> !CatalogChecks.compile(CatalogChecks.holderSchemaJson(
+                                type, requireNonNull(schemaSource().schemaJson(pointer), "schema")))
                         .validate(encoded, InputFormat.JSON)
                         .isEmpty())
                 .toList();
         assertThat(violated)
                 .as("pointers whose schema the encoded fixture violates")
+                .isEmpty();
+        assertThat(CatalogChecks.selectedBranchFailures(type, decoded, encoded, schemaSource()))
+                .as("EXTERNAL_PROPERTY components against the branch their sibling value picked")
                 .isEmpty();
     }
 

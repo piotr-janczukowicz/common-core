@@ -29,6 +29,9 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The encoded fixture of a case must validate against <em>at least one</em> {@code @CatalogSchema} pointer of the
  * type: the pointers of such a type sit on different branches, and a case fills exactly one of them. A type whose
  * pointers all describe the same shape uses {@link AbstractCatalogTest}, where every pointer must accept the fixture.
+ *
+ * <p>A top-level component with {@code @JsonTypeInfo(include = EXTERNAL_PROPERTY)} is checked as in
+ * {@link AbstractCatalogTest}: its union keyword is relaxed and its value must fit the decoded branch's pointers.
  */
 @CatalogTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -123,16 +126,21 @@ public abstract class AbstractXorCatalogTest {
         final byte[] encoded = codec().encode(decoded);
         final List<String> failures = new ArrayList<>();
         for (final String pointer : pointers) {
-            final Schema schema =
-                    CatalogChecks.compile(requireNonNull(schemaSource().schemaJson(pointer), "schema"));
+            final Schema schema = CatalogChecks.compile(CatalogChecks.holderSchemaJson(
+                    type, requireNonNull(schemaSource().schemaJson(pointer), "schema")));
             final List<Error> errors = schema.validate(new String(encoded, StandardCharsets.UTF_8), InputFormat.JSON);
             if (errors.isEmpty()) {
-                return;
+                failures.clear();
+                break;
             }
             errors.forEach(error -> failures.add(pointer + ": " + error));
         }
 
         assertThat(failures).as("errors per schema pointer").isEmpty();
+        assertThat(CatalogChecks.selectedBranchFailures(
+                        type, decoded, new String(encoded, StandardCharsets.UTF_8), schemaSource()))
+                .as("EXTERNAL_PROPERTY components against the branch their sibling value picked")
+                .isEmpty();
     }
 
     @Test

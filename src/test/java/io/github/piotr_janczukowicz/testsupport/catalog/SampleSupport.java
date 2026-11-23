@@ -40,6 +40,27 @@ final class SampleSupport {
             "components/schemas/sample-multi-b",
             """
             {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}
+            """,
+            "components/schemas/sample-holder",
+            """
+            {"type":"object","properties":{"kind":{"type":"string","enum":["empty","named","wrapped"]},
+            "payload":{"oneOf":[
+            {"type":"object","properties":{"note":{"type":"string"}}},
+            {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]},
+            {"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}]}},
+            "required":["kind","payload"]}
+            """,
+            "components/schemas/sample-branch-empty",
+            """
+            {"type":"object","properties":{"note":{"type":"string"}}}
+            """,
+            "components/schemas/sample-branch-named",
+            """
+            {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}
+            """,
+            "components/schemas/sample-branch-wrapped",
+            """
+            {"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}
             """);
 
     private SampleSupport() {
@@ -89,6 +110,44 @@ final class SampleSupport {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @CatalogSchema({"components/schemas/sample-text", "components/schemas/sample-number"})
     record SampleXor(@Nullable String text, @Nullable Integer number) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @CatalogSchema("components/schemas/sample-holder")
+    record SampleHolder(
+            String kind,
+
+            @JsonTypeInfo(
+                    use = JsonTypeInfo.Id.NAME,
+                    include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
+                    property = "kind",
+                    defaultImpl = SampleBranchUnknown.class)
+            SampleBranch payload) {}
+
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = SampleBranchEmpty.class, name = "empty"),
+        @JsonSubTypes.Type(value = SampleBranchNamed.class, name = "named"),
+        @JsonSubTypes.Type(value = SampleBranchWrapped.class, name = "wrapped")
+    })
+    sealed interface SampleBranch
+            permits SampleBranchEmpty, SampleBranchNamed, SampleBranchWrapped, SampleBranchUnknown {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @CatalogSchema("components/schemas/sample-branch-empty")
+    record SampleBranchEmpty(@Nullable String note) implements SampleBranch {}
+
+    @CatalogSchema("components/schemas/sample-branch-named")
+    record SampleBranchNamed(String name) implements SampleBranch {}
+
+    record SampleBranchWrapped(@JsonValue SampleWrappedConfig config) implements SampleBranch {
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+        SampleBranchWrapped {}
+    }
+
+    @CatalogSchema("components/schemas/sample-branch-wrapped")
+    record SampleWrappedConfig(String url) {}
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
+    record SampleBranchUnknown(@JsonValue Map<String, Object> properties) implements SampleBranch {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
     @JsonSubTypes({@JsonSubTypes.Type(SampleCat.class), @JsonSubTypes.Type(SampleDog.class)})

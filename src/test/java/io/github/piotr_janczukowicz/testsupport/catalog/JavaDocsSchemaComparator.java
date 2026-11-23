@@ -1144,7 +1144,7 @@ public final class JavaDocsSchemaComparator {
         return true;
     }
 
-    private static String jsonName(final RecordComponent component) {
+    static String jsonName(final RecordComponent component) {
         final JsonProperty property = jsonProperty(component);
         if (property != null) {
             final String explicit = property.value();
