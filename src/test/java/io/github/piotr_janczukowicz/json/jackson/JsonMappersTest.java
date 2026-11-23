@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
@@ -169,6 +171,33 @@ class JsonMappersTest {
         final Throwable thrown = catchThrowable(constructor::newInstance);
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
+
+    sealed interface Shape permits Circle {}
+
+    record Circle(int radius) implements Shape {}
+
+    @Test
+    void defaults_shouldReadMissingExternalTypeIdValueAsNull_whenTheDiscriminatorIsPresentWithoutTheValue() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+        record Holder(
+                @JsonTypeInfo(
+                        use = JsonTypeInfo.Id.NAME,
+                        include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
+                        property = "kind")
+                @JsonSubTypes(@JsonSubTypes.Type(value = Circle.class, name = "circle"))
+                @Nullable Shape shape,
+
+                String kind) {}
+
+        final Holder withValue = mapper.readValue("{\"kind\":\"circle\",\"shape\":{\"radius\":2}}", Holder.class);
+        final Holder withoutValue = mapper.readValue("{\"kind\":\"circle\"}", Holder.class);
+
+        assertSoftly(softly -> {
+            softly.assertThat(withValue.shape()).isEqualTo(new Circle(2));
+            softly.assertThat(withoutValue.shape()).isNull();
+            softly.assertThat(withoutValue.kind()).isEqualTo("circle");
+        });
     }
 
     @Test

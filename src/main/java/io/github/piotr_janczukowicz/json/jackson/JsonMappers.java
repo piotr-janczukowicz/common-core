@@ -35,7 +35,9 @@ public final class JsonMappers {
      *
      * <p>The mapper reads {@code snake_case} names as the camelCase components of a record; ignores properties the type
      * does not have; refuses a duplicate key and a fractional number for an integer; reads an unknown enum constant as
-     * {@code null}; reads a single value where an array is expected; converts a JSON number or boolean to a
+     * {@code null}; reads a value whose external type id property is missing as {@code null}, so a
+     * sibling-discriminated union (Jackson's {@code EXTERNAL_PROPERTY}) accepts a body that has the discriminator but
+     * not the value; reads a single value where an array is expected; converts a JSON number or boolean to a
      * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; reads
      * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; reads
      * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; and reads
@@ -48,6 +50,7 @@ public final class JsonMappers {
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
                 .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+                .disable(DeserializationFeature.FAIL_ON_MISSING_EXTERNAL_TYPE_ID_PROPERTY)
                 .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
                 .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
                 .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
