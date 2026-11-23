@@ -133,7 +133,7 @@ This needs the `io.soabase.record-builder:record-builder-processor` annotation p
 ## JSON
 
 The `io.github.piotr_janczukowicz.json` package has no Jackson types: `JsonCodec` (decode and encode bytes), `JsonType` and
-`JsonTypes` (generic target types), `OptionalNull`, and the `JsonDecodeException` / `JsonEncodeException` failures. Implement
+`JsonTypes` (generic target types), `OptionalNull`, the `@ValueUnion` annotation, and the `JsonDecodeException` / `JsonEncodeException` failures. Implement
 `JsonCodec` over your own mapper; the contract is in its Javadoc. The adapters live in
 `io.github.piotr_janczukowicz.json.jackson` and target Jackson 3 (`tools.jackson`). All of them register on a `SimpleModule`.
 
@@ -147,6 +147,27 @@ omitted.
 A value that the inner deserializer reads as `null` (for example an unknown enum constant under
 `READ_UNKNOWN_ENUM_VALUES_AS_NULL`) fails instead of becoming `OptionalNull.ofNull()`, so a PATCH cannot clear a field by
 accident.
+
+### Value unions
+
+`@ValueUnion` marks a type whose JSON value is one of several token kinds: it names one branch class per token (`string`,
+`integer`, `number`, `flag`, `array`, `object`) and optionally an `unknown` class that keeps any other token as it came;
+without it such a token is refused (`X takes a string or an object`). `ValueUnionModule` reads the annotated type: it picks
+the class from the first token and lets that class read the value (a record with a delegating `@JsonCreator`, a plain record,
+or an object union). An integer goes to `integer` when it fits a `long`, else to `number`; a fraction never goes to
+`integer`. A branch created from a `BigDecimal` gets the number exactly, in plain notation; a branch created from a list of
+strings takes JSON strings only. The annotation is not inherited, so a branch that implements the union reads as itself.
+`JsonMappers.snakeCase()` registers the module; on another mapper call `builder.addModule(new ValueUnionModule())`.
+
+```java
+@ValueUnion(string = Rule.Text.class, object = RuleDetails.class)
+public sealed interface Rule permits Rule.Text, RuleDetails {
+    record Text(@JsonValue String value) implements Rule {
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+        public Text {}
+    }
+}
+```
 
 ### Union adapters
 
@@ -186,7 +207,7 @@ JsonMapper mapper = JsonMapper.builder().addModule(new ImmutableCollectionsModul
 `JsonMappers.snakeCase()` returns a `JsonMapper.Builder` for APIs whose JSON uses `snake_case` names and add properties over
 time: unknown properties are ignored, duplicate keys and fractional numbers for integers are refused, an unknown enum constant
 reads as `null`, a single value reads as a one-element array, dates are written as text, collections are immutable,
-`OptionalNull` is registered, and `Instant` values are read with `FastInstantDeserializer`. Add your own modules and build the
+`OptionalNull` and `@ValueUnion` types are registered, and `Instant` values are read with `FastInstantDeserializer`. Add your own modules and build the
 mapper once. `JacksonJsonCodec` is a `JsonCodec` over such a mapper.
 
 ### Reading nodes and tokens
@@ -204,7 +225,7 @@ value, including `NaN`, infinities, negative zero and values beyond the `long` r
 ### Mapper expectations
 
 Do not enable default typing on a mapper that reads untrusted JSON. Keep Jackson's `StreamReadConstraints` at their defaults or
-tighter: they bound the size of numbers, and `ScalarUnionReaders` additionally rejects a number with an exponent beyond 1000
+tighter: they bound the size of numbers, and `ScalarUnionReaders` and `ValueUnionModule` additionally reject a number with an exponent beyond 1000
 decimal places.
 
 ## GraphQL

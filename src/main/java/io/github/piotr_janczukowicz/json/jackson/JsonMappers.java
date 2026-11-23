@@ -37,7 +37,8 @@ public final class JsonMappers {
      * does not have; refuses a duplicate key and a fractional number for an integer; reads an unknown enum constant as
      * {@code null}; reads a single value where an array is expected; converts a JSON number or boolean to a
      * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; reads
-     * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; and reads
+     * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; reads
+     * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; and reads
      * {@link Instant} values with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
      *
      * @return a new builder with these settings
@@ -61,6 +62,7 @@ public final class JsonMappers {
                         cfg -> cfg.setCoercion(CoercionInputShape.String, CoercionAction.TryConvert))
                 .addModule(new ImmutableCollectionsModule())
                 .addModule(new OptionalNullModule())
+                .addModule(new ValueUnionModule())
                 .addModule(
                         new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()));
     }
