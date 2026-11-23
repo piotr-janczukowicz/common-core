@@ -7,6 +7,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import io.github.piotr_janczukowicz.json.JsonCodec;
 import io.github.piotr_janczukowicz.testsupport.CatalogTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,7 +23,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Checks of a sealed interface whose subtypes are told apart by Jackson ({@code @JsonSubTypes}): a fixture decoded as
  * the interface must give the expected subtype, encoding it must give the fixture back, and the cases must cover every
- * permitted subtype. The checks are final.
+ * permitted subtype (a permitted sealed interface stands for its own permitted subtypes). The checks are final.
  *
  * <p>The cases of a union with a fallback include a payload that only the fallback matches, so the test shows which
  * subtype wins when a payload is ambiguous.
@@ -92,6 +93,22 @@ public abstract class AbstractUnionCatalogTest {
                 .isEqualTo(TREE.readTree(fixtureJson));
     }
 
+    /**
+     * The types a value of the union can be: its permitted subtypes, a permitted sealed interface (a union nested in
+     * this one, as an object union is in a value union) replaced by its own permitted subtypes.
+     */
+    private static List<Class<?>> leaves(final Class<?> union) {
+        final List<Class<?>> found = new ArrayList<>();
+        for (final Class<?> permitted : union.getPermittedSubclasses()) {
+            if (permitted.isInterface() && permitted.isSealed()) {
+                found.addAll(leaves(permitted));
+            } else {
+                found.add(permitted);
+            }
+        }
+        return found;
+    }
+
     @Test
     protected final void cases_shouldCoverEveryPermittedSubtype() {
         final Class<?> type = requireNonNull(type(), "type");
@@ -100,7 +117,7 @@ public abstract class AbstractUnionCatalogTest {
                         arguments -> (Class<?>) arguments.get()[1])
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        final List<Class<?>> permitted = List.of(type.getPermittedSubclasses());
+        final List<Class<?>> permitted = leaves(type);
 
         final Set<Class<?>> expected = new LinkedHashSet<>(permitted);
         expected.removeAll(decodedElsewhere());

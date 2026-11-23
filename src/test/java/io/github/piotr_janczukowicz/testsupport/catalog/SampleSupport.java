@@ -1,11 +1,15 @@
 package io.github.piotr_janczukowicz.testsupport.catalog;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.JsonCodec;
 import io.github.piotr_janczukowicz.json.JsonType;
+import io.github.piotr_janczukowicz.json.ValueUnion;
+import io.github.piotr_janczukowicz.json.jackson.ValueUnionModule;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -13,7 +17,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 final class SampleSupport {
 
-    private static final JsonMapper MAPPER = JsonMapper.builder().build();
+    private static final JsonMapper MAPPER =
+            JsonMapper.builder().addModule(new ValueUnionModule()).build();
 
     private static final Map<String, String> SCHEMAS = Map.of(
             "components/schemas/sample",
@@ -100,6 +105,23 @@ final class SampleSupport {
     record SampleBird(String tweet) implements SampleLenient {}
 
     record SampleFallback(String note) implements SampleLenient {}
+
+    /** A value union whose object branch is a union of its own: it permits a sealed interface. */
+    @ValueUnion(string = SampleNestedText.class, object = SampleNestedObject.class)
+    sealed interface SampleNested permits SampleNestedText, SampleNestedObject {}
+
+    record SampleNestedText(@JsonValue String text) implements SampleNested {
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+        SampleNestedText {}
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
+    @JsonSubTypes({@JsonSubTypes.Type(SampleNestedBird.class), @JsonSubTypes.Type(SampleNestedCat.class)})
+    sealed interface SampleNestedObject extends SampleNested permits SampleNestedBird, SampleNestedCat {}
+
+    record SampleNestedBird(String tweet) implements SampleNestedObject {}
+
+    record SampleNestedCat(String meow) implements SampleNestedObject {}
 
     enum SampleState {
         @JsonProperty("open")

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.OptionalNull;
+import io.github.piotr_janczukowicz.json.ValueUnion;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSimpleXor;
 import io.github.piotr_janczukowicz.openapi.model.SuppressSchemaTypeMismatch;
@@ -132,6 +133,10 @@ public final class JavaDocsSchemaComparator {
         if (unconstrained(schema)) {
             return;
         }
+        if (javaType.getRawClass().isAnnotationPresent(ValueUnion.class)) {
+            alignValueUnion(path, javaType.getRawClass(), schema, mismatches);
+            return;
+        }
         if (jsonValueScalar(javaType.getRawClass()) && !schema.has("properties")) {
             alignJsonValue(path, javaType, schema, mismatches, simpleXor);
             return;
@@ -194,6 +199,54 @@ public final class JavaDocsSchemaComparator {
             return;
         }
         alignScalar(path, javaType, schema, mismatches);
+    }
+
+    /**
+     * A {@link ValueUnion} stands for every branch of its docs {@code oneOf}/{@code anyOf}: each branch (a {@code null}
+     * one apart) needs the class the annotation names for its JSON token (an integer also reads as a number); a docs
+     * object with properties is compared by property names when that class is a record (an object union, an interface,
+     * is compared by its own branches' tests).
+     */
+    private static void alignValueUnion(
+            final String path, final Class<?> union, final JsonNode schema, final List<String> mismatches) {
+        final ValueUnion tokens = union.getAnnotation(ValueUnion.class);
+        final List<JsonNode> branches = compositionBranches(schema);
+        for (final JsonNode branch : branches.isEmpty() ? List.of(schema) : branches) {
+            final String token = valueToken(branch);
+            if (token == null) {
+                continue;
+            }
+            final Class<?> branchClass = valueClass(tokens, token);
+            if (branchClass == Void.class) {
+                mismatches.add(path + ": docs " + token + ", java " + union.getSimpleName() + " has no such branch");
+            } else if (branchClass.isRecord() && "object".equals(token) && hasProperties(branch)) {
+                alignPropertyNames(
+                        path,
+                        propertyNames(mergeCompositionIntoProperties(branch).get("properties")),
+                        properties(MAPPER.constructType(branchClass)),
+                        mismatches);
+            }
+        }
+    }
+
+    private static @Nullable String valueToken(final JsonNode branch) {
+        for (final String token : List.of("string", "integer", "number", "boolean", "array", "object")) {
+            if (hasType(branch, token)) {
+                return token;
+            }
+        }
+        return hasProperties(branch) ? "object" : null;
+    }
+
+    private static Class<?> valueClass(final ValueUnion tokens, final String token) {
+        return switch (token) {
+            case "string" -> tokens.string();
+            case "integer" -> tokens.integer() != Void.class ? tokens.integer() : tokens.number();
+            case "number" -> tokens.number();
+            case "boolean" -> tokens.flag();
+            case "array" -> tokens.array();
+            default -> tokens.object();
+        };
     }
 
     private static void alignJsonValue(

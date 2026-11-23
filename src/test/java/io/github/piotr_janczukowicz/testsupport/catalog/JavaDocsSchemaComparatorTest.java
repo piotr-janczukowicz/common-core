@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
+import io.github.piotr_janczukowicz.json.ValueUnion;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSimpleXor;
 import io.github.piotr_janczukowicz.openapi.model.SuppressSchemaTypeMismatch;
@@ -740,6 +741,75 @@ class JavaDocsSchemaComparatorTest {
             String type, @JsonAnySetter @JsonAnyGetter Map<String, Object> body) {}
 
     record Query(String q, @JsonIgnore boolean textMatch) {}
+
+    @Test
+    void diff_shouldAcceptValueUnion_whenEveryDocsBranchHasItsClass() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"scope":{"oneOf":[{"type":"string"},{"type":"object","properties":{"path":{"type":"string"}}},{"type":"array","items":{"type":"string"}}]}},"required":["scope"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(ScopeHolder.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReadAnIntegerAsANumber_whenTheValueUnionHasOnlyANumberBranch() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"amount":{"oneOf":[{"type":"string"},{"type":"integer"}]}},"required":["amount"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(AmountHolder.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportTheBranch_whenTheValueUnionLacksOne() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"scope":{"oneOf":[{"type":"string"},{"type":"boolean"},{"type":"number"}]}},"required":["scope"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(ScopeHolder.class, schema))
+                .containsExactly(
+                        "scope: docs boolean, java Scope has no such branch",
+                        "scope: docs number, java Scope has no such branch");
+    }
+
+    @Test
+    void diff_shouldComparePropertyNames_whenTheValueUnionObjectIsARecord() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"scope":{"oneOf":[{"type":"string"},{"type":"object","properties":{"path":{"type":"string"},"other":{"type":"string"}}}]}},"required":["scope"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(ScopeHolder.class, schema))
+                .containsExactly("scope.other: on docs schema, missing on java");
+    }
+
+    @Test
+    void diff_shouldTakeTheSchemaAsTheOneBranch_whenTheValueUnionIsAgainstAPlainSchema() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"scope":{"type":"string"}},"required":["scope"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(ScopeHolder.class, schema)).isEmpty();
+    }
+
+    @ValueUnion(string = ScopeText.class, object = ScopeDetails.class, array = ScopeTexts.class)
+    sealed interface Scope permits ScopeText, ScopeDetails, ScopeTexts {}
+
+    record ScopeText(@JsonValue String value) implements Scope {}
+
+    record ScopeTexts(@JsonValue List<String> values) implements Scope {}
+
+    record ScopeDetails(@Nullable String path) implements Scope {}
+
+    record ScopeHolder(Scope scope) {}
+
+    @ValueUnion(string = AmountText.class, number = AmountDecimal.class)
+    sealed interface Amount permits AmountText, AmountDecimal {}
+
+    record AmountText(@JsonValue String value) implements Amount {}
+
+    record AmountDecimal(@JsonValue java.math.BigDecimal value) implements Amount {}
+
+    record AmountHolder(Amount amount) {}
 
     record Scalar(String textValue, Number numberValue) {
         @JsonValue
