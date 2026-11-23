@@ -13,9 +13,12 @@ import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DatabindException;
@@ -86,27 +89,26 @@ class PresenceUnionModuleTest {
             })
     interface Twice {}
 
-    @Test
-    void readValue_shouldGiveTheBranchOfTheKey_whenTheObjectHasOneKey() {
-        final Location commit = MAPPER.readValue("""
-                {"path": "p", "start_line": 1, "blob_url": "b", "html_url": "h"}""", Location.class);
-        final Location issue = MAPPER.readValue("""
-                {"html_url": "h", "issue_url": "i"}""", Location.class);
-        final Location comment = MAPPER.readValue("""
-                {"comment_url": "c", "html_url": "h"}""", Location.class);
-
-        assertThat(List.of(commit, issue, comment))
-                .containsExactly(new Commit("p", 1, "b", "h"), new Issue("i", "h"), new Comment("c", "h"));
+    static Stream<Arguments> keyedObjects() {
+        return Stream.of(
+                Arguments.of("""
+                        {"path": "p", "start_line": 1, "blob_url": "b", "html_url": "h"}""", new Commit("p", 1, "b", "h")),
+                Arguments.of("""
+                        {"html_url": "h", "issue_url": "i"}""", new Issue("i", "h")),
+                Arguments.of("""
+                        {"comment_url": "c", "html_url": "h"}""", new Comment("c", "h")),
+                Arguments.of("""
+                        {"issue_url": "i", "comment_url": "c"}""", new Issue("i", null)),
+                Arguments.of("""
+                        {"comment_url": "c", "issue_url": "i"}""", new Comment("c", null)));
     }
 
-    @Test
-    void readValue_shouldGiveTheBranchOfTheFirstKey_whenTheObjectHasTwoKeys() {
-        final Location issueFirst = MAPPER.readValue("""
-                {"issue_url": "i", "comment_url": "c"}""", Location.class);
-        final Location commentFirst = MAPPER.readValue("""
-                {"comment_url": "c", "issue_url": "i"}""", Location.class);
+    @ParameterizedTest
+    @MethodSource("keyedObjects")
+    void readValue_shouldGiveTheBranchOfTheFirstKey_whenTheObjectHasAKey(final String json, final Location expected) {
+        final Location found = MAPPER.readValue(json, Location.class);
 
-        assertThat(List.of(issueFirst, commentFirst)).containsExactly(new Issue("i", null), new Comment("c", null));
+        assertThat(found).isEqualTo(expected);
     }
 
     @Test
@@ -246,16 +248,19 @@ class PresenceUnionModuleTest {
     }
 
     @Test
-    void readValue_shouldReadABranchAsItself_whenTheBranchIsRead() {
-        final ActionsLog actionsLog = MAPPER.readValue("""
+    void readValue_shouldReadTheFallbackAsItself_whenTheBranchIsRead() {
+        final ActionsLog found = MAPPER.readValue("""
                 {"start_line": 3}""", ActionsLog.class);
-        final LocationUnknown unknown = MAPPER.readValue("""
+
+        assertThat(found).isEqualTo(new ActionsLog(null, 3));
+    }
+
+    @Test
+    void readValue_shouldReadTheUnknownAsItself_whenTheUnknownIsRead() {
+        final LocationUnknown found = MAPPER.readValue("""
                 {"issue_url": "i"}""", LocationUnknown.class);
 
-        assertSoftly(softly -> {
-            softly.assertThat(actionsLog).isEqualTo(new ActionsLog(null, 3));
-            softly.assertThat(unknown).isEqualTo(new LocationUnknown(Map.of("issue_url", "i")));
-        });
+        assertThat(found).isEqualTo(new LocationUnknown(Map.of("issue_url", "i")));
     }
 
     @Test
