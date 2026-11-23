@@ -1,8 +1,10 @@
 package io.github.piotr_janczukowicz.testsupport.catalog;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -24,6 +26,10 @@ final class SampleSupport {
             "components/schemas/sample",
             """
             {"type":"object","properties":{"name":{"type":"string"},"count":{"type":"integer"}},"required":["name","count"]}
+            """,
+            "components/schemas/sample-tuple",
+            """
+            {"type":"array","prefixItems":[{"type":"integer","format":"int64"},{"type":"string"}],"items":false,"minItems":2,"maxItems":2}
             """,
             "components/schemas/sample-text",
             """
@@ -102,6 +108,12 @@ final class SampleSupport {
 
     @CatalogSchema("components/schemas/sample")
     record Sample(String name, int count) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonFormat(shape = JsonFormat.Shape.ARRAY)
+    @JsonPropertyOrder({"fieldId", "direction"})
+    @CatalogSchema("components/schemas/sample-tuple")
+    record SampleTuple(long fieldId, String direction) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @CatalogSchema({"components/schemas/sample-multi-a", "components/schemas/sample-multi-b"})

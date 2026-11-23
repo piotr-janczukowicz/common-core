@@ -1,0 +1,15 @@
+{
+  "type": "array",
+  "prefixItems": [
+    {
+      "type": "integer",
+      "format": "int64"
+    },
+    {
+      "type": "string"
+    }
+  ],
+  "items": false,
+  "minItems": 2,
+  "maxItems": 2
+}
