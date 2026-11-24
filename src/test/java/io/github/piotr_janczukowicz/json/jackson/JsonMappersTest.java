@@ -182,6 +182,27 @@ class JsonMappersTest {
             Map<String, @Nullable String> files, @Nullable String description) {}
 
     @Test
+    void defaults_shouldWriteWholeDoublesAsIntegers_whenEncoding() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+
+        final String encoded = mapper.writeValueAsString(new Measures(5.0, 2.0, List.of(1.0, 1.5), Map.of("k", 3.0)));
+
+        assertThat(encoded).isEqualTo("{\"boxed\":5,\"primitive\":2,\"list\":[1,1.5],\"map\":{\"k\":3}}");
+    }
+
+    @Test
+    void defaults_shouldKeepFractionsAndNegativeZeroAsNumbers_whenEncoding() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+
+        final String encoded = mapper.writeValueAsString(new Measures(5.5, -0.0, List.of(), Map.of()));
+
+        assertThat(encoded).isEqualTo("{\"boxed\":5.5,\"primitive\":-0.0,\"list\":[],\"map\":{}}");
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Measures(@Nullable Double boxed, double primitive, List<Double> list, Map<String, Double> map) {}
+
+    @Test
     void constructor_shouldThrow_whenInstantiatedViaReflection() throws Exception {
         final Constructor<JsonMappers> constructor = JsonMappers.class.getDeclaredConstructor();
         constructor.setAccessible(true);

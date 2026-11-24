@@ -43,7 +43,8 @@ public final class JsonMappers {
      * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; reads
      * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; reads and writes
      * {@link io.github.piotr_janczukowicz.json.EpochInstant} properties through it; and reads {@link Instant} values
-     * with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
+     * with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps, and a {@code double} or
+     * {@code Double} with no fractional part is written as an integer, as {@link IntegralDoubleSerializer} does.
      *
      * @return a new builder with these settings
      */
@@ -69,7 +70,10 @@ public final class JsonMappers {
                 .addModule(new OptionalNullModule())
                 .addModule(new ValueUnionModule())
                 .addModule(
-                        new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()));
+                        new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()))
+                .addModule(new SimpleModule("IntegralDouble")
+                        .addSerializer(Double.class, new IntegralDoubleSerializer())
+                        .addSerializer(Double.TYPE, new IntegralDoubleSerializer()));
     }
 
     /**
