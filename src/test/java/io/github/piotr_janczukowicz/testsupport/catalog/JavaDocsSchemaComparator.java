@@ -217,7 +217,9 @@ public final class JavaDocsSchemaComparator {
      * A {@link ValueUnion} stands for every branch of its docs {@code oneOf}/{@code anyOf}: each branch (a {@code null}
      * one apart) needs the class the annotation names for its JSON token (an integer also reads as a number); a docs
      * object with properties is compared by property names when that class is a record (an object union, an interface,
-     * is compared by its own branches' tests).
+     * is compared by its own branches' tests). A string or integer branch whose record wraps an enum, a
+     * {@link LocalDate} or an {@link Instant} is compared as that type is against a plain schema: an enum by its wire
+     * values against the branch {@code enum} (or {@code const}), a date or a date-time by its {@code format}.
      */
     private static void alignValueUnion(
             final String path, final Class<?> union, final JsonNode schema, final List<String> mismatches) {
@@ -237,8 +239,41 @@ public final class JavaDocsSchemaComparator {
                         propertyNames(mergeCompositionIntoProperties(branch).get("properties")),
                         properties(MAPPER.constructType(branchClass)),
                         mismatches);
+            } else if (branchClass.isRecord() && !"object".equals(token)) {
+                alignWrappedScalar(path, token, branchClass, branch, mismatches);
             }
         }
+    }
+
+    private static void alignWrappedScalar(
+            final String path,
+            final String token,
+            final Class<?> branchClass,
+            final JsonNode branch,
+            final List<String> mismatches) {
+        final RecordComponent[] components = branchClass.getRecordComponents();
+        if (components.length != 1 || !("string".equals(token) || "integer".equals(token))) {
+            return;
+        }
+        final Class<?> value = components[0].getType();
+        if (!value.isEnum() && value != LocalDate.class && value != Instant.class) {
+            return;
+        }
+        final JsonNode docs = withConstAsEnum(branch);
+        if (value.isEnum() && !docs.has("enum")) {
+            mismatches.add(path + ": docs " + token + " without enum, java enum " + value.getSimpleName());
+            return;
+        }
+        alignScalar(path, MAPPER.constructType(components[0].getGenericType()), docs, mismatches);
+    }
+
+    private static JsonNode withConstAsEnum(final JsonNode branch) {
+        if (!branch.has("const") || branch.has("enum") || !(branch instanceof final ObjectNode object)) {
+            return branch;
+        }
+        final ObjectNode copy = object.deepCopy();
+        copy.putArray("enum").add(branch.get("const"));
+        return copy;
     }
 
     private static @Nullable String valueToken(final JsonNode branch) {

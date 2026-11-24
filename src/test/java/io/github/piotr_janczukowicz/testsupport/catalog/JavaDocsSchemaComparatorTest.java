@@ -877,6 +877,91 @@ class JavaDocsSchemaComparatorTest {
         assertThat(JavaDocsSchemaComparator.diff(ScopeHolder.class, schema)).isEmpty();
     }
 
+    @Test
+    void diff_shouldAcceptWrappedEnumsAndDate_whenTheyMatchTheDocsBranches() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"expires":{"oneOf":[{"type":"string","format":"date"},{"type":"integer","enum":[0]}]},"mode":{"anyOf":[{"type":"string","enum":["a","b"]},{"type":"boolean"}]}},"required":["expires","mode"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(TypedHolder.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReadAConstAsAOneValueEnum_whenTheBranchIsWrapped() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"expires":{"oneOf":[{"type":"string","format":"date"},{"type":"integer","const":0}]},"mode":{"anyOf":[{"type":"string","enum":["a","b"]},{"type":"boolean"}]}},"required":["expires","mode"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(TypedHolder.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportTheValues_whenAWrappedEnumDiffersFromTheDocsEnum() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"expires":{"oneOf":[{"type":"string","format":"date"},{"type":"integer","enum":[0,1]}]},"mode":{"anyOf":[{"type":"string","enum":["a","c"]},{"type":"boolean"}]}},"required":["expires","mode"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(TypedHolder.class, schema))
+                .containsExactlyInAnyOrder(
+                        "expires: docs enum 1, missing on java",
+                        "mode: docs enum c, missing on java",
+                        "mode: java enum b, missing on docs");
+    }
+
+    @Test
+    void diff_shouldReportTheBranch_whenAWrappedTypeHasNoMatchingDocs() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"expires":{"oneOf":[{"type":"string"},{"type":"integer"}]},"mode":{"anyOf":[{"type":"string"},{"type":"boolean"}]}},"required":["expires","mode"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(TypedHolder.class, schema))
+                .containsExactlyInAnyOrder(
+                        "expires: docs plain string, java [simple type, class java.time.LocalDate]",
+                        "expires: docs integer without enum, java enum ExpiresZero",
+                        "mode: docs string without enum, java enum ModeText");
+    }
+
+    @ValueUnion(string = ExpiresDate.class, integer = ExpiresInteger.class)
+    sealed interface Expires permits ExpiresDate, ExpiresInteger {}
+
+    record ExpiresDate(@JsonValue LocalDate value) implements Expires {}
+
+    record ExpiresInteger(@JsonValue ExpiresZero value) implements Expires {}
+
+    enum ExpiresZero {
+        ZERO;
+
+        @JsonValue
+        public int wireValue() {
+            return 0;
+        }
+    }
+
+    @ValueUnion(string = ModeTextBranch.class, flag = ModeFlag.class)
+    sealed interface Selection permits ModeTextBranch, ModeFlag {}
+
+    record ModeTextBranch(@JsonValue ModeText value) implements Selection {}
+
+    record ModeFlag(@JsonValue boolean value) implements Selection {}
+
+    enum ModeText {
+        A("a"),
+        B("b");
+
+        private final String wire;
+
+        ModeText(final String wire) {
+            this.wire = wire;
+        }
+
+        @JsonValue
+        public String wireValue() {
+            return wire;
+        }
+    }
+
+    record TypedHolder(Expires expires, Selection mode) {}
+
     @ValueUnion(string = ScopeText.class, object = ScopeDetails.class, array = ScopeTexts.class)
     sealed interface Scope permits ScopeText, ScopeDetails, ScopeTexts {}
 
