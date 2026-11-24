@@ -41,8 +41,9 @@ public final class JsonMappers {
      * not the value; reads a single value where an array is expected; converts a JSON number or boolean to a
      * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; reads
      * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; reads
-     * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; and reads
-     * {@link Instant} values with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
+     * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; reads and writes
+     * {@link io.github.piotr_janczukowicz.json.EpochInstant} properties through it; and reads {@link Instant} values
+     * with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
      *
      * @return a new builder with these settings
      */

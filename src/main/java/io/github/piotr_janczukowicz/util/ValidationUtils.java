@@ -1,6 +1,7 @@
 package io.github.piotr_janczukowicz.util;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -28,6 +29,8 @@ public final class ValidationUtils {
     private static final String MAXIMUM = "maximum";
     private static final String ELEMENTS = " elements";
     private static final String ENTRIES = " entries";
+    private static final int NANOS_PER_MILLI = 1_000_000;
+    private static final String MUST_BE_WHOLE = "must be a whole number of ";
     private static final String MUST_BE_AT_LEAST = "must be at least ";
     private static final String MUST_BE_AT_MOST = "must be at most ";
     private static final String MUST_BE_POSITIVE = "must be positive";
@@ -1230,6 +1233,79 @@ public final class ValidationUtils {
      */
     public static boolean isPositive(@Nullable final Duration duration) {
         return duration != null && !duration.isNegative() && !duration.isZero();
+    }
+
+    /**
+     * Requires {@code value} to be a whole number of seconds, with no nanoseconds.
+     *
+     * @param value instant to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws NullPointerException if {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code value} has a non-zero nanosecond part
+     */
+    public static Instant requireWholeSeconds(final Instant value, final String fieldName) {
+        requireNonNull(value, fieldName);
+
+        if (value.getNano() != 0) {
+            throw invalid(fieldName, MUST_BE_WHOLE + "seconds");
+        }
+        return value;
+    }
+
+    /**
+     * Requires {@code value} to be a whole number of milliseconds, with no finer precision.
+     *
+     * @param value instant to check
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws NullPointerException if {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code value} has nanoseconds that are not a multiple of one million
+     */
+    public static Instant requireWholeMillis(final Instant value, final String fieldName) {
+        requireNonNull(value, fieldName);
+
+        if (value.getNano() % NANOS_PER_MILLI != 0) {
+            throw invalid(fieldName, MUST_BE_WHOLE + "milliseconds");
+        }
+        return value;
+    }
+
+    /**
+     * Requires {@code value} to be a whole number of seconds when it is non-null.
+     *
+     * <p>{@code null} is allowed and returned unchanged. A present value is checked with
+     * {@link #requireWholeSeconds(Instant, String)}.
+     *
+     * @param value instant to check, or {@code null}
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws IllegalArgumentException if {@code value} has a non-zero nanosecond part
+     */
+    public static @Nullable Instant requireWholeSecondsIfPresent(
+            @Nullable final Instant value, final String fieldName) {
+        if (value != null) {
+            requireWholeSeconds(value, fieldName);
+        }
+        return value;
+    }
+
+    /**
+     * Requires {@code value} to be a whole number of milliseconds when it is non-null.
+     *
+     * <p>{@code null} is allowed and returned unchanged. A present value is checked with
+     * {@link #requireWholeMillis(Instant, String)}.
+     *
+     * @param value instant to check, or {@code null}
+     * @param fieldName name of the checked value, used in the exception message
+     * @return {@code value}
+     * @throws IllegalArgumentException if {@code value} has nanoseconds that are not a multiple of one million
+     */
+    public static @Nullable Instant requireWholeMillisIfPresent(@Nullable final Instant value, final String fieldName) {
+        if (value != null) {
+            requireWholeMillis(value, fieldName);
+        }
+        return value;
     }
 
     private static String between(final Object minimum, final Object maximum) {

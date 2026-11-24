@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2263,5 +2264,101 @@ class ValidationUtilsTest {
         final Throwable thrown = catchThrowable(() -> ValidationUtils.requireFilePath("a/../b", "path"));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("segment");
+    }
+
+    @Test
+    void requireWholeSeconds_shouldReturnValue_whenNanosAreZero() {
+        final Instant value = Instant.ofEpochSecond(5);
+
+        assertThat(ValidationUtils.requireWholeSeconds(value, "at")).isSameAs(value);
+    }
+
+    @Test
+    void requireWholeSeconds_shouldThrow_whenNanosAreNotZero() {
+        final Instant value = Instant.ofEpochSecond(5, 1_000_000);
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeSeconds(value, "at"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("at must be a whole number of seconds");
+    }
+
+    @Test
+    void requireWholeSeconds_shouldThrowNamingTheField_whenNull() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeSeconds(null, "at"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("at must not be null");
+    }
+
+    @Test
+    void requireWholeMillis_shouldReturnValue_whenNanosAreAMultipleOfOneMillion() {
+        final Instant value = Instant.ofEpochSecond(5, 3_000_000);
+
+        assertThat(ValidationUtils.requireWholeMillis(value, "at")).isSameAs(value);
+    }
+
+    @Test
+    void requireWholeMillis_shouldThrow_whenFinerThanMillis() {
+        final Instant value = Instant.ofEpochSecond(5, 1_000_001);
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeMillis(value, "at"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("at must be a whole number of milliseconds");
+    }
+
+    @Test
+    void requireWholeMillis_shouldThrowNamingTheField_whenNull() {
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeMillis(null, "at"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("at must not be null");
+    }
+
+    @Test
+    void requireWholeSecondsIfPresent_shouldReturnNull_whenNull() {
+        assertThat(ValidationUtils.requireWholeSecondsIfPresent(null, "at")).isNull();
+    }
+
+    @Test
+    void requireWholeSecondsIfPresent_shouldReturnValue_whenWhole() {
+        final Instant value = Instant.ofEpochSecond(5);
+
+        assertThat(ValidationUtils.requireWholeSecondsIfPresent(value, "at")).isSameAs(value);
+    }
+
+    @Test
+    void requireWholeSecondsIfPresent_shouldThrow_whenNanosAreNotZero() {
+        final Instant value = Instant.ofEpochSecond(5, 1);
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeSecondsIfPresent(value, "at"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("at must be a whole number of seconds");
+    }
+
+    @Test
+    void requireWholeMillisIfPresent_shouldReturnNull_whenNull() {
+        assertThat(ValidationUtils.requireWholeMillisIfPresent(null, "at")).isNull();
+    }
+
+    @Test
+    void requireWholeMillisIfPresent_shouldReturnValue_whenWhole() {
+        final Instant value = Instant.ofEpochSecond(5, 2_000_000);
+
+        assertThat(ValidationUtils.requireWholeMillisIfPresent(value, "at")).isSameAs(value);
+    }
+
+    @Test
+    void requireWholeMillisIfPresent_shouldThrow_whenFinerThanMillis() {
+        final Instant value = Instant.ofEpochSecond(5, 1);
+
+        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireWholeMillisIfPresent(value, "at"));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("at must be a whole number of milliseconds");
     }
 }

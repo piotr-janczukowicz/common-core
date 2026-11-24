@@ -195,6 +195,21 @@ declared type, refused as that type refuses it. Writing is unchanged: a `null` i
 record Commit(String sha, @EmptyObjectAsNull @Nullable User author) {}
 ```
 
+### Epoch instants
+
+`@EpochInstant(EpochUnit.SECONDS)` or `@EpochInstant(EpochUnit.MILLIS)` marks an `Instant` record component (or field,
+accessor or parameter) whose JSON value is an integer count of that unit since 1970-01-01T00:00:00Z. Reading is
+lenient: it accepts an integer, a number with a zero fraction (`5.0`, `1.7E12`, read exactly) and ISO-8601 text; JSON
+`null` reads as `null`. A number with a non-zero fraction, a boolean, object or array, and an integer outside the range
+of `Instant` are refused with a Jackson `DatabindException`. Writing is strict: the integer count is written, and an
+`Instant` finer than the unit is refused; a `null` follows the property's usual null handling. `ValueUnionModule` reads
+and writes it, so no other wiring is needed. `ValidationUtils.requireWholeSeconds` and `requireWholeMillis` (and their
+`IfPresent` forms) give a record constructor the same precision check.
+
+```java
+record Event(String name, @EpochInstant(EpochUnit.MILLIS) Instant at) {}
+```
+
 ### Union adapters
 
 | Adapter | Use it for |

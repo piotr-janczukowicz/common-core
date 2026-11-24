@@ -1,6 +1,7 @@
 package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import io.github.piotr_janczukowicz.json.EmptyObjectAsNull;
+import io.github.piotr_janczukowicz.json.EpochInstant;
 import io.github.piotr_janczukowicz.json.PresenceUnion;
 import io.github.piotr_janczukowicz.json.ValueUnion;
 import org.jspecify.annotations.Nullable;
@@ -17,9 +18,10 @@ import tools.jackson.databind.introspect.Annotated;
 
 /**
  * Jackson module that reads every class annotated with {@link ValueUnion} (picked by the first token) or
- * {@link PresenceUnion} (picked by the names of the object), and every property marked {@link EmptyObjectAsNull}, so
- * that a model needs no Jackson databind type of its own. {@link JsonMappers#snakeCase()} adds it. Writing needs
- * nothing: each branch writes itself.
+ * {@link PresenceUnion} (picked by the names of the object), and every property marked {@link EmptyObjectAsNull} or
+ * {@link EpochInstant}, so that a model needs no Jackson databind type of its own. {@link JsonMappers#snakeCase()} adds
+ * it. Writing needs nothing for unions: each branch writes itself; a property marked {@link EpochInstant} is also
+ * written, as an integer count of its unit.
  *
  * <p>The annotation is looked up on the class being read only, so a branch that implements a union is read as itself,
  * not as the union.
@@ -43,6 +45,7 @@ public final class ValueUnionModule extends JacksonModule {
     public void setupModule(final SetupContext context) {
         context.addDeserializers(new ValueUnionDeserializers());
         context.insertAnnotationIntrospector(new EmptyObjectAsNullIntrospector());
+        context.insertAnnotationIntrospector(new EpochInstantIntrospector());
     }
 
     static final class EmptyObjectAsNullIntrospector extends AnnotationIntrospector {
@@ -57,6 +60,28 @@ public final class ValueUnionModule extends JacksonModule {
         @Override
         public @Nullable Object findDeserializer(final MapperConfig<?> config, final Annotated annotated) {
             return annotated.hasAnnotation(EmptyObjectAsNull.class) ? new EmptyObjectAsNullDeserializer() : null;
+        }
+    }
+
+    static final class EpochInstantIntrospector extends AnnotationIntrospector {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Version version() {
+            return VERSION;
+        }
+
+        @Override
+        public @Nullable Object findDeserializer(final MapperConfig<?> config, final Annotated annotated) {
+            final EpochInstant epoch = annotated.getAnnotation(EpochInstant.class);
+            return epoch == null ? null : new EpochInstantDeserializer(epoch.value());
+        }
+
+        @Override
+        public @Nullable Object findSerializer(final MapperConfig<?> config, final Annotated annotated) {
+            final EpochInstant epoch = annotated.getAnnotation(EpochInstant.class);
+            return epoch == null ? null : new EpochInstantSerializer(epoch.value());
         }
     }
 
