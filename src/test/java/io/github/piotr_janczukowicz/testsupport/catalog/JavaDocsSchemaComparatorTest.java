@@ -887,6 +887,25 @@ class JavaDocsSchemaComparatorTest {
     }
 
     @Test
+    void diff_shouldAcceptTheFallbackConstant_whenAWrappedEnumIsOpen() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"level":{"oneOf":[{"type":"boolean"},{"type":"string","enum":["low","high"]}]}},"required":["level"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(OpenHolder.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportAnotherExtraValue_whenAWrappedEnumIsOpen() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"level":{"oneOf":[{"type":"boolean"},{"type":"string","enum":["low"]}]}},"required":["level"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(OpenHolder.class, schema))
+                .containsExactly("level: java enum high, missing on docs");
+    }
+
+    @Test
     void diff_shouldReadAConstAsAOneValueEnum_whenTheBranchIsWrapped() {
         final JsonNode schema = MAPPER.readTree("""
                 {"type":"object","properties":{"expires":{"oneOf":[{"type":"string","format":"date"},{"type":"integer","const":0}]},"mode":{"anyOf":[{"type":"string","enum":["a","b"]},{"type":"boolean"}]}},"required":["expires","mode"]}
@@ -961,6 +980,32 @@ class JavaDocsSchemaComparatorTest {
     }
 
     record TypedHolder(Expires expires, Selection mode) {}
+
+    @ValueUnion(string = LevelText.class, flag = LevelFlag.class)
+    sealed interface Level permits LevelText, LevelFlag {}
+
+    record LevelText(@JsonValue LevelValue value) implements Level {}
+
+    record LevelFlag(@JsonValue boolean value) implements Level {}
+
+    enum LevelValue {
+        LOW("low"),
+        HIGH("high"),
+        UNRECOGNIZED("unrecognized");
+
+        private final String wire;
+
+        LevelValue(final String wire) {
+            this.wire = wire;
+        }
+
+        @JsonValue
+        public String wireValue() {
+            return wire;
+        }
+    }
+
+    record OpenHolder(Level level) {}
 
     @ValueUnion(string = ScopeText.class, object = ScopeDetails.class, array = ScopeTexts.class)
     sealed interface Scope permits ScopeText, ScopeDetails, ScopeTexts {}

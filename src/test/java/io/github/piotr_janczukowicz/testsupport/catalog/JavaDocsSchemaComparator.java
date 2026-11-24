@@ -23,6 +23,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -245,6 +246,8 @@ public final class JavaDocsSchemaComparator {
         }
     }
 
+    private static final String OPEN_ENUM_WIRE = "unrecognized";
+
     private static void alignWrappedScalar(
             final String path,
             final String token,
@@ -264,7 +267,18 @@ public final class JavaDocsSchemaComparator {
             mismatches.add(path + ": docs " + token + " without enum, java enum " + value.getSimpleName());
             return;
         }
-        alignScalar(path, MAPPER.constructType(components[0].getGenericType()), docs, mismatches);
+        final List<String> found = new ArrayList<>();
+        alignScalar(path, MAPPER.constructType(components[0].getGenericType()), docs, found);
+        if (value.isEnum() && isOpenEnum(value)) {
+            found.remove(path + ": java enum " + OPEN_ENUM_WIRE + ", missing on docs");
+        }
+        mismatches.addAll(found);
+    }
+
+    // An open enum has the fallback constant UNRECOGNIZED with the wire value unrecognized, which no docs enum lists.
+    private static boolean isOpenEnum(final Class<?> enumType) {
+        return Arrays.stream(enumType.getEnumConstants())
+                .anyMatch(constant -> "UNRECOGNIZED".equals(((Enum<?>) constant).name()));
     }
 
     private static JsonNode withConstAsEnum(final JsonNode branch) {
