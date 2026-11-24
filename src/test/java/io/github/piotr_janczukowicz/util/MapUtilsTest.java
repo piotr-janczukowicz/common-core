@@ -73,6 +73,43 @@ class MapUtilsTest {
     }
 
     @Test
+    void copyKeepingNullsOrNull_shouldReturnNull_whenValuesIsNull() {
+        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(null);
+
+        assertThat(copy).isNull();
+    }
+
+    @Test
+    void copyKeepingNullsOrNull_shouldKeepTheOrderAndTheNulls_whenValuesHasThem() {
+        final Map<String, Object> values = new LinkedHashMap<>();
+        values.put("z", 1);
+        values.put("a", null);
+        values.put("m", "x");
+
+        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(values);
+
+        assertSoftly(softly -> {
+            softly.assertThat(copy).isEqualTo(values).isNotSameAs(values);
+            softly.assertThat(copy.keySet()).containsExactly("z", "a", "m");
+            softly.assertThat(copy).containsEntry("a", null);
+        });
+    }
+
+    @Test
+    void copyKeepingNullsOrNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+        final Map<String, Object> values = new HashMap<>(Map.of("a", "b"));
+
+        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(values);
+        values.put("c", "d");
+
+        assertSoftly(softly -> {
+            softly.assertThat(copy).containsOnlyKeys("a");
+            softly.assertThat(catchThrowable(() -> copy.put("e", "f")))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        });
+    }
+
+    @Test
     void copyOrNull_shouldReturnNull_whenValuesIsNull() {
         final Map<String, String> copy = MapUtils.copyOrNull(null);
 

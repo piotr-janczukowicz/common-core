@@ -42,6 +42,24 @@ public final class MapUtils {
     }
 
     /**
+     * Copies {@code values} into an unmodifiable map that keeps the iteration order and accepts {@code null} keys and
+     * values, and keeps an absent map absent.
+     *
+     * @param values the map to copy, or {@code null}
+     * @param <K> key type
+     * @param <V> value type
+     * @return an unmodifiable copy of {@code values} in its iteration order, or {@code null} if {@code values} is
+     *     {@code null}
+     */
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
+    public static <K, V> @Nullable Map<K, V> copyKeepingNullsOrNull(@Nullable final Map<K, V> values) {
+        if (values == null) {
+            return null;
+        }
+        return copyKeepingNulls(values);
+    }
+
+    /**
      * Copies {@code values} into an unmodifiable map, and keeps an absent map absent.
      *
      * @param values the map to copy, or {@code null}

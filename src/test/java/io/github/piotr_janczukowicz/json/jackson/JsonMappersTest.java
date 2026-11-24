@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
 import java.lang.reflect.Constructor;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -162,6 +164,22 @@ class JsonMappersTest {
             softly.assertThat(decoded.missing()).isNull();
         });
     }
+
+    @Test
+    void defaults_shouldWriteANullMapValue_whenTheRecordIsNonNull() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+        final Map<String, @Nullable String> files = new LinkedHashMap<>();
+        files.put("a.txt", null);
+        files.put("b.txt", "x");
+
+        final String encoded = mapper.writeValueAsString(new Files(files, null));
+
+        assertThat(encoded).isEqualTo("{\"files\":{\"a.txt\":null,\"b.txt\":\"x\"}}");
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Files(
+            Map<String, @Nullable String> files, @Nullable String description) {}
 
     @Test
     void constructor_shouldThrow_whenInstantiatedViaReflection() throws Exception {
