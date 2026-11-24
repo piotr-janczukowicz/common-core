@@ -1,4 +1,4 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import io.github.piotr_janczukowicz.json.EmptyObjectAsNull;
 import io.github.piotr_janczukowicz.json.PresenceUnion;

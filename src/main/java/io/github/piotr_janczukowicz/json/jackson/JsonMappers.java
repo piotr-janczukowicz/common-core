@@ -4,6 +4,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import io.github.piotr_janczukowicz.json.jackson.module.immutable.ImmutableCollectionsModule;
 import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
+import io.github.piotr_janczukowicz.json.jackson.module.valueunion.ValueUnionModule;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;

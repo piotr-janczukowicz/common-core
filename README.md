@@ -152,7 +152,7 @@ accident.
 
 `@ValueUnion` marks a type whose JSON value is one of several token kinds: it names one branch class per token (`string`,
 `integer`, `number`, `flag`, `array`, `object`) and optionally an `unknown` class that keeps any other token as it came;
-without it such a token is refused (`X takes a string or an object`). `ValueUnionModule` reads the annotated type: it picks
+without it such a token is refused (`X takes a string or an object`). `ValueUnionModule` (package `io.github.piotr_janczukowicz.json.jackson.module.valueunion`) reads the annotated type: it picks
 the class from the first token and lets that class read the value (a record with a delegating `@JsonCreator`, a plain record,
 or an object union). An integer goes to `integer` when it fits a `long`, else to `number`; a fraction never goes to
 `integer`. A branch created from a `BigDecimal` gets the number exactly, in plain notation; a branch created from a list of

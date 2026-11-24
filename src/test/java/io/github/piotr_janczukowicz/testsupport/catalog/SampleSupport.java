@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.JsonCodec;
 import io.github.piotr_janczukowicz.json.JsonType;
 import io.github.piotr_janczukowicz.json.ValueUnion;
-import io.github.piotr_janczukowicz.json.jackson.ValueUnionModule;
+import io.github.piotr_janczukowicz.json.jackson.module.valueunion.ValueUnionModule;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import java.util.List;
 import java.util.Map;

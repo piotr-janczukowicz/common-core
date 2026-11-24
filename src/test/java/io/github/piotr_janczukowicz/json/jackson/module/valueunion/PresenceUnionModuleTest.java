@@ -1,4 +1,4 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.PresenceUnion;
+import io.github.piotr_janczukowicz.json.jackson.JsonMappers;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.util.LinkedHashMap;
 import java.util.List;

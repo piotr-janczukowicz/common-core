@@ -1,5 +1,6 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
+import io.github.piotr_janczukowicz.json.jackson.BufferedJson;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonParser;

@@ -1,4 +1,4 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.json.ValueUnion;
+import io.github.piotr_janczukowicz.json.jackson.JsonMappers;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.math.BigDecimal;
 import java.util.Arrays;

@@ -1,6 +1,7 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import io.github.piotr_janczukowicz.json.PresenceUnion;
+import io.github.piotr_janczukowicz.json.jackson.BufferedJson;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

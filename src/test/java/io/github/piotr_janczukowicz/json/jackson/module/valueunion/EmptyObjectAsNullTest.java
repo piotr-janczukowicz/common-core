@@ -1,9 +1,10 @@
-package io.github.piotr_janczukowicz.json.jackson;
+package io.github.piotr_janczukowicz.json.jackson.module.valueunion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.github.piotr_janczukowicz.json.EmptyObjectAsNull;
+import io.github.piotr_janczukowicz.json.jackson.JsonMappers;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;

@@ -16,6 +16,7 @@ module common.core {
     exports io.github.piotr_janczukowicz.json.jackson;
     exports io.github.piotr_janczukowicz.json.jackson.module.immutable;
     exports io.github.piotr_janczukowicz.json.jackson.module.optionalnull;
+    exports io.github.piotr_janczukowicz.json.jackson.module.valueunion;
     exports io.github.piotr_janczukowicz.http;
     exports io.github.piotr_janczukowicz.http.client;
     exports io.github.piotr_janczukowicz.http.client.authentication;
@@ -30,5 +31,7 @@ module common.core {
     opens io.github.piotr_janczukowicz.json.jackson.module.immutable to
             tools.jackson.databind;
     opens io.github.piotr_janczukowicz.json.jackson.module.optionalnull to
+            tools.jackson.databind;
+    opens io.github.piotr_janczukowicz.json.jackson.module.valueunion to
             tools.jackson.databind;
 }

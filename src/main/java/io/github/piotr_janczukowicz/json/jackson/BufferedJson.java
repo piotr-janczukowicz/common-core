@@ -262,25 +262,12 @@ public final class BufferedJson implements AutoCloseable {
     }
 
     /**
-     * Position of the first of {@code fields} that is a top-level property with a value other than {@code null}, found
-     * in a single pass. Only the first occurrence of each property counts, as in {@link #hasNonNull(String)}.
-     *
-     * @param fields property names in priority order
-     * @return index into {@code fields}, or {@code -1} when the value is not an object or none qualifies
-     */
-    int firstNonNull(final List<String> fields) {
-        try (JsonParser parser = replay()) {
-            return indexOfFirstNonNull(parser, fields);
-        }
-    }
-
-    /**
      * The top-level property names of an object in document order, each once (its first occurrence), with a
      * {@code null} value too.
      *
      * @return the names; empty when the value is not an object
      */
-    Set<String> names() {
+    public Set<String> names() {
         final Set<String> found = new LinkedHashSet<>();
         try (JsonParser parser = replay()) {
             if (parser.currentToken() != JsonToken.START_OBJECT) {
@@ -298,8 +285,14 @@ public final class BufferedJson implements AutoCloseable {
     /**
      * Reads the object at the parser's current token with {@code deserializer}, or returns {@code null} for an object
      * with no properties.
+     *
+     * @param parser parser positioned on the first token of the value; it ends after the value
+     * @param context context used for the read
+     * @param deserializer reads any other value
+     * @param <T> type the deserializer reads
+     * @return the value, or {@code null} for an object with no properties
      */
-    static <T> @Nullable T readUnlessEmptyObject(
+    public static <T> @Nullable T readUnlessEmptyObject(
             final JsonParser parser, final DeserializationContext context, final ValueDeserializer<T> deserializer) {
         try (BufferedJson json = capture(parser, context)) {
             if (json.isEmptyObject()) {
@@ -308,6 +301,19 @@ public final class BufferedJson implements AutoCloseable {
             try (JsonParser replayed = json.replay()) {
                 return deserializer.deserialize(replayed, context);
             }
+        }
+    }
+
+    /**
+     * Position of the first of {@code fields} that is a top-level property with a value other than {@code null}, found
+     * in a single pass. Only the first occurrence of each property counts, as in {@link #hasNonNull(String)}.
+     *
+     * @param fields property names in priority order
+     * @return index into {@code fields}, or {@code -1} when the value is not an object or none qualifies
+     */
+    int firstNonNull(final List<String> fields) {
+        try (JsonParser parser = replay()) {
+            return indexOfFirstNonNull(parser, fields);
         }
     }
 
