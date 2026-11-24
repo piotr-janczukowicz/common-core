@@ -19,7 +19,8 @@ import java.lang.annotation.Target;
  *   <li>any other JSON number goes to {@link #number()}, never to {@link #integer()};
  *   <li>a JSON boolean goes to {@link #flag()};
  *   <li>a JSON array goes to {@link #array()}: when that class is created from a collection of strings, every item must
- *       be a JSON string;
+ *       be a JSON string, else the whole array goes to {@link #unknown()} when it is given and is refused when it is
+ *       not;
  *   <li>a JSON object goes to {@link #object()};
  *   <li>a token whose class is not given goes to {@link #unknown()}, which keeps the value as it came; without it the
  *       value is refused.

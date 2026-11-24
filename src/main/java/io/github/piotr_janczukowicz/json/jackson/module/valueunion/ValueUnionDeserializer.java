@@ -13,6 +13,7 @@ import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.deser.ValueInstantiator;
 import tools.jackson.databind.deser.std.StdDeserializer;
+import tools.jackson.databind.util.TokenBuffer;
 
 /**
  * Reads a {@link ValueUnion}: picks the branch class from the value's first token and lets that class read the value.
@@ -20,7 +21,8 @@ import tools.jackson.databind.deser.std.StdDeserializer;
  * <p>Two branch kinds are read here instead of by Jackson, because the mapper's coercions would change them: a branch
  * created from a {@link BigDecimal} gets the number exactly, in plain notation ({@code 1e10} is {@code 10000000000}),
  * and a branch created from a collection of strings takes JSON strings only (the mapper would read {@code [1]} as
- * {@code ["1"]}).
+ * {@code ["1"]}). When the union has an unknown branch, an array with an item that is not a string goes to that branch
+ * as a whole instead of being refused.
  */
 final class ValueUnionDeserializer extends StdDeserializer<Object> {
 
@@ -87,9 +89,38 @@ final class ValueUnionDeserializer extends StdDeserializer<Object> {
         if (token == JsonToken.START_ARRAY
                 && instantiator.canCreateUsingArrayDelegate()
                 && isStringCollection(instantiator.getArrayDelegateType(config))) {
-            return instantiator.createUsingArrayDelegate(context, readStrings(parser));
+            return union.unknown() == Void.class
+                    ? instantiator.createUsingArrayDelegate(context, readStrings(parser))
+                    : readStringsOrUnknown(parser, context, instantiator);
         }
         return deserializer.deserialize(parser, context);
+    }
+
+    private Object readStringsOrUnknown(
+            final JsonParser parser, final DeserializationContext context, final ValueInstantiator instantiator) {
+        try (TokenBuffer buffer = TokenBuffer.forBuffering(parser, context)) {
+            buffer.copyCurrentStructure(parser);
+            if (onlyStrings(buffer, context)) {
+                try (JsonParser replay = buffer.asParserOnFirstToken(context)) {
+                    return instantiator.createUsingArrayDelegate(context, readStrings(replay));
+                }
+            }
+            final ValueDeserializer<Object> unknown =
+                    context.findRootValueDeserializer(context.constructType(union.unknown()));
+            try (JsonParser replay = buffer.asParserOnFirstToken(context)) {
+                return unknown.deserialize(replay, context);
+            }
+        }
+    }
+
+    private static boolean onlyStrings(final TokenBuffer buffer, final DeserializationContext context) {
+        try (JsonParser replay = buffer.asParserOnFirstToken(context)) {
+            JsonToken token = replay.nextToken();
+            while (token == JsonToken.VALUE_STRING) {
+                token = replay.nextToken();
+            }
+            return token == JsonToken.END_ARRAY;
+        }
     }
 
     @SuppressWarnings("PMD.LawOfDemeter")

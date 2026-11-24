@@ -80,6 +80,22 @@ class ValueUnionModuleTest {
         ReceivedUnknown {}
     }
 
+    @ValueUnion(array = Open.Texts.class, unknown = OpenUnknown.class)
+    sealed interface Open permits Open.Texts, OpenUnknown {
+
+        record Texts(@JsonValue List<String> values) implements Open {
+            @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+            public Texts {
+                values = List.copyOf(values);
+            }
+        }
+    }
+
+    record OpenUnknown(@JsonValue Object value) implements Open {
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+        OpenUnknown {}
+    }
+
     @ValueUnion(string = Rule.Text.class, array = Rule.Values.class, object = RuleDetails.class)
     sealed interface Rule permits Rule.Text, Rule.Values, RuleDetails {
 
@@ -279,6 +295,36 @@ class ValueUnionModuleTest {
 
         assertThat(value).isEqualTo(new ReceivedUnknown(1.5));
     }
+
+    @Test
+    void decode_shouldGiveTheArrayBranch_whenTheUnionHasAnUnknownBranchAndEveryItemIsAString() {
+        final Open value = MAPPER.readValue("[\"a\",\"b\"]", Open.class);
+
+        assertThat(value).isEqualTo(new Open.Texts(List.of("a", "b")));
+    }
+
+    @Test
+    void decode_shouldGiveTheUnknownBranchTheWholeArray_whenAnItemIsNotAString() {
+        final Open value = MAPPER.readValue("[\"a\",1,{\"k\":[true]},null]", Open.class);
+
+        assertThat(value).isEqualTo(new OpenUnknown(Arrays.asList("a", 1, Map.of("k", List.of(true)), null)));
+    }
+
+    @Test
+    void decode_shouldGiveTheUnknownBranch_whenTheFirstItemOfAnArrayIsANumber() {
+        final Open value = MAPPER.readValue("[1]", Open.class);
+
+        assertThat(value).isEqualTo(new OpenUnknown(List.of(1)));
+    }
+
+    @Test
+    void decode_shouldGiveTheUnknownBranchTheWholeArray_whenTheArrayIsNestedInAnObject() {
+        final OpenHolder value = MAPPER.readValue("{\"open\":[1,2],\"after\":\"x\"}", OpenHolder.class);
+
+        assertThat(value).isEqualTo(new OpenHolder(new OpenUnknown(List.of(1, 2)), "x"));
+    }
+
+    record OpenHolder(Open open, String after) {}
 
     @Test
     void decode_shouldGiveTheUnknownBranch_whenNoOtherBranchTakesAnArray() {

@@ -156,7 +156,7 @@ without it such a token is refused (`X takes a string or an object`). `ValueUnio
 the class from the first token and lets that class read the value (a record with a delegating `@JsonCreator`, a plain record,
 or an object union). An integer goes to `integer` when it fits a `long`, else to `number`; a fraction never goes to
 `integer`. A branch created from a `BigDecimal` gets the number exactly, in plain notation; a branch created from a list of
-strings takes JSON strings only. The annotation is not inherited, so a branch that implements the union reads as itself.
+strings takes JSON strings only; with an `unknown` class, an array holding any other item goes to it as a whole, and without one it is refused. The annotation is not inherited, so a branch that implements the union reads as itself.
 `JsonMappers.snakeCase()` registers the module; on another mapper call `builder.addModule(new ValueUnionModule())`.
 
 ```java
