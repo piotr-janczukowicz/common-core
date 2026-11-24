@@ -1,20 +1,25 @@
 package io.github.piotr_janczukowicz.json.jackson;
 
+import io.github.piotr_janczukowicz.json.EmptyObjectAsNull;
 import io.github.piotr_janczukowicz.json.PresenceUnion;
 import io.github.piotr_janczukowicz.json.ValueUnion;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.Version;
+import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.BeanDescription;
 import tools.jackson.databind.DeserializationConfig;
 import tools.jackson.databind.JacksonModule;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.cfg.MapperConfig;
 import tools.jackson.databind.deser.Deserializers;
+import tools.jackson.databind.introspect.Annotated;
 
 /**
  * Jackson module that reads every class annotated with {@link ValueUnion} (picked by the first token) or
- * {@link PresenceUnion} (picked by the names of the object), so that a model needs no Jackson databind type of its own.
- * {@link JsonMappers#snakeCase()} adds it. Writing needs nothing: each branch writes itself.
+ * {@link PresenceUnion} (picked by the names of the object), and every property marked {@link EmptyObjectAsNull}, so
+ * that a model needs no Jackson databind type of its own. {@link JsonMappers#snakeCase()} adds it. Writing needs
+ * nothing: each branch writes itself.
  *
  * <p>The annotation is looked up on the class being read only, so a branch that implements a union is read as itself,
  * not as the union.
@@ -37,6 +42,22 @@ public final class ValueUnionModule extends JacksonModule {
     @Override
     public void setupModule(final SetupContext context) {
         context.addDeserializers(new ValueUnionDeserializers());
+        context.insertAnnotationIntrospector(new EmptyObjectAsNullIntrospector());
+    }
+
+    static final class EmptyObjectAsNullIntrospector extends AnnotationIntrospector {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Version version() {
+            return VERSION;
+        }
+
+        @Override
+        public @Nullable Object findDeserializer(final MapperConfig<?> config, final Annotated annotated) {
+            return annotated.hasAnnotation(EmptyObjectAsNull.class) ? new EmptyObjectAsNullDeserializer() : null;
+        }
     }
 
     static final class ValueUnionDeserializers extends Deserializers.Base {

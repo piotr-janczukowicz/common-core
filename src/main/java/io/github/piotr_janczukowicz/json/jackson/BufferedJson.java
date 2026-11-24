@@ -12,6 +12,7 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.util.TokenBuffer;
 
 /**
@@ -292,6 +293,22 @@ public final class BufferedJson implements AutoCloseable {
             }
         }
         return found;
+    }
+
+    /**
+     * Reads the object at the parser's current token with {@code deserializer}, or returns {@code null} for an object
+     * with no properties.
+     */
+    static <T> @Nullable T readUnlessEmptyObject(
+            final JsonParser parser, final DeserializationContext context, final ValueDeserializer<T> deserializer) {
+        try (BufferedJson json = capture(parser, context)) {
+            if (json.isEmptyObject()) {
+                return null;
+            }
+            try (JsonParser replayed = json.replay()) {
+                return deserializer.deserialize(replayed, context);
+            }
+        }
     }
 
     private <T> @Nullable T readLocated(final String field, final Function<JsonParser, T> reader) {

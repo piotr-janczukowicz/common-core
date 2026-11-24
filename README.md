@@ -184,6 +184,17 @@ came, and without it the object is refused. A name counts when present, also wit
 public sealed interface Location permits Commit, ActionsLog, LocationUnknown {}
 ```
 
+### Empty object as null
+
+`@EmptyObjectAsNull` marks a record component (or field, accessor or parameter) whose JSON value may be an object with no
+properties standing for "no value". Such an object and JSON `null` both read as `null`; any other value reads as the
+declared type, refused as that type refuses it. Writing is unchanged: a `null` is written as the property's usual null.
+`ValueUnionModule` reads it, so no other wiring is needed.
+
+```java
+record Commit(String sha, @EmptyObjectAsNull @Nullable User author) {}
+```
+
 ### Union adapters
 
 | Adapter | Use it for |
