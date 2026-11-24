@@ -13,10 +13,12 @@ import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
 import io.github.piotr_janczukowicz.openapi.model.SuppressSchemaTypeMismatch;
 import io.github.piotr_janczukowicz.util.FileUtils;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,12 +69,14 @@ public final class CatalogChecks {
     /**
      * The schema of a pointer, ready to validate the whole encoded value of a type.
      *
-     * <p>A top-level record component with {@code @JsonTypeInfo(include = EXTERNAL_PROPERTY)} is a union picked by a
-     * sibling value, and the spec's {@code oneOf} or {@code anyOf} of its branches may overlap, so "exactly one" says
-     * nothing about our code. That one keyword is removed from the property's node (the property is looked up in the
-     * root and in the root's {@code allOf} entries, through a nullable {@code anyOf}/{@code oneOf} of {@code null} and
-     * one schema); its other keywords stay, so the other properties and the sibling's enum are still checked. The
-     * branch itself is checked by {@link #selectedBranchFailures}. Unions with class-level type info stay strict.
+     * <p>A record component with {@code @JsonTypeInfo(include = EXTERNAL_PROPERTY)} is a union picked by a sibling
+     * value, and the spec's {@code oneOf} or {@code anyOf} of its branches may overlap, so "exactly one" says nothing
+     * about our code. That one keyword is removed from the property's node (the property is looked up in the root and
+     * in the root's {@code allOf} entries, through a nullable {@code anyOf}/{@code oneOf} of {@code null} and one
+     * schema); its other keywords stay, so the other properties and the sibling's enum are still checked. Such a
+     * component may also sit in a record component of the type, or in the elements of a list component (the node is
+     * then looked up through the property, and through {@code items}). The branch itself is checked by
+     * {@link #selectedBranchFailures}. Unions with class-level type info stay strict.
      *
      * @param type the type under test
      * @param schemaJson the schema of one pointer
@@ -80,27 +84,49 @@ public final class CatalogChecks {
      * @throws AssertionError when the schema has no property node for such a component
      */
     public static String holderSchemaJson(final Class<?> type, final String schemaJson) {
-        final List<RecordComponent> externals = externalComponents(type);
-        if (externals.isEmpty()) {
+        if (!hasExternalComponent(type, new HashSet<>())) {
             return schemaJson;
         }
         final JsonNode root = requireNonNull(TREE.readTree(schemaJson), "schema");
-        for (final RecordComponent component : externals) {
-            final String name = JavaDocsSchemaComparator.jsonName(component);
-            final ObjectNode node = propertyNode(root, name);
-            assertThat(node)
-                    .as("property %s of the holder schema (EXTERNAL_PROPERTY component of %s)", name, type.getName())
-                    .isNotNull();
-            relax(node);
+        if (root instanceof ObjectNode object) {
+            relaxExternals(type, object, new HashSet<>());
         }
         return TREE.writeValueAsString(root);
     }
 
+    private static void relaxExternals(final Class<?> type, final ObjectNode schema, final Set<Class<?>> path) {
+        if (!path.add(type)) {
+            return;
+        }
+        for (final RecordComponent component : type.getRecordComponents()) {
+            final String name = JavaDocsSchemaComparator.jsonName(component);
+            final ObjectNode node = propertyNode(schema, name);
+            if (isExternal(component)) {
+                assertThat(node)
+                        .as(
+                                "property %s of the holder schema (EXTERNAL_PROPERTY component of %s)",
+                                name, type.getName())
+                        .isNotNull();
+                relax(node);
+                continue;
+            }
+            final Class<?> nested = nestedRecord(component);
+            if (nested != null && node != null && hasExternalComponent(nested, new HashSet<>())) {
+                final ObjectNode element = elementNode(node, component.getType() != nested);
+                if (element != null) {
+                    relaxExternals(nested, element, path);
+                }
+            }
+        }
+        path.remove(type);
+    }
+
     /**
-     * Checks that each top-level {@code EXTERNAL_PROPERTY} component of the decoded value fits the branch Jackson
-     * picked: its encoded value must validate against every covered {@code @CatalogSchema} pointer of the runtime class
-     * of the decoded value. A record whose single component is {@code @JsonValue} is replaced by that value first. A
-     * class with no covered pointer, such as an Unknown, is a failure.
+     * Checks that each {@code EXTERNAL_PROPERTY} component of the decoded value fits the branch Jackson picked: its
+     * encoded value must validate against every covered {@code @CatalogSchema} pointer of the runtime class of the
+     * decoded value. A record whose single component is {@code @JsonValue} is replaced by that value first. A class
+     * with no covered pointer, such as an Unknown, is a failure. The components are read in the value itself, in its
+     * record components and in the elements of its list components, each against its own part of the encoded JSON.
      *
      * @param type the type under test
      * @param decoded the decoded fixture
@@ -111,49 +137,122 @@ public final class CatalogChecks {
     public static List<String> selectedBranchFailures(
             final Class<?> type, final Object decoded, final String encoded, final CatalogSchemaSource source) {
         final List<String> failures = new ArrayList<>();
-        final JsonNode tree = requireNonNull(TREE.readTree(encoded), "encoded");
-        for (final RecordComponent component : externalComponents(type)) {
-            final String name = JavaDocsSchemaComparator.jsonName(component);
-            Object value = invoke(component.getAccessor(), decoded);
-            if (value == null) {
-                continue;
-            }
-            final Class<?> decodedClass = value.getClass();
-            while (value != null && jsonValueMethod(value.getClass()) != null) {
-                value = invoke(jsonValueMethod(value.getClass()), value);
-            }
-            final JsonNode subtree = tree.get(name);
-            if (value == null || subtree == null) {
-                failures.add(name + ": nothing to validate, the value or the encoded property is missing");
-                continue;
-            }
-            final Class<?> branch = value.getClass();
-            final List<String> pointers = jsonBodyPointers(branch, source);
-            if (pointers.isEmpty()) {
-                failures.add(name + ": " + decodedClass.getName()
-                        + (branch == decodedClass ? "" : " (wrapping " + branch.getName() + ")")
-                        + " has no covered @CatalogSchema pointer");
-                continue;
-            }
-            final String json = TREE.writeValueAsString(subtree);
-            for (final String pointer : pointers) {
-                compile(requireNonNull(source.schemaJson(pointer), "schema"))
-                        .validate(json, InputFormat.JSON)
-                        .forEach(error ->
-                                failures.add(name + " as " + branch.getSimpleName() + " " + pointer + ": " + error));
-            }
-        }
+        collectBranchFailures(type, decoded, requireNonNull(TREE.readTree(encoded), "encoded"), source, "", failures);
         return failures;
     }
 
-    private static List<RecordComponent> externalComponents(final Class<?> type) {
+    private static void collectBranchFailures(
+            final Class<?> type,
+            final Object decoded,
+            final JsonNode tree,
+            final CatalogSchemaSource source,
+            final String prefix,
+            final List<String> failures) {
         if (!type.isRecord()) {
-            return List.of();
+            return;
         }
-        return Arrays.stream(type.getRecordComponents())
-                .filter(component -> isExternal(component.getAnnotation(JsonTypeInfo.class))
-                        || isExternal(component.getAccessor().getAnnotation(JsonTypeInfo.class)))
-                .toList();
+        for (final RecordComponent component : type.getRecordComponents()) {
+            final String name = JavaDocsSchemaComparator.jsonName(component);
+            final Object value = invoke(component.getAccessor(), decoded);
+            if (value == null) {
+                continue;
+            }
+            if (isExternal(component)) {
+                branchFailures(prefix + name, value, tree.get(name), source, failures);
+                continue;
+            }
+            final JsonNode subtree = tree.get(name);
+            if (subtree == null) {
+                continue;
+            }
+            if (value instanceof Collection<?> elements) {
+                int index = 0;
+                for (final Object element : elements) {
+                    final JsonNode child = subtree.get(index);
+                    if (element != null && child != null) {
+                        collectBranchFailures(
+                                element.getClass(),
+                                element,
+                                child,
+                                source,
+                                prefix + name + "[" + index + "].",
+                                failures);
+                    }
+                    index++;
+                }
+            } else {
+                collectBranchFailures(value.getClass(), value, subtree, source, prefix + name + ".", failures);
+            }
+        }
+    }
+
+    private static void branchFailures(
+            final String name,
+            final Object component,
+            final @Nullable JsonNode subtree,
+            final CatalogSchemaSource source,
+            final List<String> failures) {
+        Object value = component;
+        final Class<?> decodedClass = value.getClass();
+        while (value != null && jsonValueMethod(value.getClass()) != null) {
+            value = invoke(jsonValueMethod(value.getClass()), value);
+        }
+        if (value == null || subtree == null) {
+            failures.add(name + ": nothing to validate, the value or the encoded property is missing");
+            return;
+        }
+        final Class<?> branch = value.getClass();
+        final List<String> pointers = jsonBodyPointers(branch, source);
+        if (pointers.isEmpty()) {
+            failures.add(name + ": " + decodedClass.getName()
+                    + (branch == decodedClass ? "" : " (wrapping " + branch.getName() + ")")
+                    + " has no covered @CatalogSchema pointer");
+            return;
+        }
+        final String json = TREE.writeValueAsString(subtree);
+        for (final String pointer : pointers) {
+            compile(requireNonNull(source.schemaJson(pointer), "schema"))
+                    .validate(json, InputFormat.JSON)
+                    .forEach(error ->
+                            failures.add(name + " as " + branch.getSimpleName() + " " + pointer + ": " + error));
+        }
+    }
+
+    private static boolean hasExternalComponent(final Class<?> type, final Set<Class<?>> seen) {
+        if (!type.isRecord() || !seen.add(type)) {
+            return false;
+        }
+        for (final RecordComponent component : type.getRecordComponents()) {
+            if (isExternal(component)) {
+                return true;
+            }
+            final Class<?> nested = nestedRecord(component);
+            if (nested != null && hasExternalComponent(nested, seen)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The record a component holds, or whose elements a list component holds; null for any other component. */
+    private static @Nullable Class<?> nestedRecord(final RecordComponent component) {
+        final Class<?> raw = component.getType();
+        if (raw.isRecord()) {
+            return raw;
+        }
+        if (Collection.class.isAssignableFrom(raw)
+                && component.getGenericType() instanceof ParameterizedType generic
+                && generic.getActualTypeArguments().length == 1
+                && generic.getActualTypeArguments()[0] instanceof Class<?> element
+                && element.isRecord()) {
+            return element;
+        }
+        return null;
+    }
+
+    private static boolean isExternal(final RecordComponent component) {
+        return isExternal(component.getAnnotation(JsonTypeInfo.class))
+                || isExternal(component.getAccessor().getAnnotation(JsonTypeInfo.class));
     }
 
     private static boolean isExternal(final @Nullable JsonTypeInfo info) {
@@ -172,19 +271,34 @@ public final class CatalogChecks {
         return null;
     }
 
-    private static void relax(final ObjectNode node) {
-        ObjectNode target = node;
+    /** The object schema of a nested record component: the node itself, or its {@code items} for a list. */
+    private static @Nullable ObjectNode elementNode(final ObjectNode node, final boolean list) {
+        final ObjectNode target = nullableTarget(node);
+        if (!list || target == null) {
+            return target;
+        }
+        return nullableTarget(target.get("items") instanceof ObjectNode items ? items : null);
+    }
+
+    private static @Nullable ObjectNode nullableTarget(final @Nullable ObjectNode node) {
+        if (node == null) {
+            return null;
+        }
         for (final String keyword : List.of("anyOf", "oneOf")) {
             final JsonNode parts = node.get(keyword);
             if (parts != null && parts.size() == 2) {
                 final boolean firstNull = isNullSchema(parts.get(0));
                 final boolean secondNull = isNullSchema(parts.get(1));
                 if (firstNull != secondNull && parts.get(firstNull ? 1 : 0) instanceof ObjectNode other) {
-                    target = other;
-                    break;
+                    return other;
                 }
             }
         }
+        return node;
+    }
+
+    private static void relax(final ObjectNode node) {
+        final ObjectNode target = requireNonNull(nullableTarget(node), "target");
         target.remove("oneOf");
         target.remove("anyOf");
     }

@@ -13,6 +13,7 @@ import io.github.piotr_janczukowicz.json.JsonType;
 import io.github.piotr_janczukowicz.json.ValueUnion;
 import io.github.piotr_janczukowicz.json.jackson.ValueUnionModule;
 import io.github.piotr_janczukowicz.openapi.model.CatalogSchema;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.json.JsonMapper;
@@ -69,6 +70,19 @@ final class SampleSupport {
             {"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}
             """);
 
+    private static final String HOLDER_SCHEMA =
+            SCHEMAS.get("components/schemas/sample-holder").strip();
+
+    /** Schemas of records that hold {@link SampleHolder}: directly, in a list, and behind nullable wrappers. */
+    private static final Map<String, String> OUTER_SCHEMAS = Map.of(
+            "components/schemas/sample-outer",
+            "{\"type\":\"object\",\"properties\":{\"holder\":" + HOLDER_SCHEMA
+                    + ",\"holders\":{\"type\":\"array\",\"items\":" + HOLDER_SCHEMA + "}}}",
+            "components/schemas/sample-outer-nullable",
+            "{\"type\":\"object\",\"properties\":{\"holder\":{\"anyOf\":[{\"type\":\"null\"}," + HOLDER_SCHEMA
+                    + "]},\"holders\":{\"anyOf\":[{\"type\":\"null\"},{\"type\":\"array\",\"items\":" + HOLDER_SCHEMA
+                    + "}]}}}");
+
     private SampleSupport() {
         throw new UnsupportedOperationException("Utility class");
     }
@@ -96,12 +110,12 @@ final class SampleSupport {
         return new CatalogSchemaSource() {
             @Override
             public boolean covers(final String pointer) {
-                return SCHEMAS.containsKey(pointer);
+                return SCHEMAS.containsKey(pointer) || OUTER_SCHEMAS.containsKey(pointer);
             }
 
             @Override
             public String schemaJson(final String pointer) {
-                return SCHEMAS.get(pointer);
+                return SCHEMAS.containsKey(pointer) ? SCHEMAS.get(pointer) : OUTER_SCHEMAS.get(pointer);
             }
         };
     }
@@ -134,6 +148,16 @@ final class SampleSupport {
                     property = "kind",
                     defaultImpl = SampleBranchUnknown.class)
             SampleBranch payload) {}
+
+    @CatalogSchema("components/schemas/sample-outer")
+    record SampleOuter(SampleHolder holder, List<SampleHolder> holders) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @CatalogSchema("components/schemas/sample-outer-nullable")
+    record SampleOuterNullable(
+            @Nullable SampleHolder holder, @Nullable List<SampleHolder> holders) {}
+
+    record SamplePlainOuter(Sample inner) {}
 
     @JsonSubTypes({
         @JsonSubTypes.Type(value = SampleBranchEmpty.class, name = "empty"),
