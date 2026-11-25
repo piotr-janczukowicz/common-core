@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.json;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -14,14 +16,16 @@ import org.jspecify.annotations.Nullable;
  *   <li>a value: {@link #of(Object)}; the wrapped value is written.
  * </ul>
  *
- * <p>Reading works the same way (with the Jackson {@code OptionalNullModule}): an absent property stays a {@code null}
- * wrapper, JSON {@code null} becomes {@link #ofNull()}, and any other value becomes {@link #of(Object)}.
+ * <p>Writing needs no module: {@link #ofNull()} is written as JSON {@code null} even when the enclosing type leaves out
+ * nulls. Reading needs the Jackson {@code OptionalNullModule}: an absent property stays a {@code null} wrapper, JSON
+ * {@code null} becomes {@link #ofNull()}, and any other value becomes {@link #of(Object)}.
  *
  * <p>Note: generated records reject a {@code null} wrapper for a required property, so a required property is always
  * written, as JSON {@code null} or a value.
  *
  * @param <T> value type
  */
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public final class OptionalNull<T> {
 
     private final @Nullable T value;
@@ -35,6 +39,7 @@ public final class OptionalNull<T> {
      *
      * @return wrapped value
      */
+    @JsonValue
     public @Nullable T value() {
         return value;
     }

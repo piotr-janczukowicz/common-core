@@ -13,12 +13,12 @@ import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.deser.std.StdDeserializer;
 
 /** Decodes {@link OptionalNull} from JSON null or a present value; absent properties stay Java {@code null}. */
-public final class OptionalNullDeserializer extends StdDeserializer<OptionalNull<?>> {
+final class OptionalNullDeserializer extends StdDeserializer<OptionalNull<?>> {
 
     private final @Nullable ValueDeserializer<Object> valueDeserializer;
 
     /** Deserializer used before Jackson supplies the value type. */
-    public OptionalNullDeserializer() {
+    OptionalNullDeserializer() {
         super(OptionalNull.class);
         this.valueDeserializer = null;
     }
