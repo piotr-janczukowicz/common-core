@@ -9,6 +9,8 @@ import io.github.piotr_janczukowicz.testsupport.CatalogTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -31,7 +33,39 @@ public abstract class AbstractCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    protected abstract Class<?> type();
+    private final @Nullable Class<?> type;
+    private final @Nullable String fixture;
+    private final @Nullable Supplier<?> expected;
+
+    /** Creates a test whose subclass overrides {@link #type()}, {@link #fixture()} and {@link #expected()}. */
+    protected AbstractCatalogTest() {
+        this.type = null;
+        this.fixture = null;
+        this.expected = null;
+    }
+
+    /**
+     * Creates the test of one type.
+     *
+     * @param type the type the fixture decodes to
+     * @param fixture the name of the fixture resource, resolved from the test class
+     * @param expected gives the value the fixture decodes to; called only by the decode test
+     */
+    protected AbstractCatalogTest(final Class<?> type, final String fixture, final Supplier<?> expected) {
+        this.type = requireNonNull(type, "type");
+        this.fixture = requireNonNull(fixture, "fixture");
+        this.expected = requireNonNull(expected, "expected");
+    }
+
+    /**
+     * The type the fixture decodes to.
+     *
+     * @return the type given to the constructor
+     * @throws NullPointerException if the test was created without a type and does not override this method
+     */
+    protected Class<?> type() {
+        return requireNonNull(type, "type");
+    }
 
     /**
      * The codec that decodes the fixtures and encodes the decoded values.
@@ -47,7 +81,15 @@ public abstract class AbstractCatalogTest {
      */
     protected abstract CatalogSchemaSource schemaSource();
 
-    protected abstract String fixture();
+    /**
+     * The name of the fixture resource, resolved from the test class.
+     *
+     * @return the fixture name given to the constructor
+     * @throws NullPointerException if the test was created without a fixture and does not override this method
+     */
+    protected String fixture() {
+        return requireNonNull(fixture, "fixture");
+    }
 
     /**
      * The name of a stored schema file of the type, used when {@link #comparesEveryPointer()} is {@code false}.
@@ -69,7 +111,15 @@ public abstract class AbstractCatalogTest {
         return false;
     }
 
-    protected abstract Object expected();
+    /**
+     * The value the fixture decodes to.
+     *
+     * @return the value the supplier given to the constructor gives
+     * @throws NullPointerException if the test was created without a supplier and does not override this method
+     */
+    protected Object expected() {
+        return requireNonNull(requireNonNull(expected, "expected").get(), "expected");
+    }
 
     protected String[] nullableComponents() {
         return new String[0];

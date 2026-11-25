@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,7 +40,31 @@ public abstract class AbstractXorCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    protected abstract Class<?> type();
+    private final @Nullable Class<?> type;
+
+    /** Creates a test whose subclass overrides {@link #type()}. */
+    protected AbstractXorCatalogTest() {
+        this.type = null;
+    }
+
+    /**
+     * Creates the test of one type.
+     *
+     * @param type the type under test
+     */
+    protected AbstractXorCatalogTest(final Class<?> type) {
+        this.type = requireNonNull(type, "type");
+    }
+
+    /**
+     * The type under test.
+     *
+     * @return the type given to the constructor
+     * @throws NullPointerException if the test was created without a type and does not override this method
+     */
+    protected Class<?> type() {
+        return requireNonNull(type, "type");
+    }
 
     /**
      * The codec that decodes the fixtures and encodes the decoded values.

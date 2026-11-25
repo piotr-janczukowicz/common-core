@@ -93,6 +93,7 @@
                 <exclude>io/github/piotr_janczukowicz/testsupport/catalog/CatalogChecksSuppressionTest*.class</exclude>
                 <exclude>io/github/piotr_janczukowicz/testsupport/catalog/JavaDocsSchemaComparatorTest*.class</exclude>
                 <exclude>io/github/piotr_janczukowicz/testsupport/catalog/Sample*.class</exclude>
+                <exclude>io/github/piotr_janczukowicz/testsupport/enums/Sample*.class</exclude>
                 <exclude>io/github/piotr_janczukowicz/testsupport/catalog/*.json</exclude>
               </excludes>
               <archive>

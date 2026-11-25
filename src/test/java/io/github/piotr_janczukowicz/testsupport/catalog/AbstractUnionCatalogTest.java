@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -34,12 +35,31 @@ public abstract class AbstractUnionCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
+    private final @Nullable Class<?> type;
+
+    /** Creates a test whose subclass overrides {@link #type()}. */
+    protected AbstractUnionCatalogTest() {
+        this.type = null;
+    }
+
+    /**
+     * Creates the test of one union.
+     *
+     * @param type the sealed interface that is decoded
+     */
+    protected AbstractUnionCatalogTest(final Class<?> type) {
+        this.type = requireNonNull(type, "type");
+    }
+
     /**
      * The sealed interface that is decoded.
      *
-     * @return the union type
+     * @return the union type given to the constructor
+     * @throws NullPointerException if the test was created without a type and does not override this method
      */
-    protected abstract Class<?> type();
+    protected Class<?> type() {
+        return requireNonNull(type, "type");
+    }
 
     /**
      * The codec that decodes the fixtures and encodes the decoded values.

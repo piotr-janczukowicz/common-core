@@ -817,6 +817,173 @@ public final class ValidationUtils {
     }
 
     /**
+     * Requires {@code values}, when present, to contain at most {@code max} elements.
+     *
+     * @param values collection to check, or {@code null}
+     * @param max inclusive maximum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}, or {@code null} if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code values} has more than {@code max} elements
+     */
+    public static <T extends Collection<?>> @Nullable T requireSizeAtMostIfPresent(
+            @Nullable final T values, final int max, final String fieldName) {
+        if (values != null) {
+            requireSizeAtMost(values, max, fieldName);
+        }
+        return values;
+    }
+
+    /**
+     * Requires {@code map}, when present, to contain at most {@code max} entries.
+     *
+     * @param map map to check, or {@code null}
+     * @param max inclusive maximum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <K> key type
+     * @param <V> value type
+     * @return {@code map}, or {@code null} if {@code map} is {@code null}
+     * @throws IllegalArgumentException if {@code map} has more than {@code max} entries
+     */
+    public static <K, V> @Nullable Map<K, V> requireSizeAtMostIfPresent(
+            @Nullable final Map<K, V> map, final int max, final String fieldName) {
+        if (map != null) {
+            requireSizeAtMost(map, max, fieldName);
+        }
+        return map;
+    }
+
+    /**
+     * Requires {@code values}, when present, to contain at least {@code min} elements.
+     *
+     * @param values collection to check, or {@code null}
+     * @param min inclusive minimum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}, or {@code null} if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code values} has fewer than {@code min} elements
+     */
+    public static <T extends Collection<?>> @Nullable T requireSizeAtLeastIfPresent(
+            @Nullable final T values, final int min, final String fieldName) {
+        if (values != null) {
+            requireSizeAtLeast(values, min, fieldName);
+        }
+        return values;
+    }
+
+    /**
+     * Requires {@code map}, when present, to contain at least {@code min} entries.
+     *
+     * @param map map to check, or {@code null}
+     * @param min inclusive minimum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <K> key type
+     * @param <V> value type
+     * @return {@code map}, or {@code null} if {@code map} is {@code null}
+     * @throws IllegalArgumentException if {@code map} has fewer than {@code min} entries
+     */
+    public static <K, V> @Nullable Map<K, V> requireSizeAtLeastIfPresent(
+            @Nullable final Map<K, V> map, final int min, final String fieldName) {
+        if (map != null) {
+            requireSizeAtLeast(map, min, fieldName);
+        }
+        return map;
+    }
+
+    /**
+     * Requires {@code values}, when present, to contain between {@code min} and {@code max} elements, inclusive.
+     *
+     * @param values collection to check, or {@code null}
+     * @param min inclusive minimum size
+     * @param max inclusive maximum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}, or {@code null} if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code min} is above {@code max}, or the size of {@code values} is outside
+     *     {@code min}..{@code max}
+     */
+    public static <T extends Collection<?>> @Nullable T requireSizeBetweenIfPresent(
+            @Nullable final T values, final int min, final int max, final String fieldName) {
+        if (values != null) {
+            requireSizeBetween(values, min, max, fieldName);
+        }
+        return values;
+    }
+
+    /**
+     * Requires {@code map}, when present, to contain between {@code min} and {@code max} entries, inclusive.
+     *
+     * @param map map to check, or {@code null}
+     * @param min inclusive minimum size
+     * @param max inclusive maximum size
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <K> key type
+     * @param <V> value type
+     * @return {@code map}, or {@code null} if {@code map} is {@code null}
+     * @throws IllegalArgumentException if {@code min} is above {@code max}, or the size of {@code map} is outside
+     *     {@code min}..{@code max}
+     */
+    public static <K, V> @Nullable Map<K, V> requireSizeBetweenIfPresent(
+            @Nullable final Map<K, V> map, final int min, final int max, final String fieldName) {
+        if (map != null) {
+            requireSizeBetween(map, min, max, fieldName);
+        }
+        return map;
+    }
+
+    /**
+     * Requires {@code values}, when present, to be non-empty.
+     *
+     * @param values collection to check, or {@code null}
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}, or {@code null} if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code values} is empty
+     */
+    public static <T extends Collection<?>> @Nullable T requireNonEmptyIfPresent(
+            @Nullable final T values, final String fieldName) {
+        if (values != null) {
+            requireNonEmpty(values, fieldName);
+        }
+        return values;
+    }
+
+    /**
+     * Requires {@code map}, when present, to be non-empty.
+     *
+     * @param map map to check, or {@code null}
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <K> key type
+     * @param <V> value type
+     * @return {@code map}, or {@code null} if {@code map} is {@code null}
+     * @throws IllegalArgumentException if {@code map} is empty
+     */
+    public static <K, V> @Nullable Map<K, V> requireNonEmptyIfPresent(
+            @Nullable final Map<K, V> map, final String fieldName) {
+        if (map != null) {
+            requireNonEmpty(map, fieldName);
+        }
+        return map;
+    }
+
+    /**
+     * Requires {@code values}, when present, to contain no duplicate elements.
+     *
+     * @param values collection to check, or {@code null}
+     * @param fieldName name of the checked value, used in the exception message
+     * @param <T> collection type
+     * @return {@code values}, or {@code null} if {@code values} is {@code null}
+     * @throws IllegalArgumentException if {@code values} contains duplicates
+     */
+    public static <T extends Collection<?>> @Nullable T requireUniqueItemsIfPresent(
+            @Nullable final T values, final String fieldName) {
+        if (values != null) {
+            requireUniqueItems(values, fieldName);
+        }
+        return values;
+    }
+
+    /**
      * Requires {@code values} to contain no {@code null} element.
      *
      * <p>The elements are visited one by one, so a collection that rejects {@code contains(null)}, such as one made by

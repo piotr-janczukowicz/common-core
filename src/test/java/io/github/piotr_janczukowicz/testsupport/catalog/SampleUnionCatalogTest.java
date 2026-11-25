@@ -8,14 +8,13 @@ import org.junit.jupiter.params.provider.Arguments;
 @UnitTest
 class SampleUnionCatalogTest extends AbstractUnionCatalogTest {
 
-    @Override
-    protected JsonCodec codec() {
-        return SampleSupport.codec();
+    SampleUnionCatalogTest() {
+        super(SampleSupport.SampleUnion.class);
     }
 
     @Override
-    protected Class<?> type() {
-        return SampleSupport.SampleUnion.class;
+    protected JsonCodec codec() {
+        return SampleSupport.codec();
     }
 
     @Override

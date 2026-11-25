@@ -6,14 +6,13 @@ import io.github.piotr_janczukowicz.testsupport.UnitTest;
 @UnitTest
 class SampleEnumCatalogTest extends AbstractEnumCatalogTest {
 
-    @Override
-    protected JsonCodec codec() {
-        return SampleSupport.codec();
+    SampleEnumCatalogTest() {
+        super(SampleSupport.SampleState.class);
     }
 
     @Override
-    protected Class<?> type() {
-        return SampleSupport.SampleState.class;
+    protected JsonCodec codec() {
+        return SampleSupport.codec();
     }
 
     @Override
