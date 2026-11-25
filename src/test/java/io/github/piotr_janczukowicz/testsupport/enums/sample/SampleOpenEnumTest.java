@@ -1,6 +1,7 @@
-package io.github.piotr_janczukowicz.testsupport.enums;
+package io.github.piotr_janczukowicz.testsupport.enums.sample;
 
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
+import io.github.piotr_janczukowicz.testsupport.enums.AbstractOpenStringEnumTest;
 
 @UnitTest
 class SampleOpenEnumTest extends AbstractOpenStringEnumTest<SampleOpenEnumTest.Level> {
