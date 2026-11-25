@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,12 +34,7 @@ public abstract class AbstractUnionCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    private final @Nullable Class<?> type;
-
-    /** Creates a test whose subclass overrides {@link #type()}. */
-    protected AbstractUnionCatalogTest() {
-        this.type = null;
-    }
+    private final Class<?> type;
 
     /**
      * Creates the test of one union.
@@ -49,16 +43,6 @@ public abstract class AbstractUnionCatalogTest {
      */
     protected AbstractUnionCatalogTest(final Class<?> type) {
         this.type = requireNonNull(type, "type");
-    }
-
-    /**
-     * The sealed interface that is decoded.
-     *
-     * @return the union type given to the constructor
-     * @throws NullPointerException if the test was created without a type and does not override this method
-     */
-    protected Class<?> type() {
-        return requireNonNull(type, "type");
     }
 
     /**
@@ -90,7 +74,6 @@ public abstract class AbstractUnionCatalogTest {
     @MethodSource("cases")
     protected final void decode_shouldReturnTheSubtype_whenFixtureDecoded(
             final String fixture, final Class<?> subtype) {
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
 
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
@@ -102,7 +85,6 @@ public abstract class AbstractUnionCatalogTest {
     @MethodSource("cases")
     protected final void encode_shouldMatchFixture_whenDecodedValueEncoded(
             final String fixture, final Class<?> subtype) {
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
 
@@ -131,7 +113,6 @@ public abstract class AbstractUnionCatalogTest {
 
     @Test
     protected final void cases_shouldCoverEveryPermittedSubtype() {
-        final Class<?> type = requireNonNull(type(), "type");
         assertThat(type.isSealed()).as(type.getTypeName() + " is sealed").isTrue();
         final Set<Class<?>> covered = cases().map(
                         arguments -> (Class<?>) arguments.get()[1])

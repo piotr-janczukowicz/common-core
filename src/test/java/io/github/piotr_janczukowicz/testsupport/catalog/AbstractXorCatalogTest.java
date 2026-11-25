@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,12 +39,7 @@ public abstract class AbstractXorCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    private final @Nullable Class<?> type;
-
-    /** Creates a test whose subclass overrides {@link #type()}. */
-    protected AbstractXorCatalogTest() {
-        this.type = null;
-    }
+    private final Class<?> type;
 
     /**
      * Creates the test of one type.
@@ -54,16 +48,6 @@ public abstract class AbstractXorCatalogTest {
      */
     protected AbstractXorCatalogTest(final Class<?> type) {
         this.type = requireNonNull(type, "type");
-    }
-
-    /**
-     * The type under test.
-     *
-     * @return the type given to the constructor
-     * @throws NullPointerException if the test was created without a type and does not override this method
-     */
-    protected Class<?> type() {
-        return requireNonNull(type, "type");
     }
 
     /**
@@ -107,7 +91,6 @@ public abstract class AbstractXorCatalogTest {
     @MethodSource("cases")
     protected final void decode_shouldEqualExpected_whenFixtureDecoded(
             final String fixture, final Object expected, final String... exceptNullProperties) {
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
         requireNonNull(exceptNullProperties, "exceptNullProperties");
 
@@ -124,7 +107,6 @@ public abstract class AbstractXorCatalogTest {
     @ParameterizedTest
     @MethodSource("cases")
     protected final void encode_shouldMatchFixture_whenDecodedValueEncoded(final String fixture) {
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
 
@@ -141,11 +123,10 @@ public abstract class AbstractXorCatalogTest {
     @ParameterizedTest
     @MethodSource("cases")
     protected final void encode_shouldMatchOpenApiSchema_whenDecodedValueEncoded(final String fixture) {
-        final List<String> pointers = CatalogChecks.jsonBodyPointers(type(), schemaSource());
+        final List<String> pointers = CatalogChecks.jsonBodyPointers(type, schemaSource());
         assertThat(pointers)
                 .as("JSON body pointers of the @CatalogSchema annotations")
                 .isNotEmpty();
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(FileUtils.readBytes(getClass(), fixture), "fixture");
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
         final byte[] encoded = codec().encode(decoded);
@@ -170,7 +151,6 @@ public abstract class AbstractXorCatalogTest {
 
     @Test
     protected void type_shouldMatchDocsSchema_whenPropertiesCompared() {
-        final Class<?> type = requireNonNull(type(), "type");
 
         final List<String> mismatches =
                 CatalogChecks.docsSchemaMismatches(getClass(), type, comparesEveryPointer(), schema(), schemaSource());

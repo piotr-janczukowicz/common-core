@@ -17,7 +17,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -29,12 +28,7 @@ public abstract class AbstractEnumCatalogTest {
     private static final Set<String> FALLBACK_CONSTANTS = Set.of("UNRECOGNIZED");
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    private final @Nullable Class<?> type;
-
-    /** Creates a test whose subclass overrides {@link #type()}. */
-    protected AbstractEnumCatalogTest() {
-        this.type = null;
-    }
+    private final Class<?> type;
 
     /**
      * Creates the test of one type.
@@ -43,16 +37,6 @@ public abstract class AbstractEnumCatalogTest {
      */
     protected AbstractEnumCatalogTest(final Class<?> type) {
         this.type = requireNonNull(type, "type");
-    }
-
-    /**
-     * The type under test.
-     *
-     * @return the type given to the constructor
-     * @throws NullPointerException if the test was created without a type and does not override this method
-     */
-    protected Class<?> type() {
-        return requireNonNull(type, "type");
     }
 
     /**
@@ -141,7 +125,6 @@ public abstract class AbstractEnumCatalogTest {
     }
 
     private Class<?> enumType() {
-        final Class<?> type = requireNonNull(type(), "type");
         assertThat(type.isEnum()).as(type.getTypeName()).isTrue();
         return type;
     }

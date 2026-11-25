@@ -10,7 +10,6 @@ import io.github.piotr_janczukowicz.util.FileUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Supplier;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -33,16 +32,9 @@ public abstract class AbstractCatalogTest {
 
     private static final JsonMapper TREE = JsonMapper.builder().build();
 
-    private final @Nullable Class<?> type;
-    private final @Nullable String fixture;
-    private final @Nullable Supplier<?> expected;
-
-    /** Creates a test whose subclass overrides {@link #type()}, {@link #fixture()} and {@link #expected()}. */
-    protected AbstractCatalogTest() {
-        this.type = null;
-        this.fixture = null;
-        this.expected = null;
-    }
+    private final Class<?> type;
+    private final String fixture;
+    private final Supplier<?> expected;
 
     /**
      * Creates the test of one type.
@@ -58,16 +50,6 @@ public abstract class AbstractCatalogTest {
     }
 
     /**
-     * The type the fixture decodes to.
-     *
-     * @return the type given to the constructor
-     * @throws NullPointerException if the test was created without a type and does not override this method
-     */
-    protected Class<?> type() {
-        return requireNonNull(type, "type");
-    }
-
-    /**
      * The codec that decodes the fixtures and encodes the decoded values.
      *
      * @return the codec of the module under test
@@ -80,16 +62,6 @@ public abstract class AbstractCatalogTest {
      * @return the schema source of the module under test
      */
     protected abstract CatalogSchemaSource schemaSource();
-
-    /**
-     * The name of the fixture resource, resolved from the test class.
-     *
-     * @return the fixture name given to the constructor
-     * @throws NullPointerException if the test was created without a fixture and does not override this method
-     */
-    protected String fixture() {
-        return requireNonNull(fixture, "fixture");
-    }
 
     /**
      * The name of a stored schema file of the type, used when {@link #comparesEveryPointer()} is {@code false}.
@@ -111,34 +83,22 @@ public abstract class AbstractCatalogTest {
         return false;
     }
 
-    /**
-     * The value the fixture decodes to.
-     *
-     * @return the value the supplier given to the constructor gives
-     * @throws NullPointerException if the test was created without a supplier and does not override this method
-     */
-    protected Object expected() {
-        return requireNonNull(requireNonNull(expected, "expected").get(), "expected");
-    }
-
     protected String[] nullableComponents() {
         return new String[0];
     }
 
     @Test
     protected final void decode_shouldEqualExpected_whenFixtureDecoded() {
-        final Object expected = requireNonNull(expected(), "expected");
-        final Class<?> type = requireNonNull(type(), "type");
+        final Object expectedValue = requireNonNull(expected.get(), "expected");
         final byte[] fixtureJson = requireNonNull(fixtureBytes(), "fixture");
 
         final Object decoded = codec().decode(fixtureJson, type);
 
-        assertThat(decoded).isEqualTo(expected).hasNoNullFieldsOrPropertiesExcept(nullableComponents());
+        assertThat(decoded).isEqualTo(expectedValue).hasNoNullFieldsOrPropertiesExcept(nullableComponents());
     }
 
     @Test
     protected final void encode_shouldMatchFixture_whenDecodedValueEncoded() {
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(fixtureBytes(), "fixture");
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
 
@@ -149,11 +109,10 @@ public abstract class AbstractCatalogTest {
 
     @Test
     protected void encode_shouldMatchOpenApiSchema_whenDecodedValueEncoded() {
-        final List<String> pointers = CatalogChecks.jsonBodyPointers(type(), schemaSource());
+        final List<String> pointers = CatalogChecks.jsonBodyPointers(type, schemaSource());
         assertThat(pointers)
                 .as("JSON body pointers of the @CatalogSchema annotations")
                 .isNotEmpty();
-        final Class<?> type = requireNonNull(type(), "type");
         final byte[] fixtureJson = requireNonNull(fixtureBytes(), "fixture");
         final Object decoded = requireNonNull(codec().decode(fixtureJson, type), "decoded");
 
@@ -175,7 +134,6 @@ public abstract class AbstractCatalogTest {
 
     @Test
     protected void type_shouldMatchDocsSchema_whenPropertiesCompared() {
-        final Class<?> type = requireNonNull(type(), "type");
 
         final List<String> mismatches =
                 CatalogChecks.docsSchemaMismatches(getClass(), type, comparesEveryPointer(), schema(), schemaSource());
@@ -184,6 +142,6 @@ public abstract class AbstractCatalogTest {
     }
 
     private byte[] fixtureBytes() {
-        return FileUtils.readBytes(getClass(), fixture());
+        return FileUtils.readBytes(getClass(), fixture);
     }
 }
