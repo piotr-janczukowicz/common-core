@@ -6,6 +6,10 @@ import io.github.piotr_janczukowicz.testsupport.UnitTest;
 @UnitTest
 class SampleMultiPointerCatalogTest extends AbstractCatalogTest {
 
+    SampleMultiPointerCatalogTest() {
+        super(SampleSupport.SampleMulti.class, "sample-multi.json", () -> new SampleSupport.SampleMulti("a", "b"));
+    }
+
     @Override
     protected JsonCodec codec() {
         return SampleSupport.codec();
@@ -17,22 +21,7 @@ class SampleMultiPointerCatalogTest extends AbstractCatalogTest {
     }
 
     @Override
-    protected Class<?> type() {
-        return SampleSupport.SampleMulti.class;
-    }
-
-    @Override
     protected boolean comparesEveryPointer() {
         return true;
-    }
-
-    @Override
-    protected String fixture() {
-        return "sample-multi.json";
-    }
-
-    @Override
-    protected Object expected() {
-        return new SampleSupport.SampleMulti("a", "b");
     }
 }

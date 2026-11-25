@@ -7,6 +7,10 @@ import io.github.piotr_janczukowicz.testsupport.UnitTest;
 @UnitTest
 class SampleTupleCatalogTest extends AbstractCatalogTest {
 
+    SampleTupleCatalogTest() {
+        super(SampleSupport.SampleTuple.class, "sample-tuple.json", () -> new SampleSupport.SampleTuple(7L, "asc"));
+    }
+
     @Override
     protected JsonCodec codec() {
         return SampleSupport.codec();
@@ -18,22 +22,7 @@ class SampleTupleCatalogTest extends AbstractCatalogTest {
     }
 
     @Override
-    protected Class<?> type() {
-        return SampleSupport.SampleTuple.class;
-    }
-
-    @Override
-    protected String fixture() {
-        return "sample-tuple.json";
-    }
-
-    @Override
     protected String schema() {
         return "sample-tuple-schema.json";
-    }
-
-    @Override
-    protected Object expected() {
-        return new SampleSupport.SampleTuple(7L, "asc");
     }
 }

@@ -9,6 +9,10 @@ import org.junit.jupiter.params.provider.Arguments;
 @UnitTest
 class SampleExternalXorCatalogTest extends AbstractXorCatalogTest {
 
+    SampleExternalXorCatalogTest() {
+        super(SampleSupport.SampleHolder.class);
+    }
+
     @Override
     protected JsonCodec codec() {
         return SampleSupport.codec();
@@ -17,11 +21,6 @@ class SampleExternalXorCatalogTest extends AbstractXorCatalogTest {
     @Override
     protected CatalogSchemaSource schemaSource() {
         return SampleSupport.schemaSource();
-    }
-
-    @Override
-    protected Class<?> type() {
-        return SampleSupport.SampleHolder.class;
     }
 
     @Override
