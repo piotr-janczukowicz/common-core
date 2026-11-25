@@ -263,6 +263,65 @@ class AbstractHttpCallerTest {
     }
 
     @Test
+    void fetchOptionalOrEmpty_shouldBeEmpty_whenNotFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).fetchOptionalOrEmpty(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isEmpty();
+        }
+    }
+
+    @Test
+    void fetchOptionalOrEmpty_shouldBeEmpty_whenNoContent() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).fetchOptionalOrEmpty(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isEmpty();
+        }
+    }
+
+    @Test
+    void fetchOptionalOrEmpty_shouldBeEmptyForGenericType_whenNotFoundOrNoContent() throws IOException {
+        when(transport.execute(any()))
+                .thenReturn(response(HttpStatus.NOT_FOUND.code(), null))
+                .thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+
+            assertThat(caller.fetchOptionalOrEmpty(HttpCall.get("/users"), USERS))
+                    .isEmpty();
+            assertThat(caller.fetchOptionalOrEmpty(HttpCall.get("/users"), USERS))
+                    .isEmpty();
+        }
+    }
+
+    @Test
+    void fetchOptionalOrEmpty_shouldDecodeBody_whenFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{\"login\":\"octocat\"}"));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).fetchOptionalOrEmpty(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isPresent();
+        }
+    }
+
+    @Test
+    void fetchOptionalOrEmpty_shouldDecodeGenericType_whenFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[{\"login\":\"octocat\"}]"));
+
+        try (final HttpClient client = client()) {
+            assertThat(caller(client).fetchOptionalOrEmpty(HttpCall.get("/users"), USERS))
+                    .hasValueSatisfying(users -> assertThat(users).hasSize(1));
+        }
+    }
+
+    @Test
     void fetchOptional_shouldBeEmpty_whenAcceptedWithoutBody() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 

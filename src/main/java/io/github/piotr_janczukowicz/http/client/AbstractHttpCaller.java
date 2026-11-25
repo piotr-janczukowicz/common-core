@@ -48,6 +48,8 @@ public abstract class AbstractHttpCaller {
     private static final String TYPE = "type";
     private static final Set<Integer> NOT_FOUND = Set.of(HttpStatus.NOT_FOUND.code());
     private static final Set<Integer> NOT_MODIFIED = Set.of(HttpStatus.NOT_MODIFIED.code());
+    private static final Set<Integer> NOT_FOUND_OR_MODIFIED =
+            Set.of(HttpStatus.NOT_FOUND.code(), HttpStatus.NOT_MODIFIED.code());
 
     private final HttpClientExecutor executor;
     private final JsonCodec jsonCodec;
@@ -250,6 +252,43 @@ public abstract class AbstractHttpCaller {
      */
     public <T> Optional<T> fetchOptional(final HttpCall call, final JsonType<T> type) throws IOException {
         return fetchResult(call, type).value();
+    }
+
+    /**
+     * Decodes the body as {@code type}, or empty when the server returns 404 or when the response carries no value (see
+     * {@link #fetchOptional(HttpCall, Class)}). Use it for a lookup of one resource by a key that also answers without
+     * a body on success.
+     *
+     * @param call call to send
+     * @param type response class
+     * @param <T> response type
+     * @return decoded value, or empty when the server returns 404 or the response has none
+     * @throws IOException if the transport fails
+     * @throws JsonDecodeException if a non-empty body is not valid JSON for {@code type}
+     * @throws IllegalStateException if the body is the JSON literal {@code null}
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public <T> Optional<T> fetchOptionalOrEmpty(final HttpCall call, final Class<T> type) throws IOException {
+        requireNonNull(type, TYPE);
+        return fetchOptionalOrEmptyDecoded(call, response -> decode(response, type));
+    }
+
+    /**
+     * Decodes the body as {@code type}, or empty when the server returns 404 or the response carries no value; see
+     * {@link #fetchOptionalOrEmpty(HttpCall, Class)}.
+     *
+     * @param call call to send
+     * @param type response type, including type arguments
+     * @param <T> response type
+     * @return decoded value, or empty when the server returns 404 or the response has none
+     * @throws IOException if the transport fails
+     * @throws JsonDecodeException if a non-empty body is not valid JSON for {@code type}
+     * @throws IllegalStateException if the body is the JSON literal {@code null}
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public <T> Optional<T> fetchOptionalOrEmpty(final HttpCall call, final JsonType<T> type) throws IOException {
+        requireNonNull(type, TYPE);
+        return fetchOptionalOrEmptyDecoded(call, response -> decode(response, type));
     }
 
     /**
@@ -732,6 +771,17 @@ public abstract class AbstractHttpCaller {
                 .addArgument(() -> describe(call))
                 .addArgument(response.statusCode())
                 .log();
+    }
+
+    private <T> Optional<T> fetchOptionalOrEmptyDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
+            throws IOException {
+        requireNonNull(call, CALL);
+        final HttpResponse response = executor.execute(call, NOT_FOUND_OR_MODIFIED, true);
+        if (response.hasStatus(HttpStatus.NOT_FOUND) || hasNoValue(response)) {
+            logEmpty(call, response);
+            return Optional.empty();
+        }
+        return Optional.of(decoder.apply(response));
     }
 
     private <T> Optional<T> fetchOrEmptyDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
