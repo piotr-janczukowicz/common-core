@@ -19,6 +19,7 @@ import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.http.HttpResponse;
 import io.github.piotr_janczukowicz.http.HttpStatus;
 import io.github.piotr_janczukowicz.http.HttpStreamResponse;
+import io.github.piotr_janczukowicz.http.HttpUpsertOutcome;
 import io.github.piotr_janczukowicz.http.MultipartFormData;
 import io.github.piotr_janczukowicz.http.ResponseTooLargeException;
 import io.github.piotr_janczukowicz.http.transport.HttpTransport;
@@ -738,6 +739,97 @@ class AbstractHttpCallerTest {
         final HttpRequest request = capturedRequest();
         assertThat(request.body().isAbsent()).isTrue();
         assertThat(request.headers().get(CONTENT_TYPE)).isEmpty();
+    }
+
+    @Test
+    void upsert_shouldReturnCreated_whenCreated() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.CREATED.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+
+            assertThat(caller.upsert(HttpCall.of(HttpMethod.PUT, "/secret"))).isEqualTo(HttpUpsertOutcome.CREATED);
+        }
+    }
+
+    @Test
+    void upsert_shouldReturnUpdated_whenNoContent() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+
+            assertThat(caller.upsert(HttpCall.of(HttpMethod.PUT, "/secret"))).isEqualTo(HttpUpsertOutcome.UPDATED);
+        }
+    }
+
+    @Test
+    void upsert_shouldThrow_whenNotFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.PUT, "/secret");
+
+            assertThat(catchThrowable(() -> caller.upsert(call))).isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    @Test
+    void text_shouldSendUtf8BodyAndMediaType_whenTextGiven() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            caller.send(caller.text(HttpCall.of(HttpMethod.POST, "/render"), "# hé", "text/x-markdown"));
+        }
+
+        final HttpRequest request = capturedRequest();
+        assertSoftly(softly -> {
+            softly.assertThat(request.headers().get(CONTENT_TYPE)).contains("text/x-markdown");
+            softly.assertThat(request.body().bytes()).isEqualTo("# hé".getBytes(StandardCharsets.UTF_8));
+        });
+    }
+
+    @Test
+    void text_shouldThrow_whenTextNull() {
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.POST, "/render");
+
+            final Throwable thrown = catchThrowable(() -> caller.text(call, null, "text/plain"));
+
+            assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("text");
+        }
+    }
+
+    @Test
+    void binary_shouldSendBodyAndMediaType_whenBodyGiven() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.CREATED.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            caller.send(caller.binary(
+                    HttpCall.of(HttpMethod.POST, "/assets"), HttpBody.of(new byte[] {1, 2}), "image/png"));
+        }
+
+        final HttpRequest request = capturedRequest();
+        assertSoftly(softly -> {
+            softly.assertThat(request.headers().get(CONTENT_TYPE)).contains("image/png");
+            softly.assertThat(request.body().bytes()).containsExactly(1, 2);
+        });
+    }
+
+    @Test
+    void binary_shouldThrow_whenBodyNull() {
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.POST, "/assets");
+
+            final Throwable thrown = catchThrowable(() -> caller.binary(call, null, "image/png"));
+
+            assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("body");
+        }
     }
 
     private HttpRequest capturedRequest() throws IOException {

@@ -8,6 +8,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import io.github.piotr_janczukowicz.http.HttpBody;
 import io.github.piotr_janczukowicz.http.HttpResponse;
 import io.github.piotr_janczukowicz.http.HttpStatus;
+import io.github.piotr_janczukowicz.http.HttpUpsertOutcome;
 import io.github.piotr_janczukowicz.http.MultipartFormData;
 import io.github.piotr_janczukowicz.http.client.HttpCall.AbsoluteUri;
 import io.github.piotr_janczukowicz.http.uri.HttpUris;
@@ -19,6 +20,7 @@ import io.github.piotr_janczukowicz.json.JsonType;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,8 +38,9 @@ import org.slf4j.LoggerFactory;
  * holds what they need, the {@link HttpClientExecutor} that sends a call and the {@link JsonCodec} that encodes request
  * bodies and decodes responses, and nothing about any one call.
  *
- * <p>{@code Content-Type} is set only by {@link #json(HttpCall, Object)}, {@link #jsonIfPresent(HttpCall, Object)} and
- * {@link #multipart(HttpCall, MultipartFormData)}.
+ * <p>{@code Content-Type} is set only by {@link #json(HttpCall, Object)}, {@link #jsonIfPresent(HttpCall, Object)},
+ * {@link #text(HttpCall, String, String)}, {@link #binary(HttpCall, HttpBody, String)} and {@link #multipart(HttpCall,
+ * MultipartFormData)}.
  */
 public abstract class AbstractHttpCaller {
 
@@ -94,6 +97,38 @@ public abstract class AbstractHttpCaller {
         requireNonNull(call, CALL);
         requireNonNull(form, "form");
         return call.withBody(form.body()).withHeader(CONTENT_TYPE, form.contentType());
+    }
+
+    /**
+     * {@code call} with {@code text} as its UTF-8 body and {@code mediaType} as its {@code Content-Type}.
+     *
+     * @param call call to extend
+     * @param text request body
+     * @param mediaType media type sent as {@code Content-Type}
+     * @return new call
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public HttpCall text(final HttpCall call, final String text, final String mediaType) {
+        requireNonNull(call, CALL);
+        requireNonNull(text, "text");
+        requireNonNull(mediaType, "mediaType");
+        return call.withBody(HttpBody.of(text.getBytes(StandardCharsets.UTF_8))).withHeader(CONTENT_TYPE, mediaType);
+    }
+
+    /**
+     * {@code call} with {@code body} as its body and {@code mediaType} as its {@code Content-Type}.
+     *
+     * @param call call to extend
+     * @param body request body, from bytes, a file or a stream
+     * @param mediaType media type sent as {@code Content-Type}
+     * @return new call
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public HttpCall binary(final HttpCall call, final HttpBody body, final String mediaType) {
+        requireNonNull(call, CALL);
+        requireNonNull(body, "body");
+        requireNonNull(mediaType, "mediaType");
+        return call.withBody(body).withHeader(CONTENT_TYPE, mediaType);
     }
 
     /**
@@ -435,6 +470,19 @@ public abstract class AbstractHttpCaller {
      */
     public Optional<URI> redirectLocationIfAny(final HttpCall call) throws IOException {
         return executor.redirectLocationIfAny(requireNonNull(call, CALL));
+    }
+
+    /**
+     * Sends {@code call}, a create-or-replace request, and reports what the successful answer says it did.
+     *
+     * @param call call to send
+     * @return {@link HttpUpsertOutcome#CREATED} for HTTP 201, {@link HttpUpsertOutcome#UPDATED} for any other 2xx
+     * @throws IOException if the transport fails
+     * @throws RuntimeException if the response is an error status, as for {@link #send(HttpCall)}
+     * @throws NullPointerException if {@code call} is {@code null}
+     */
+    public HttpUpsertOutcome upsert(final HttpCall call) throws IOException {
+        return HttpUpsertOutcome.fromStatus(send(call).statusCode());
     }
 
     /**
