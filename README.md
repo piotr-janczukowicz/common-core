@@ -210,29 +210,6 @@ and writes it, so no other wiring is needed. `ValidationUtils.requireWholeSecond
 record Event(String name, @EpochInstant(EpochUnit.MILLIS) Instant at) {}
 ```
 
-### Union adapters
-
-| Adapter | Use it for |
-| --- | --- |
-| `StringOrObjectAdapters` | a value that is either a string or an object |
-| `ArrayOrWrappedAdapters` | a string array that is either bare or wrapped in one named property |
-| `PolymorphicObjectAdapters` | an object whose type is picked by the first present, non-null property |
-| `ScalarUnionReaders` | building a value from a string, number, boolean, string array or `null` inside your own deserializer |
-
-```java
-StringOrObjectAdapters.register(
-        module,
-        Label.class,
-        Label::name,
-        Label::details,
-        Label::ofName,
-        Label::ofDetails,
-        Label.Details.class);
-```
-
-Every `register` method rejects a `null` argument when `register` is called. A union value that holds neither of its forms
-fails to serialize instead of being written as `null`.
-
 ### Immutable collections
 
 `ImmutableCollectionsModule` makes `List`, `Collection`, `Set` and `Map` deserialize as immutable collections, keeping element
@@ -253,8 +230,7 @@ mapper once. `JacksonJsonCodec` is a `JsonCodec` over such a mapper.
 
 ### Reading nodes and tokens
 
-`JsonNodes.textOrNull(node, field)` reads a string field and gives `null` for a missing or non-string one. `JsonTokens` checks
-the token a parser is on and reads an object unless it is empty. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
+`JsonNodes.textOrNull(node, field)` reads a string field and gives `null` for a missing or non-string one. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
 field and then bind a type without building a tree.
 
 ### Integral doubles
@@ -266,7 +242,7 @@ value, including `NaN`, infinities, negative zero and values beyond the `long` r
 ### Mapper expectations
 
 Do not enable default typing on a mapper that reads untrusted JSON. Keep Jackson's `StreamReadConstraints` at their defaults or
-tighter: they bound the size of numbers, and `ScalarUnionReaders` and `ValueUnionModule` additionally reject a number with an exponent beyond 1000
+tighter: they bound the size of numbers, and `ValueUnionModule` additionally rejects a number with an exponent beyond 1000
 decimal places.
 
 ## GraphQL
