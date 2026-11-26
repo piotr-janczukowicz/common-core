@@ -237,7 +237,7 @@ public final class JavaDocsSchemaComparator {
             } else if (branchClass.isRecord() && "object".equals(token) && hasProperties(branch)) {
                 alignPropertyNames(
                         path,
-                        propertyNames(mergeCompositionIntoProperties(branch).get("properties")),
+                        mergeCompositionIntoProperties(branch).get("properties"),
                         properties(MAPPER.constructType(branchClass)),
                         mismatches);
             } else if (branchClass.isRecord() && !"object".equals(token)) {
@@ -380,7 +380,7 @@ public final class JavaDocsSchemaComparator {
             mismatches.add(path + ": docs object, java " + javaType);
             return;
         }
-        alignPropertyNames(path, propertyNames(object.get("properties")), properties(javaType), mismatches);
+        alignPropertyNames(path, object.get("properties"), properties(javaType), mismatches);
     }
 
     private static @Nullable JsonNode structuralObject(final JavaType javaType, final JsonNode schema) {
@@ -822,11 +822,11 @@ public final class JavaDocsSchemaComparator {
         }
         final Set<String> schemaNames = propertyNames(schema.get("properties"));
         if (isSealedInterface(javaType.getRawClass())) {
-            alignPropertyNames(path, schemaNames, permitProperties(javaType.getRawClass()), mismatches);
+            alignPropertyNames(path, schema.get("properties"), permitProperties(javaType.getRawClass()), mismatches);
             return;
         }
         final List<JsonField> javaProperties = properties(javaType);
-        alignPropertyNames(path, schemaNames, javaProperties, mismatches);
+        alignPropertyNames(path, schema.get("properties"), javaProperties, mismatches);
         for (final JsonField property : javaProperties) {
             final String name = property.name();
             if (!schemaNames.contains(name)) {
@@ -882,17 +882,22 @@ public final class JavaDocsSchemaComparator {
         return union;
     }
 
+    /**
+     * Reports a docs property the Java type lacks and a Java property the docs lack. A docs property whose schema only
+     * allows null ({@link #isNullOnly}) may be missing on Java: it can hold no value, so the generators leave it out.
+     */
     private static void alignPropertyNames(
             final String path,
-            final Set<String> schemaNames,
+            final JsonNode properties,
             final List<JsonField> javaProperties,
             final List<String> mismatches) {
+        final Set<String> schemaNames = propertyNames(properties);
         final Set<String> javaNames = new LinkedHashSet<>();
         for (final JsonField property : javaProperties) {
             javaNames.add(property.name());
         }
         for (final String name : schemaNames) {
-            if (!javaNames.contains(name)) {
+            if (!javaNames.contains(name) && !isNullOnly(properties.get(name))) {
                 mismatches.add(join(path, name) + ": on docs schema, missing on java");
             }
         }
@@ -1303,6 +1308,38 @@ public final class JavaDocsSchemaComparator {
     private static boolean hasNullable(final RecordComponent component) {
         return component.isAnnotationPresent(Nullable.class)
                 || component.getAnnotatedType().isAnnotationPresent(Nullable.class);
+    }
+
+    /**
+     * A property schema that only allows null: {@code type} is {@code "null"} (or a list of nothing but {@code "null"})
+     * with no {@code allOf}, {@code oneOf}, {@code anyOf} or {@code properties} beside it, or an array whose items are
+     * such a schema. The rule of {@code schema_core.null_only} in common-openapi-tools, which the shared walker and the
+     * {@code null-only-property} repair apply: {@code {"allOf": [X], "type": ["null"]}} is "X or null", not null only.
+     */
+    static boolean isNullOnly(final @Nullable JsonNode schema) {
+        if (schema == null || !schema.isObject()) {
+            return false;
+        }
+        for (final String key : List.of("allOf", "oneOf", "anyOf", "properties")) {
+            if (schema.has(key)) {
+                return false;
+            }
+        }
+        final Set<String> types = typeNames(schema.get("type"));
+        if (types.equals(Set.of("null"))) {
+            return true;
+        }
+        return types.equals(Set.of("array")) && isNullOnly(schema.get("items"));
+    }
+
+    private static Set<String> typeNames(final @Nullable JsonNode type) {
+        final Set<String> names = new LinkedHashSet<>();
+        if (type != null && type.isArray()) {
+            type.forEach(item -> names.add(item.isString() ? item.asString() : item.toString()));
+        } else if (type != null && type.isString()) {
+            names.add(type.asString());
+        }
+        return names;
     }
 
     private static Set<String> propertyNames(final JsonNode properties) {

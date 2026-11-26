@@ -17,6 +17,7 @@ import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -36,6 +37,38 @@ class JavaDocsSchemaComparatorTest {
                 """);
 
         assertThat(JavaDocsSchemaComparator.diff(PagesUpdate.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldIgnoreAMissingProperty_whenItsDocsSchemaOnlyAllowsNull() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"id":{"type":"integer"},"parent":{"type":["null"]},"tags":{"type":"array","items":{"type":"null"}}},"required":["id"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(Collaborator.class, schema)).isEmpty();
+    }
+
+    @Test
+    void diff_shouldReportAMissingProperty_whenItsDocsSchemaAllowsNullAndAnotherType() {
+        final JsonNode schema = MAPPER.readTree("""
+                {"type":"object","properties":{"id":{"type":"integer"},"note":{"type":["string","null"]},"owner":{"allOf":[{"type":"object","properties":{"login":{"type":"string"}}}],"type":["null"]}},"required":["id"]}
+                """);
+
+        assertThat(JavaDocsSchemaComparator.diff(Collaborator.class, schema))
+                .containsExactly("note: on docs schema, missing on java", "owner: on docs schema, missing on java");
+    }
+
+    @Test
+    void isNullOnly_shouldAllowOnlyNull_whenTypeIsNullAloneOrAnArrayOfIt() {
+        final JsonNode schemas = MAPPER.readTree("""
+                [{"type":"null"},{"type":["null"]},{"type":"array","items":{"type":["null"]}},
+                 {"type":["string","null"]},{"anyOf":[{"type":"string"}],"type":["null"]},{}]
+                """);
+        final List<Boolean> found = new ArrayList<>();
+
+        schemas.forEach(schema -> found.add(JavaDocsSchemaComparator.isNullOnly(schema)));
+
+        assertThat(found).containsExactly(true, true, true, false, false, false);
     }
 
     @Test
@@ -810,6 +843,8 @@ class JavaDocsSchemaComparatorTest {
             @Nullable @JsonProperty("public") Boolean sitePublic) {}
 
     record AllOfRequired(String x, String y) {}
+
+    record Collaborator(long id) {}
 
     record AnyOfRequired(int id, String kind, @Nullable String a) {}
 
