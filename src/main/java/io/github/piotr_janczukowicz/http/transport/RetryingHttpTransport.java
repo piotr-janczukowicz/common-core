@@ -267,8 +267,8 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Retrying wrapper over {@code delegate} whose collaborators are all supplied, so tests can inject a gate and a
-     * listener. Creates nothing itself; the constructors that take a {@link RetryConfiguration} build these from it.
+     * Retrying wrapper over {@code delegate} with every collaborator given. Creates nothing itself; the constructors
+     * that take a {@link RetryConfiguration} build these from it.
      *
      * @param delegate transport that performs one attempt
      * @param policy retry decisions and delays
@@ -372,7 +372,7 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Number of rate limits the gate holds, which lets a test check that expired limits are dropped.
+     * Number of rate limits the gate currently holds.
      *
      * @return count of limits held, or {@code 0} when limits are not coordinated across calls
      */
