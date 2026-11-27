@@ -91,21 +91,21 @@ class ModelArchitectureRulesTest {
     }
 
     @Test
-    void enumFallbackPairsWithItsWireValue_shouldPass_whenFallbackUsesItsOwnName() {
+    void enumFallbackPairsWithItsValue_shouldPass_whenFallbackUsesItsOwnName() {
         final JavaClasses fallback = classes(PairedFallback.class);
 
-        final EvaluationResult result = ModelArchitectureRules.enumFallbackPairsWithItsWireValue(PACKAGE)
-                .evaluate(fallback);
+        final EvaluationResult result =
+                ModelArchitectureRules.enumFallbackPairsWithItsValue(PACKAGE).evaluate(fallback);
 
         assertThat(result.hasViolation()).isFalse();
     }
 
     @Test
-    void enumFallbackPairsWithItsWireValue_shouldFail_whenFallbackHasAnotherWireValue() {
+    void enumFallbackPairsWithItsValue_shouldFail_whenFallbackHasAnotherWireValue() {
         final JavaClasses fallback = classes(RenamedFallback.class);
 
-        final EvaluationResult result = ModelArchitectureRules.enumFallbackPairsWithItsWireValue(PACKAGE)
-                .evaluate(fallback);
+        final EvaluationResult result =
+                ModelArchitectureRules.enumFallbackPairsWithItsValue(PACKAGE).evaluate(fallback);
 
         assertThat(result.getFailureReport().getDetails())
                 .anyMatch(detail -> detail.contains("UNRECOGNIZED must have the wire value unrecognized"));

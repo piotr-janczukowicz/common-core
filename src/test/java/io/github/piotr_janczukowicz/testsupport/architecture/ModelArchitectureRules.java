@@ -49,16 +49,16 @@ public final class ModelArchitectureRules {
     }
 
     /**
-     * The constant {@code UNRECOGNIZED} and the wire value {@code unrecognized} belong together: neither stands for
-     * anything else.
+     * The constant {@code UNRECOGNIZED} and the value {@code unrecognized} belong together: neither stands for anything
+     * else.
      */
-    public static ArchRule enumFallbackPairsWithItsWireValue(final String packageName) {
+    public static ArchRule enumFallbackPairsWithItsValue(final String packageName) {
         return classes()
                 .that()
                 .resideInAPackage(packageName + "..")
                 .and()
                 .areEnums()
-                .should(new ArchCondition<>("name the fallback UNRECOGNIZED with the wire value unrecognized") {
+                .should(new ArchCondition<>("name the fallback UNRECOGNIZED with the value unrecognized") {
                     @Override
                     public void check(final JavaClass clazz, final ConditionEvents events) {
                         checkEnum(clazz, events);
@@ -79,7 +79,7 @@ public final class ModelArchitectureRules {
                 .resideInAPackage("..test..");
     }
 
-    /** The wire value of an enum constant: its {@code value()} when it has one, else its name. */
+    /** The value of an enum constant: its {@code value()} when it has one, else its name. */
     public static String value(final Class<?> type, final Object constant) {
         try {
             return String.valueOf(type.getMethod("value").invoke(constant));
