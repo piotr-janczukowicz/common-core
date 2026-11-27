@@ -233,7 +233,7 @@ final class RedirectExecutor {
             if (parsed.getHost() != null) {
                 return HttpUris.describeSafe(parsed);
             }
-            return HttpUris.rawPathOrEmpty(parsed);
+            return HttpUris.rawPath(parsed);
         } catch (final URISyntaxException unused) {
             // A malformed Location has no safe form to report; the failure then omits it.
             return null;

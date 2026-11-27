@@ -36,42 +36,42 @@ class SetUtilsTest {
     }
 
     @Test
-    void copyOrNull_shouldReturnNull_whenValuesIsNull() {
-        final Set<String> copy = SetUtils.copyOrNull(null);
+    void copy_shouldReturnNull_whenValuesIsNull() {
+        final Set<String> copy = SetUtils.copy(null);
 
         assertThat(copy).isNull();
     }
 
     @Test
-    void copyOrNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+    void copy_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
         final Set<String> values = new HashSet<>(Set.of("a", "b"));
 
-        final Set<String> copy = SetUtils.copyOrNull(values);
+        final Set<String> copy = SetUtils.copy(values);
 
         assertThat(copy).isEqualTo(values).isNotSameAs(values);
     }
 
     @Test
-    void copyOrNull_shouldThrow_whenValuesHasANullElement() {
+    void copy_shouldThrow_whenValuesHasANullElement() {
         final Set<String> values = new HashSet<>(Arrays.asList("a", null));
 
-        final Throwable thrown = catchThrowable(() -> SetUtils.copyOrNull(values));
+        final Throwable thrown = catchThrowable(() -> SetUtils.copy(values));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void copyOrEmpty_shouldReturnAnEmptyCollection_whenValuesIsNull() {
-        final Set<String> copy = SetUtils.copyOrEmpty(null);
+    void copyNonNull_shouldReturnAnEmptyCollection_whenValuesIsNull() {
+        final Set<String> copy = SetUtils.copyNonNull(null);
 
         assertThat(copy).isEmpty();
     }
 
     @Test
-    void copyOrEmpty_shouldReturnACopy_whenValuesIsGiven() {
+    void copyNonNull_shouldReturnACopy_whenValuesIsGiven() {
         final Set<String> values = new HashSet<>(Set.of("a", "b"));
 
-        final Set<String> copy = SetUtils.copyOrEmpty(values);
+        final Set<String> copy = SetUtils.copyNonNull(values);
 
         assertThat(copy).isEqualTo(values).isNotSameAs(values);
     }

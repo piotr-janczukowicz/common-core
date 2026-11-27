@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,7 +25,7 @@ class QueryParametersTest {
             this.wire = wire;
         }
 
-        String wireValue() {
+        String value() {
             return wire;
         }
     }
@@ -37,7 +38,7 @@ class QueryParametersTest {
                 .text("state", "opened")
                 .value("confidential", true)
                 .value("created_after", Instant.parse("2026-01-01T00:00:00Z"))
-                .wire("order_by", Order.CREATED, Order::wireValue)
+                .value("order_by", Order.CREATED, Order::value)
                 .build();
 
         assertThat(query)
@@ -57,9 +58,9 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .text("a", null)
                 .value("b", null)
-                .wire("c", noOrder, Order::wireValue)
+                .value("c", noOrder, Order::value)
                 .list("d", null)
-                .wireList("e", noOrders, Order::wireValue)
+                .list("e", noOrders, Order::value)
                 .map("f", null)
                 .build();
 
@@ -73,7 +74,7 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .list("labels", List.of("a", "b"))
                 .list("ids", List.of(1L, 2L))
-                .wireList("order", List.of(Order.CREATED, Order.CREATED), Order::wireValue)
+                .list("order", List.of(Order.CREATED, Order.CREATED), Order::value)
                 .build();
 
         assertThat(query)
@@ -148,7 +149,7 @@ class QueryParametersTest {
     void wire_shouldRejectANullWireValue_whenTheFunctionReturnsNull() {
         final QueryParameters parameters = QueryParameters.builder();
 
-        final Throwable thrown = catchThrowable(() -> parameters.wire("order_by", Order.CREATED, order -> null));
+        final Throwable thrown = catchThrowable(() -> parameters.value("order_by", Order.CREATED, order -> null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order_by");
     }
@@ -158,7 +159,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = List.of(Order.CREATED);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, order -> null));
+        final Throwable thrown = catchThrowable(() -> parameters.list("order", values, order -> null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order");
     }
@@ -168,7 +169,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = Arrays.asList(Order.CREATED, null);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, Order::wireValue));
+        final Throwable thrown = catchThrowable(() -> parameters.list("order", values, Order::value));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("order");
     }
@@ -226,9 +227,8 @@ class QueryParametersTest {
 
     @Test
     void wireList_shouldLeaveOutTheParameter_whenTheListIsEmpty() {
-        final Map<String, String> query = QueryParameters.builder()
-                .wireList("a", List.of(), String::length)
-                .build();
+        final Map<String, String> query =
+                QueryParameters.builder().list("a", List.of(), String::length).build();
 
         assertThat(query).isEmpty();
     }
@@ -237,8 +237,181 @@ class QueryParametersTest {
     void wire_shouldRejectANullFunction_whenTheValueIsNull() {
         final QueryParameters parameters = QueryParameters.builder();
 
-        final Throwable thrown = catchThrowable(() -> parameters.wire("a", null, null));
+        final Throwable thrown = catchThrowable(() -> parameters.value("a", null, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void buildValues_shouldRepeatEachItem_whenARepeatedListIsAdded() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Map<String, List<String>> query = parameters
+                .text("state", "opened")
+                .repeated("owner[]", List.of("a", "b"))
+                .repeated("order", List.of(Order.CREATED), Order::value)
+                .list("labels", List.of("x", "y"))
+                .buildValues();
+
+        assertThat(query)
+                .containsExactly(
+                        Map.entry("state", List.of("opened")),
+                        Map.entry("owner[]", List.of("a", "b")),
+                        Map.entry("order", List.of("created_at")),
+                        Map.entry("labels", List.of("x,y")));
+    }
+
+    @Test
+    void buildValues_shouldLeaveOutTheParameter_whenTheRepeatedListIsNullOrEmpty() {
+        final QueryParameters parameters = QueryParameters.builder();
+        final List<Order> noOrders = null;
+
+        final Map<String, List<String>> query = parameters
+                .repeated("a", null)
+                .repeated("b", List.of())
+                .repeated("c", noOrders, Order::value)
+                .repeated("d", List.of(), Order::value)
+                .buildValues();
+
+        assertThat(query).isEmpty();
+    }
+
+    @Test
+    void repeated_shouldSkipNullItems_whenTheListHoldsThem() {
+        final List<Long> values = Arrays.asList(1L, null, 2L);
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Map<String, List<String>> query =
+                parameters.repeated("ids", values).buildValues();
+
+        assertThat(query).containsExactly(Map.entry("ids", List.of("1", "2")));
+    }
+
+    @Test
+    void repeated_shouldLeaveOutTheParameter_whenEveryItemIsNull() {
+        final List<String> values = Arrays.asList(null, null);
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Map<String, List<String>> query =
+                parameters.repeated("ids", values).buildValues();
+
+        assertThat(query).isEmpty();
+    }
+
+    @Test
+    void wireRepeated_shouldSkipNullItems_whenTheListHoldsThem() {
+        final List<Order> values = Arrays.asList(null, Order.CREATED);
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Map<String, List<String>> query =
+                parameters.repeated("order", values, Order::value).buildValues();
+
+        assertThat(query).containsExactly(Map.entry("order", List.of("created_at")));
+    }
+
+    @Test
+    void repeated_shouldReplaceTheEarlierValue_whenTheNameIsAddedTwice() {
+        final QueryParameters parameters = QueryParameters.builder().text("a", "1");
+
+        final Map<String, List<String>> query =
+                parameters.repeated("a", List.of("2", "3")).buildValues();
+
+        assertThat(query).containsExactly(Map.entry("a", List.of("2", "3")));
+    }
+
+    @Test
+    void repeated_shouldRejectABlankName_whenTheNameIsBlank() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Throwable thrown = catchThrowable(() -> parameters.repeated(" ", List.of("x")));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("name");
+    }
+
+    @Test
+    void wireRepeated_shouldRejectANullFunction_whenTheValuesAreNull() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Throwable thrown = catchThrowable(() -> parameters.repeated("a", null, null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("toValue");
+    }
+
+    @Test
+    void wireRepeated_shouldRejectANullWireValue_whenTheFunctionReturnsNull() {
+        final QueryParameters parameters = QueryParameters.builder();
+        final List<Order> values = List.of(Order.CREATED);
+
+        final Throwable thrown = catchThrowable(() -> parameters.repeated("order", values, order -> null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order");
+    }
+
+    @Test
+    void build_shouldRefuseTheRepeatedParameter_whenItHoldsSeveralValues() {
+        final QueryParameters parameters = QueryParameters.builder().repeated("owner[]", List.of("a", "b"));
+
+        final Throwable thrown = catchThrowable(parameters::build);
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("owner[]")
+                .hasMessageContaining("buildValues()");
+    }
+
+    @Test
+    void build_shouldHoldEverySingleValue_whenARepeatedParameterWasReplaced() {
+        final QueryParameters parameters = QueryParameters.builder()
+                .text("a", "1")
+                .repeated("b", List.of("x", "y"))
+                .text("b", "z");
+
+        final Map<String, String> query = parameters.build();
+
+        assertThat(query).containsExactly(Map.entry("a", "1"), Map.entry("b", "z"));
+    }
+
+    @Test
+    void build_shouldHoldTheOneValue_whenARepeatedParameterHoldsOne() {
+        final QueryParameters parameters = QueryParameters.builder();
+
+        final Map<String, String> query =
+                parameters.repeated("owner[]", List.of("a")).build();
+
+        assertThat(query).containsExactly(Map.entry("owner[]", "a"));
+    }
+
+    @Test
+    void buildValues_shouldReturnAnUnmodifiableMap_whenCalled() {
+        final Map<String, List<String>> query =
+                QueryParameters.builder().text("a", "1").buildValues();
+
+        final Throwable thrown = catchThrowable(() -> query.put("b", List.of("2")));
+
+        assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void buildValues_shouldReturnUnmodifiableLists_whenARepeatedListIsAdded() {
+        final List<String> values = new ArrayList<>(List.of("a", "b"));
+        final List<String> owners = QueryParameters.builder()
+                .repeated("owner[]", values)
+                .buildValues()
+                .get("owner[]");
+
+        final Throwable thrown = catchThrowable(() -> owners.add("c"));
+
+        assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void buildValues_shouldKeepTheBuiltValues_whenTheGivenListChangesAfterwards() {
+        final List<String> values = new ArrayList<>(List.of("a", "b"));
+        final QueryParameters parameters = QueryParameters.builder().repeated("owner[]", values);
+        values.add("c");
+
+        final Map<String, List<String>> query = parameters.buildValues();
+
+        assertThat(query).containsExactly(Map.entry("owner[]", List.of("a", "b")));
     }
 }

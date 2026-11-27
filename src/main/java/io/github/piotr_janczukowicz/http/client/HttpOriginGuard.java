@@ -129,7 +129,7 @@ public class HttpOriginGuard {
      * @return {@code true} if a dot segment is present
      */
     protected static boolean hasDotSegments(final URI uri) {
-        for (final String segment : HttpUris.rawPathOrEmpty(uri).split("/", -1)) {
+        for (final String segment : HttpUris.rawPath(uri).split("/", -1)) {
             final String decoded = segment.replace("%2e", ".").replace("%2E", ".");
             if (".".equals(decoded) || "..".equals(decoded)) {
                 return true;

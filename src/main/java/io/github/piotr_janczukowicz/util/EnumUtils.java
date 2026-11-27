@@ -12,9 +12,9 @@ import java.util.stream.Stream;
  * Enum lookup helpers.
  *
  * <p>Resolves enum constants from external strings that may differ from {@link Enum#name()}. Lookups are exact string
- * matches against an immutable {@link WireIndex} that the caller owns, typically in a {@code static final} field of the
- * enum. The library keeps no global cache, so each index is bound to the mapping it was built with and to the lifetime
- * of its owner.
+ * matches against an immutable {@link ValueIndex} that the caller owns, typically in a {@code static final} field of
+ * the enum. The library keeps no global cache, so each index is bound to the mapping it was built with and to the
+ * lifetime of its owner.
  */
 public final class EnumUtils {
 
@@ -25,26 +25,25 @@ public final class EnumUtils {
     /**
      * Builds an immutable lookup from wire strings to the constants of {@code enumClass}.
      *
-     * <p>{@code wireValue} is applied once to every constant, during this call. The result does not reference
-     * {@code wireValue}. Hold the result in a {@code static final} field so the index is built once.
+     * <p>{@code value} is applied once to every constant, during this call. The result does not reference
+     * {@code value}. Hold the result in a {@code static final} field so the index is built once.
      *
      * @param enumClass enum type
-     * @param wireValue mapping from constant to wire string
+     * @param value mapping from constant to wire string
      * @param <E> enum type
      * @return the lookup
-     * @throws NullPointerException if any argument is {@code null} or {@code wireValue} returns {@code null}
+     * @throws NullPointerException if any argument is {@code null} or {@code value} returns {@code null}
      * @throws IllegalStateException if two constants map to the same wire string
      */
-    public static <E extends Enum<E>> WireIndex<E> index(
-            final Class<E> enumClass, final Function<E, String> wireValue) {
+    public static <E extends Enum<E>> ValueIndex<E> index(final Class<E> enumClass, final Function<E, String> value) {
         requireNonNull(enumClass, "enumClass");
-        requireNonNull(wireValue, "wireValue");
+        requireNonNull(value, "value");
 
         final Map<String, E> constants = Stream.of(enumClass.getEnumConstants())
                 .collect(Collectors.toUnmodifiableMap(
-                        constant -> requireNonNull(wireValue.apply(constant), "wire value of " + constant),
+                        constant -> requireNonNull(value.apply(constant), "wire value of " + constant),
                         Function.identity()));
-        return new WireIndex<>(constants);
+        return new ValueIndex<>(constants);
     }
 
     /**
@@ -53,11 +52,11 @@ public final class EnumUtils {
      *
      * @param <E> enum type
      */
-    public static final class WireIndex<E extends Enum<E>> {
+    public static final class ValueIndex<E extends Enum<E>> {
 
         private final Map<String, E> constants;
 
-        private WireIndex(final Map<String, E> constants) {
+        private ValueIndex(final Map<String, E> constants) {
             this.constants = constants;
         }
 
@@ -68,7 +67,7 @@ public final class EnumUtils {
          * @return matching constant, or empty if none match
          * @throws NullPointerException if {@code value} is {@code null}
          */
-        public Optional<E> fromWire(final String value) {
+        public Optional<E> of(final String value) {
             requireNonNull(value, "value");
 
             return Optional.ofNullable(constants.get(value));
@@ -82,10 +81,10 @@ public final class EnumUtils {
          * @return matching constant, or {@code defaultValue}
          * @throws NullPointerException if any argument is {@code null}
          */
-        public E fromWire(final String value, final E defaultValue) {
+        public E of(final String value, final E defaultValue) {
             requireNonNull(defaultValue, "defaultValue");
 
-            return fromWire(value).orElse(defaultValue);
+            return of(value).orElse(defaultValue);
         }
 
         /**
@@ -97,8 +96,8 @@ public final class EnumUtils {
          * @throws NullPointerException if {@code value} is {@code null}
          * @throws IllegalArgumentException if no constant matches; the message is {@code Unknown <label>: <value>}
          */
-        public E requireFromWire(final String value, final String label) {
-            return fromWire(value).orElseThrow(() -> new IllegalArgumentException("Unknown " + label + ": " + value));
+        public E require(final String value, final String label) {
+            return of(value).orElseThrow(() -> new IllegalArgumentException("Unknown " + label + ": " + value));
         }
     }
 }

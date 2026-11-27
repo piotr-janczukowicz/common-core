@@ -2,6 +2,8 @@ package io.github.piotr_janczukowicz.util;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -27,6 +29,25 @@ public final class MapUtils {
     }
 
     /**
+     * Copies {@code values} into an unmodifiable map that keeps the iteration order and accepts {@code null} keys and
+     * values, as a decoded JSON object does ({@link Map#copyOf} refuses both and loses the order). An absent map stays
+     * absent.
+     *
+     * @param values the map to copy, or {@code null}
+     * @param <K> key type
+     * @param <V> value type
+     * @return an unmodifiable copy of {@code values} in its iteration order, or {@code null} if {@code values} is
+     *     {@code null}
+     */
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
+    public static <K, V> @Nullable Map<K, V> copyWithNullValues(@Nullable final Map<K, V> values) {
+        if (values == null) {
+            return null;
+        }
+        return Collections.unmodifiableMap(new LinkedHashMap<>(values));
+    }
+
+    /**
      * Copies {@code values} into an unmodifiable map, and keeps an absent map absent.
      *
      * @param values the map to copy, or {@code null}
@@ -36,7 +57,7 @@ public final class MapUtils {
      * @throws NullPointerException if {@code values} has a {@code null} key or value
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
-    public static <K, V> @Nullable Map<K, V> copyOrNull(@Nullable final Map<K, V> values) {
+    public static <K, V> @Nullable Map<K, V> copy(@Nullable final Map<K, V> values) {
         if (values == null) {
             return null;
         }
@@ -52,7 +73,7 @@ public final class MapUtils {
      * @return an unmodifiable copy of {@code values}, or an empty map if {@code values} is {@code null}
      * @throws NullPointerException if {@code values} has a {@code null} key or value
      */
-    public static <K, V> Map<K, V> copyOrEmpty(@Nullable final Map<K, V> values) {
+    public static <K, V> Map<K, V> copyNonNull(@Nullable final Map<K, V> values) {
         if (values == null) {
             return Map.of();
         }

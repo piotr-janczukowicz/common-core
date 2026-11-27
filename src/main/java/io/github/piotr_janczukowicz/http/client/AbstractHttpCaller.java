@@ -8,6 +8,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import io.github.piotr_janczukowicz.http.HttpBody;
 import io.github.piotr_janczukowicz.http.HttpResponse;
 import io.github.piotr_janczukowicz.http.HttpStatus;
+import io.github.piotr_janczukowicz.http.HttpUpsertOutcome;
 import io.github.piotr_janczukowicz.http.MultipartFormData;
 import io.github.piotr_janczukowicz.http.client.HttpCall.AbsoluteUri;
 import io.github.piotr_janczukowicz.http.uri.HttpUris;
@@ -19,6 +20,7 @@ import io.github.piotr_janczukowicz.json.JsonType;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,17 +29,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Executes {@link HttpCall}s and decodes their responses: the operations that used to hang off the call itself. It
- * holds what they need, the {@link HttpClientExecutor} that sends a call and the {@link JsonCodec} that encodes request
- * bodies and decodes responses, and nothing about any one call.
+ * Executes {@link HttpCall}s and decodes their responses. It holds what they need, the {@link HttpClientExecutor} that
+ * sends a call and the {@link JsonCodec} that encodes request bodies and decodes responses, and nothing about any one
+ * call.
  *
- * <p>{@code Content-Type} is set only by {@link #json(HttpCall, Object)}, {@link #jsonIfPresent(HttpCall, Object)} and
- * {@link #multipart(HttpCall, MultipartFormData)}.
+ * <p>{@code Content-Type} is set only by {@link #json(HttpCall, Object)}, {@link #text(HttpCall, String, String)},
+ * {@link #binary(HttpCall, HttpBody, String)} and {@link #multipart(HttpCall, MultipartFormData)}.
  */
 public abstract class AbstractHttpCaller {
 
@@ -48,6 +49,8 @@ public abstract class AbstractHttpCaller {
     private static final String TYPE = "type";
     private static final Set<Integer> NOT_FOUND = Set.of(HttpStatus.NOT_FOUND.code());
     private static final Set<Integer> NOT_MODIFIED = Set.of(HttpStatus.NOT_MODIFIED.code());
+    private static final Set<Integer> NOT_FOUND_OR_MODIFIED =
+            Set.of(HttpStatus.NOT_FOUND.code(), HttpStatus.NOT_MODIFIED.code());
 
     private final HttpClientExecutor executor;
     private final JsonCodec jsonCodec;
@@ -95,17 +98,35 @@ public abstract class AbstractHttpCaller {
     }
 
     /**
-     * {@code call} with {@code value} encoded as JSON when it is present; otherwise {@code call} as it is.
+     * {@code call} with {@code text} as its UTF-8 body and {@code mediaType} as its {@code Content-Type}.
      *
      * @param call call to extend
-     * @param value request body, or {@code null}
-     * @return new call, or {@code call}
-     * @throws NullPointerException if {@code call} is {@code null}
-     * @throws JsonEncodeException if {@code value} is present and cannot be written as JSON
+     * @param text request body
+     * @param mediaType media type sent as {@code Content-Type}
+     * @return new call
+     * @throws NullPointerException if an argument is {@code null}
      */
-    public HttpCall jsonIfPresent(final HttpCall call, final @Nullable Object value) {
+    public HttpCall text(final HttpCall call, final String text, final String mediaType) {
         requireNonNull(call, CALL);
-        return value == null ? call : json(call, value);
+        requireNonNull(text, "text");
+        requireNonNull(mediaType, "mediaType");
+        return call.withBody(HttpBody.of(text.getBytes(StandardCharsets.UTF_8))).withHeader(CONTENT_TYPE, mediaType);
+    }
+
+    /**
+     * {@code call} with {@code body} as its body and {@code mediaType} as its {@code Content-Type}.
+     *
+     * @param call call to extend
+     * @param body request body, from bytes, a file or a stream
+     * @param mediaType media type sent as {@code Content-Type}
+     * @return new call
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public HttpCall binary(final HttpCall call, final HttpBody body, final String mediaType) {
+        requireNonNull(call, CALL);
+        requireNonNull(body, "body");
+        requireNonNull(mediaType, "mediaType");
+        return call.withBody(body).withHeader(CONTENT_TYPE, mediaType);
     }
 
     /**
@@ -139,8 +160,8 @@ public abstract class AbstractHttpCaller {
     /**
      * Sends {@code call} and decodes the body as {@code type}. An unsuccessful response, HTTP 404 included, throws: use
      * this for a collection, a setting, a capability, a public key or a report, where a 404 means a wrong scope or a
-     * disabled feature, and {@link #fetchOrEmpty(HttpCall, Class)} for a lookup of one resource by a key, where "not
-     * found" is a normal answer.
+     * disabled feature, and {@link #find(HttpCall, Class)} for a lookup of one resource by a key, where "not found" is
+     * a normal answer.
      *
      * @param call call to send
      * @param type response class
@@ -160,7 +181,7 @@ public abstract class AbstractHttpCaller {
 
     /**
      * Sends {@code call} and decodes the body as {@code type}. An unsuccessful response, HTTP 404 included, throws; see
-     * {@link #fetch(HttpCall, Class)} for when to prefer {@link #fetchOrEmpty(HttpCall, Class)}.
+     * {@link #fetch(HttpCall, Class)} for when to prefer {@link #find(HttpCall, Class)}.
      *
      * @param call call to send
      * @param type response type, including type arguments
@@ -181,8 +202,8 @@ public abstract class AbstractHttpCaller {
     /**
      * Decodes as {@code type}, or empty on HTTP 404. Use it for a lookup of one resource by a key (an id, a name or a
      * number), where "not found" is a normal answer; use {@link #fetch(HttpCall, Class)} for a collection, a setting, a
-     * capability, a public key or a report. Use {@link #fetchResult(HttpCall, Class)} when the status matters, and
-     * {@link #fetchOptional(HttpCall, Class)} for endpoints that answer without a body (202, 204).
+     * capability, a public key or a report. Use {@link #fetchWithResponse(HttpCall, Class)} when the status matters,
+     * and {@link #fetchOptional(HttpCall, Class)} for endpoints that answer without a body (202, 204).
      *
      * @param call call to send
      * @param type response class
@@ -193,14 +214,13 @@ public abstract class AbstractHttpCaller {
      *     target
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> Optional<T> fetchOrEmpty(final HttpCall call, final Class<T> type) throws IOException {
+    public <T> Optional<T> find(final HttpCall call, final Class<T> type) throws IOException {
         requireNonNull(type, TYPE);
-        return fetchOrEmptyDecoded(call, response -> decode(response, type));
+        return findDecoded(call, response -> decode(response, type));
     }
 
     /**
-     * Decodes the body as {@code type}, or empty when the server returns 404; see {@link #fetchOrEmpty(HttpCall,
-     * Class)}.
+     * Decodes the body as {@code type}, or empty when the server returns 404; see {@link #find(HttpCall, Class)}.
      *
      * @param call call to send
      * @param type response type, including type arguments
@@ -211,9 +231,9 @@ public abstract class AbstractHttpCaller {
      *     target
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> Optional<T> fetchOrEmpty(final HttpCall call, final JsonType<T> type) throws IOException {
+    public <T> Optional<T> find(final HttpCall call, final JsonType<T> type) throws IOException {
         requireNonNull(type, TYPE);
-        return fetchOrEmptyDecoded(call, response -> decode(response, type));
+        return findDecoded(call, response -> decode(response, type));
     }
 
     /**
@@ -232,7 +252,7 @@ public abstract class AbstractHttpCaller {
      * @throws NullPointerException if an argument is {@code null}
      */
     public <T> Optional<T> fetchOptional(final HttpCall call, final Class<T> type) throws IOException {
-        return fetchResult(call, type).value();
+        return fetchWithResponse(call, type).value();
     }
 
     /**
@@ -249,7 +269,44 @@ public abstract class AbstractHttpCaller {
      * @throws NullPointerException if an argument is {@code null}
      */
     public <T> Optional<T> fetchOptional(final HttpCall call, final JsonType<T> type) throws IOException {
-        return fetchResult(call, type).value();
+        return fetchWithResponse(call, type).value();
+    }
+
+    /**
+     * Decodes the body as {@code type}, or empty when the server returns 404 or when the response carries no value (see
+     * {@link #fetchOptional(HttpCall, Class)}). Use it for a lookup of one resource by a key that also answers without
+     * a body on success.
+     *
+     * @param call call to send
+     * @param type response class
+     * @param <T> response type
+     * @return decoded value, or empty when the server returns 404 or the response has none
+     * @throws IOException if the transport fails
+     * @throws JsonDecodeException if a non-empty body is not valid JSON for {@code type}
+     * @throws IllegalStateException if the body is the JSON literal {@code null}
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public <T> Optional<T> findOptional(final HttpCall call, final Class<T> type) throws IOException {
+        requireNonNull(type, TYPE);
+        return findOptionalDecoded(call, response -> decode(response, type));
+    }
+
+    /**
+     * Decodes the body as {@code type}, or empty when the server returns 404 or the response carries no value; see
+     * {@link #findOptional(HttpCall, Class)}.
+     *
+     * @param call call to send
+     * @param type response type, including type arguments
+     * @param <T> response type
+     * @return decoded value, or empty when the server returns 404 or the response has none
+     * @throws IOException if the transport fails
+     * @throws JsonDecodeException if a non-empty body is not valid JSON for {@code type}
+     * @throws IllegalStateException if the body is the JSON literal {@code null}
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public <T> Optional<T> findOptional(final HttpCall call, final JsonType<T> type) throws IOException {
+        requireNonNull(type, TYPE);
+        return findOptionalDecoded(call, response -> decode(response, type));
     }
 
     /**
@@ -265,9 +322,9 @@ public abstract class AbstractHttpCaller {
      * @throws IllegalStateException if the body is the JSON literal {@code null}
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> HttpResult<T> fetchResult(final HttpCall call, final Class<T> type) throws IOException {
+    public <T> HttpResult<T> fetchWithResponse(final HttpCall call, final Class<T> type) throws IOException {
         requireNonNull(type, TYPE);
-        return fetchResultDecoded(call, response -> decode(response, type));
+        return fetchWithResponseDecoded(call, response -> decode(response, type));
     }
 
     /**
@@ -282,9 +339,9 @@ public abstract class AbstractHttpCaller {
      * @throws IllegalStateException if the body is the JSON literal {@code null}
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> HttpResult<T> fetchResult(final HttpCall call, final JsonType<T> type) throws IOException {
+    public <T> HttpResult<T> fetchWithResponse(final HttpCall call, final JsonType<T> type) throws IOException {
         requireNonNull(type, TYPE);
-        return fetchResultDecoded(call, response -> decode(response, type));
+        return fetchWithResponseDecoded(call, response -> decode(response, type));
     }
 
     /**
@@ -378,14 +435,13 @@ public abstract class AbstractHttpCaller {
      *     non-http(s) scheme
      * @throws NullPointerException if {@code call} is {@code null}
      */
-    public URI redirectLocation(final HttpCall call) throws IOException {
-        return executor.redirectLocation(requireNonNull(call, CALL));
+    public URI location(final HttpCall call) throws IOException {
+        return executor.location(requireNonNull(call, CALL));
     }
 
     /**
-     * Like {@link #redirectLocation(HttpCall)}, but a successful (2xx) response means that there is no redirect and
-     * yields empty, for example when the content is sent directly or the server is still preparing the result (HTTP
-     * 202).
+     * Like {@link #location(HttpCall)}, but a successful (2xx) response means that there is no redirect and yields
+     * empty, for example when the content is sent directly or the server is still preparing the result (HTTP 202).
      *
      * @param call call to send
      * @return redirect target from HTTP 301, 302, 303, 307, or 308, or empty when the response is successful
@@ -394,8 +450,21 @@ public abstract class AbstractHttpCaller {
      *     non-http(s) scheme
      * @throws NullPointerException if {@code call} is {@code null}
      */
-    public Optional<URI> redirectLocationIfAny(final HttpCall call) throws IOException {
-        return executor.redirectLocationIfAny(requireNonNull(call, CALL));
+    public Optional<URI> findLocation(final HttpCall call) throws IOException {
+        return executor.findLocation(requireNonNull(call, CALL));
+    }
+
+    /**
+     * Sends {@code call}, a create-or-replace request, and reports what the successful answer says it did.
+     *
+     * @param call call to send
+     * @return {@link HttpUpsertOutcome#CREATED} for HTTP 201, {@link HttpUpsertOutcome#UPDATED} for any other 2xx
+     * @throws IOException if the transport fails
+     * @throws RuntimeException if the response is an error status, as for {@link #send(HttpCall)}
+     * @throws NullPointerException if {@code call} is {@code null}
+     */
+    public HttpUpsertOutcome upsert(final HttpCall call) throws IOException {
+        return HttpUpsertOutcome.fromStatus(send(call).statusCode());
     }
 
     /**
@@ -407,7 +476,7 @@ public abstract class AbstractHttpCaller {
      * @throws HttpException if the response is a redirect (3xx) or another non-404 error
      * @throws NullPointerException if {@code call} is {@code null}
      */
-    public boolean isExisting(final HttpCall call) throws IOException {
+    public boolean exists(final HttpCall call) throws IOException {
         return executor.execute(requireNonNull(call, CALL), NOT_FOUND, false).isSuccessful();
     }
 
@@ -431,15 +500,15 @@ public abstract class AbstractHttpCaller {
      * @throws HttpException if the response is unsuccessful
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> Optional<T> fetchUnless(final HttpCall call, final Class<T> type, final HttpStatus... statuses)
+    public <T> Optional<T> fetchExcept(final HttpCall call, final Class<T> type, final HttpStatus... statuses)
             throws IOException {
         requireNonNull(type, TYPE);
-        return fetchUnlessDecoded(call, response -> decode(response, type), statuses);
+        return fetchExceptDecoded(call, response -> decode(response, type), statuses);
     }
 
     /**
      * Empty when the status is one of {@code statuses}, or when any 2xx response has no body or a body equal to
-     * {@code {}}; otherwise the body is decoded as {@code type}. See {@link #fetchUnless(HttpCall, Class,
+     * {@code {}}; otherwise the body is decoded as {@code type}. See {@link #fetchExcept(HttpCall, Class,
      * HttpStatus...)} for the {@code {}} rule.
      *
      * @param call call to send
@@ -452,14 +521,14 @@ public abstract class AbstractHttpCaller {
      * @throws HttpException if the response is unsuccessful
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> Optional<T> fetchUnless(final HttpCall call, final JsonType<T> type, final HttpStatus... statuses)
+    public <T> Optional<T> fetchExcept(final HttpCall call, final JsonType<T> type, final HttpStatus... statuses)
             throws IOException {
         requireNonNull(type, TYPE);
-        return fetchUnlessDecoded(call, response -> decode(response, type), statuses);
+        return fetchExceptDecoded(call, response -> decode(response, type), statuses);
     }
 
     /**
-     * Like {@link #fetchUnless(HttpCall, Class, HttpStatus...) fetchUnless(call, type, HttpStatus.NO_CONTENT)}, but
+     * Like {@link #fetchExcept(HttpCall, Class, HttpStatus...) fetchExcept(call, type, HttpStatus.NO_CONTENT)}, but
      * waits for a result that the server computes in the background: while the answer is HTTP 202 Accepted the request
      * is sent again, after the {@code polling} delay, until the data arrives or {@code polling} has no tries left.
      *
@@ -474,14 +543,14 @@ public abstract class AbstractHttpCaller {
      * @throws HttpException if the response is unsuccessful
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> HttpComputed<T> fetchWhenReady(
-            final HttpCall call, final Class<T> type, final HttpAcceptedPolling polling) throws IOException {
+    public <T> HttpComputed<T> awaitFetch(final HttpCall call, final Class<T> type, final HttpAcceptedPolling polling)
+            throws IOException {
         requireNonNull(type, TYPE);
-        return fetchWhenReadyDecoded(call, response -> decode(response, type), polling);
+        return awaitFetchDecoded(call, response -> decode(response, type), polling);
     }
 
     /**
-     * Like {@link #fetchWhenReady(HttpCall, Class, HttpAcceptedPolling)} for a response type with type arguments.
+     * Like {@link #awaitFetch(HttpCall, Class, HttpAcceptedPolling)} for a response type with type arguments.
      *
      * @param call call to send
      * @param type response type, including type arguments
@@ -493,10 +562,10 @@ public abstract class AbstractHttpCaller {
      * @throws HttpException if the response is unsuccessful
      * @throws NullPointerException if an argument is {@code null}
      */
-    public <T> HttpComputed<T> fetchWhenReady(
+    public <T> HttpComputed<T> awaitFetch(
             final HttpCall call, final JsonType<T> type, final HttpAcceptedPolling polling) throws IOException {
         requireNonNull(type, TYPE);
-        return fetchWhenReadyDecoded(call, response -> decode(response, type), polling);
+        return awaitFetchDecoded(call, response -> decode(response, type), polling);
     }
 
     /**
@@ -612,7 +681,7 @@ public abstract class AbstractHttpCaller {
                 || response.body().isAbsent();
     }
 
-    private <T> Optional<T> fetchUnlessDecoded(
+    private <T> Optional<T> fetchExceptDecoded(
             final HttpCall call, final Function<HttpResponse, T> decoder, final HttpStatus... statuses)
             throws IOException {
         final HttpResponse response = send(call, expectedCodes(statuses));
@@ -628,7 +697,7 @@ public abstract class AbstractHttpCaller {
         return Optional.of(decoder.apply(response));
     }
 
-    private <T> HttpComputed<T> fetchWhenReadyDecoded(
+    private <T> HttpComputed<T> awaitFetchDecoded(
             final HttpCall call, final Function<HttpResponse, T> decoder, final HttpAcceptedPolling polling)
             throws IOException {
         requireNonNull(polling, "polling");
@@ -684,8 +753,8 @@ public abstract class AbstractHttpCaller {
         return response.body().mapBytes(AbstractHttpCaller::isEmptyJsonObjectBytes, () -> true);
     }
 
-    // Scans the bytes in place: whitespace, '{', whitespace, '}', whitespace. The whitespace is space, tab, LF and CR,
-    // plus vertical tab and form feed that earlier versions also tolerated around the braces.
+    // Scans the bytes in place: whitespace, '{', whitespace, '}', whitespace. The whitespace is space, tab, LF, CR,
+    // vertical tab and form feed.
     private static boolean isEmptyJsonObjectBytes(final byte[] bytes) {
         int index = skipWhitespace(bytes, 0);
         if (index == bytes.length || bytes[index] != '{') {
@@ -715,7 +784,7 @@ public abstract class AbstractHttpCaller {
         return decoder.apply(requireBody(call, response));
     }
 
-    private <T> HttpResult<T> fetchResultDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
+    private <T> HttpResult<T> fetchWithResponseDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
             throws IOException {
         requireNonNull(call, CALL);
         final HttpResponse response = executor.execute(call, NOT_MODIFIED, true);
@@ -734,7 +803,18 @@ public abstract class AbstractHttpCaller {
                 .log();
     }
 
-    private <T> Optional<T> fetchOrEmptyDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
+    private <T> Optional<T> findOptionalDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
+            throws IOException {
+        requireNonNull(call, CALL);
+        final HttpResponse response = executor.execute(call, NOT_FOUND_OR_MODIFIED, true);
+        if (response.hasStatus(HttpStatus.NOT_FOUND) || hasNoValue(response)) {
+            logEmpty(call, response);
+            return Optional.empty();
+        }
+        return Optional.of(decoder.apply(response));
+    }
+
+    private <T> Optional<T> findDecoded(final HttpCall call, final Function<HttpResponse, T> decoder)
             throws IOException {
         requireNonNull(call, CALL);
         final HttpResponse response = executor.execute(call, NOT_FOUND, true);

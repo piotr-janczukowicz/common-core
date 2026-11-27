@@ -99,7 +99,7 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of(LOCATION, List.of("https://cdn.example.test/file"))),
+                        HttpHeaders.ofLists(Map.of(LOCATION, List.of("https://cdn.example.test/file"))),
                         HttpBody.absent()))
                 .thenReturn(unauthorized());
 
@@ -201,7 +201,7 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(unauthorized())
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of(LOCATION, List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of(LOCATION, List.of("https://api.example.test/next"))),
                         HttpBody.absent()))
                 .thenReturn(ok());
 
@@ -223,7 +223,7 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(HttpStreamResponse.buffered(unauthorized()))
                 .thenReturn(HttpStreamResponse.buffered(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of(LOCATION, List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of(LOCATION, List.of("https://api.example.test/next"))),
                         HttpBody.absent())))
                 .thenReturn(HttpStreamResponse.streaming(
                         HttpStatus.OK.code(), HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1})));
@@ -288,7 +288,7 @@ class HttpClientAuthRenewalTest {
 
     @Test
     void isRenewableAfterRejection_shouldBeFalse_whenAuthDoesNotOverrideIt() {
-        assertThat(AuthenticationProviders.none().isRenewableAfterRejection(Authentication.ofBearer("x")))
+        assertThat(AuthenticationProviders.none().canRenew(Authentication.ofBearer("x")))
                 .isFalse();
     }
 

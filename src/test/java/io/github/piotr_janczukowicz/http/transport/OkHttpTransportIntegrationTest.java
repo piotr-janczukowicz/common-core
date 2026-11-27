@@ -334,7 +334,7 @@ class OkHttpTransportIntegrationTest {
                 .build();
         final HttpRequest request = new HttpRequest(GET, HTTP.uri("/slow"), HttpHeaders.empty(), null);
 
-        try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (final HttpTransport transport = HttpTransports.create(configuration)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(InterruptedIOException.class);
@@ -354,7 +354,7 @@ class OkHttpTransportIntegrationTest {
         final HttpRequest request = new HttpRequest(GET, HTTP.uri("/chunked"), HttpHeaders.empty(), null);
 
         final HttpResponse response;
-        try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (final HttpTransport transport = HttpTransports.create(configuration)) {
             response = transport.execute(request);
         }
 
@@ -368,7 +368,7 @@ class OkHttpTransportIntegrationTest {
                 .build();
 
         try (final StallAfterHeadersServer stall = new StallAfterHeadersServer(Duration.ofSeconds(60));
-                final HttpTransport transport = HttpTransports.okHttp(configuration)) {
+                final HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpRequest request = new HttpRequest(GET, stall.uri(), HttpHeaders.empty(), null);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -486,7 +486,7 @@ class OkHttpTransportIntegrationTest {
         final HttpTransportConfiguration configuration = callTimeoutConfiguration(Duration.ofMillis(500));
         final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
-        try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (final HttpTransport transport = HttpTransports.create(configuration)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(InterruptedIOException.class).hasMessage("timeout");
@@ -501,7 +501,7 @@ class OkHttpTransportIntegrationTest {
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(3)));
         final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
-        try (final HttpTransport transport = HttpTransports.okHttp(callTimeoutConfiguration(Duration.ofMillis(500)))) {
+        try (final HttpTransport transport = HttpTransports.create(callTimeoutConfiguration(Duration.ofMillis(500)))) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(InterruptedIOException.class).hasMessage("timeout");
@@ -533,7 +533,7 @@ class OkHttpTransportIntegrationTest {
         final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
-                HttpTransports.okHttp(callTimeoutConfiguration(Duration.ofMillis(500))),
+                HttpTransports.create(callTimeoutConfiguration(Duration.ofMillis(500))),
                 RetryConfiguration.builder().maxIoAttempts(3).build())) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -701,7 +701,7 @@ class OkHttpTransportIntegrationTest {
     }
 
     private static HttpTransport newTransport() {
-        return HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        return HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
     }
@@ -714,7 +714,7 @@ class OkHttpTransportIntegrationTest {
     }
 
     private static HttpTransport limitedTransport(final long maxResponseBytes) {
-        return HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        return HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .maxResponseBytes(maxResponseBytes)
                 .build());

@@ -184,7 +184,7 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
      *     non-http(s) scheme
      */
     @Override
-    public final URI redirectLocation(final HttpCall call) throws IOException {
+    public final URI location(final HttpCall call) throws IOException {
         requireNonNull(call, CALL);
         final Exchange exchange = exchange(call, false);
         return redirectOf(call, exchange)
@@ -204,7 +204,7 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
      *     non-http(s) scheme
      */
     @Override
-    public final Optional<URI> redirectLocationIfAny(final HttpCall call) throws IOException {
+    public final Optional<URI> findLocation(final HttpCall call) throws IOException {
         requireNonNull(call, CALL);
         return redirectOf(call, exchange(call, false));
     }
@@ -297,9 +297,7 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
     // Credentials that the call set itself are not the provider's to renew: it would send the same ones again.
     private boolean isRenewable(final HttpCall call, final HttpRequest sent) {
         return !hasOwnCredentials(call)
-                && sentCredentials(sent)
-                        .map(authenticationProvider::isRenewableAfterRejection)
-                        .orElse(false);
+                && sentCredentials(sent).map(authenticationProvider::canRenew).orElse(false);
     }
 
     // The credentials the provider put on a request: read from the header the provider declares.

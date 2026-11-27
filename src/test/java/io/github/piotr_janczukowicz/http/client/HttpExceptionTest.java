@@ -36,7 +36,7 @@ class HttpExceptionTest {
         assertSoftly(softly -> {
             softly.assertThat(exception).hasMessage("boom");
             softly.assertThat(exception.statusCode()).isEqualTo(500);
-            softly.assertThat(exception.rawBody()).contains("boom");
+            softly.assertThat(exception.body()).contains("boom");
             softly.assertThat(exception.method()).contains(HttpMethod.GET);
             softly.assertThat(exception.uri()).contains(REQUEST_URI);
             softly.assertThat(exception.headers()).isEqualTo(HttpHeaders.of("X-A", "b"));
@@ -73,7 +73,7 @@ class HttpExceptionTest {
 
         assertSoftly(softly -> {
             softly.assertThat(exception).hasMessage("HTTP 404");
-            softly.assertThat(exception.rawBody()).isEmpty();
+            softly.assertThat(exception.body()).isEmpty();
         });
     }
 
@@ -82,7 +82,7 @@ class HttpExceptionTest {
         final HttpException exception = new HttpException(400, "bad", "  ", null, null, null);
 
         assertSoftly(softly -> {
-            softly.assertThat(exception.rawBody()).isEmpty();
+            softly.assertThat(exception.body()).isEmpty();
             softly.assertThat(exception.headers()).isEqualTo(HttpHeaders.empty());
             softly.assertThat(exception.method()).isEmpty();
             softly.assertThat(exception.uri()).isEmpty();
@@ -116,7 +116,7 @@ class HttpExceptionTest {
         assertSoftly(softly -> {
             softly.assertThat(exception.getMessage()).hasSize(1024 + "... [truncated]".length());
             softly.assertThat(exception.getMessage()).startsWith("xxx").endsWith("... [truncated]");
-            softly.assertThat(exception.rawBody()).contains(body);
+            softly.assertThat(exception.body()).contains(body);
         });
     }
 
@@ -160,7 +160,7 @@ class HttpExceptionTest {
 
         final HttpException exception = new HttpException(500, "bad", body, null, null, null);
 
-        assertThat(exception.rawBody()).contains("x".repeat(HttpErrorBodies.MAX_RAW_BODY_CHARS));
+        assertThat(exception.body()).contains("x".repeat(HttpErrorBodies.MAX_RAW_BODY_CHARS));
     }
 
     @Test
@@ -169,7 +169,7 @@ class HttpExceptionTest {
 
         final HttpException exception = new HttpException(500, "bad", body, null, null, null);
 
-        assertThat(exception.rawBody()).contains("x".repeat(HttpErrorBodies.MAX_RAW_BODY_CHARS - 1));
+        assertThat(exception.body()).contains("x".repeat(HttpErrorBodies.MAX_RAW_BODY_CHARS - 1));
     }
 
     @Test

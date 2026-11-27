@@ -39,17 +39,17 @@ class HttpBodyUploadIntegrationTest {
 
     @Test
     void execute_shouldSendFileBytes_whenOkHttpTransportUploadsFiveMiB() throws Exception {
-        assertFileUpload(okHttp());
+        assertFileUpload(create());
     }
 
     @Test
     void execute_shouldSendStreamBytes_whenOkHttpTransportUploadsFiveMiB() throws Exception {
-        assertStreamUpload(okHttp());
+        assertStreamUpload(create());
     }
 
     @Test
     void execute_shouldResendStream_whenOkHttpTransportRetriesAfter429() throws Exception {
-        assertStreamRetry(okHttp());
+        assertStreamRetry(create());
     }
 
     private void assertFileUpload(final HttpTransport inner) throws Exception {
@@ -111,8 +111,8 @@ class HttpBodyUploadIntegrationTest {
         return payload;
     }
 
-    private static HttpTransport okHttp() {
-        return HttpTransports.okHttp(HttpTransportConfiguration.builder()
+    private static HttpTransport create() {
+        return HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(30))
                 .build());
     }
@@ -124,7 +124,7 @@ class HttpBodyUploadIntegrationTest {
         HTTP.stub(POST, UPLOAD_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"), status(OK));
 
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
-                okHttp(),
+                create(),
                 RetryConfiguration.builder()
                         .defaultBackoff(Duration.ZERO)
                         .maxBackoff(Duration.ZERO)

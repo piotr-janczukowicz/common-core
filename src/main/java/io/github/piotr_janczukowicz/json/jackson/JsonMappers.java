@@ -4,6 +4,7 @@ import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
 import io.github.piotr_janczukowicz.json.jackson.module.immutable.ImmutableCollectionsModule;
 import io.github.piotr_janczukowicz.json.jackson.module.optionalnull.OptionalNullModule;
+import io.github.piotr_janczukowicz.json.jackson.module.valueunion.ValueUnionModule;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,10 +36,15 @@ public final class JsonMappers {
      *
      * <p>The mapper reads {@code snake_case} names as the camelCase components of a record; ignores properties the type
      * does not have; refuses a duplicate key and a fractional number for an integer; reads an unknown enum constant as
-     * {@code null}; reads a single value where an array is expected; converts a JSON number or boolean to a
+     * {@code null}; reads a value whose external type id property is missing as {@code null}, so a
+     * sibling-discriminated union (Jackson's {@code EXTERNAL_PROPERTY}) accepts a body that has the discriminator but
+     * not the value; reads a single value where an array is expected; converts a JSON number or boolean to a
      * {@link String}, and a JSON string to a collection of one element; decodes collections as immutable ones; reads
-     * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; and reads
-     * {@link Instant} values with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps.
+     * and writes {@link io.github.piotr_janczukowicz.json.OptionalNull} through {@link OptionalNullModule}; reads
+     * {@link io.github.piotr_janczukowicz.json.ValueUnion} types through {@link ValueUnionModule}; reads and writes
+     * {@link io.github.piotr_janczukowicz.json.EpochInstant} properties through it; and reads {@link Instant} values
+     * with {@link FastInstantDeserializer}. Dates are written as text, not as timestamps, and a {@code double} or
+     * {@code Double} with no fractional part is written as an integer, as {@link IntegralDoubleSerializer} does.
      *
      * @return a new builder with these settings
      */
@@ -47,6 +53,7 @@ public final class JsonMappers {
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
                 .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+                .disable(DeserializationFeature.FAIL_ON_MISSING_EXTERNAL_TYPE_ID_PROPERTY)
                 .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
                 .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
                 .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -61,8 +68,12 @@ public final class JsonMappers {
                         cfg -> cfg.setCoercion(CoercionInputShape.String, CoercionAction.TryConvert))
                 .addModule(new ImmutableCollectionsModule())
                 .addModule(new OptionalNullModule())
+                .addModule(new ValueUnionModule())
                 .addModule(
-                        new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()));
+                        new SimpleModule("FastInstant").addDeserializer(Instant.class, new FastInstantDeserializer()))
+                .addModule(new SimpleModule("IntegralDouble")
+                        .addSerializer(Double.class, new IntegralDoubleSerializer())
+                        .addSerializer(Double.TYPE, new IntegralDoubleSerializer()));
     }
 
     /**

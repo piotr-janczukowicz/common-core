@@ -2,6 +2,7 @@ package io.github.piotr_janczukowicz.http.uri;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import io.github.piotr_janczukowicz.http.internal.ParsedUrlAccess;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,10 @@ import org.jspecify.annotations.Nullable;
  * credentials or signed tokens.
  */
 public final class ParsedUrl {
+
+    static {
+        ParsedUrlAccess.register(parsed -> parsed.url);
+    }
 
     private final HttpUrl url;
 
@@ -175,15 +180,6 @@ public final class ParsedUrl {
         final String host = url.host().indexOf(':') >= 0 ? "[" + url.host() + "]" : url.host();
         final String port = url.port() == HttpUrl.defaultPort(url.scheme()) ? "" : ":" + url.port();
         return url.scheme() + "://" + host + port + url.encodedPath();
-    }
-
-    /**
-     * The OkHttp form of this URL, for the OkHttp transport.
-     *
-     * @return parsed OkHttp URL
-     */
-    public HttpUrl toOkHttpUrl() {
-        return url;
     }
 
     @Override

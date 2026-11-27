@@ -42,8 +42,7 @@ class AuthenticationProvidersHeaderTest {
     void header_shouldNotRenew_whenRejected() {
         final AuthenticationProvider provider = AuthenticationProviders.header("JOB-TOKEN", "glcbt-abc");
 
-        assertThat(provider.isRenewableAfterRejection(provider.authentication().orElseThrow()))
-                .isFalse();
+        assertThat(provider.canRenew(provider.authentication().orElseThrow())).isFalse();
     }
 
     @Test

@@ -33,7 +33,6 @@ class HttpTransportConfigurationTest {
             softly.assertThat(config.connectionKeepAlive()).isEqualTo(Duration.ofMinutes(5));
             softly.assertThat(config.maxConcurrentRequests()).isEqualTo(100);
             softly.assertThat(config.maxSlotWait()).isEqualTo(Duration.ofSeconds(60));
-            softly.assertThat(config.isConcurrencyLimited()).isTrue();
             softly.assertThat(config.toString())
                     .contains(
                             "maxIdleConnections=100",
@@ -116,15 +115,6 @@ class HttpTransportConfigurationTest {
     }
 
     @Test
-    void build_shouldReportUnlimited_whenMaxConcurrentRequestsUnlimited() {
-        final HttpTransportConfiguration config = HttpTransportConfiguration.builder()
-                .maxConcurrentRequests(HttpTransportConfiguration.UNLIMITED_REQUESTS)
-                .build();
-
-        assertThat(config.isConcurrencyLimited()).isFalse();
-    }
-
-    @Test
     void build_shouldFollowConcurrencyLimit_whenMaxIdleConnectionsNotSet() {
         final HttpTransportConfiguration config =
                 HttpTransportConfiguration.builder().maxConcurrentRequests(20).build();
@@ -148,7 +138,7 @@ class HttpTransportConfigurationTest {
                 .maxConcurrentRequests(HttpTransportConfiguration.UNLIMITED_REQUESTS)
                 .build();
 
-        assertThat(config.maxIdleConnections()).isEqualTo(HttpTransportConfiguration.DEFAULT_MAX_IDLE_CONNECTIONS);
+        assertThat(config.maxIdleConnections()).isEqualTo(32);
     }
 
     @ParameterizedTest

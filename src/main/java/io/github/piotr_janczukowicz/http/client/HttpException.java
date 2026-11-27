@@ -64,9 +64,9 @@ public class HttpException extends RuntimeException {
     /**
      * Maps {@code response} to an exception. The body is decoded with the {@code charset} of the response
      * {@code Content-Type}, or UTF-8 when it names none or an unknown one. Only the first
-     * {@value HttpErrorBodies#MAX_RAW_BODY_CHARS} characters are decoded and kept in {@link #rawBody()}, so a huge
-     * error page never becomes a huge string; the message is cut to 1024 characters and ends with an ellipsis marker
-     * when it was longer.
+     * {@value HttpErrorBodies#MAX_RAW_BODY_CHARS} characters are decoded and kept in {@link #body()}, so a huge error
+     * page never becomes a huge string; the message is cut to 1024 characters and ends with an ellipsis marker when it
+     * was longer.
      *
      * @param method method of the failed call
      * @param response HTTP response
@@ -95,7 +95,7 @@ public class HttpException extends RuntimeException {
      *
      * @return body text, or empty
      */
-    public Optional<String> rawBody() {
+    public Optional<String> body() {
         return Optional.ofNullable(rawBody);
     }
 

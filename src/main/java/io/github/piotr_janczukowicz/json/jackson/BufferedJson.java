@@ -1,6 +1,8 @@
 package io.github.piotr_janczukowicz.json.jackson;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.util.TokenBuffer;
 
 /**
@@ -119,16 +122,16 @@ public final class BufferedJson implements AutoCloseable {
      * the wrong shape, so decoding through a mapper fails with the usual decode exception.
      *
      * @param field property name
-     * @param fromWire converts the wire text to the constant, throwing {@link IllegalArgumentException} for an unknown
+     * @param toEnum converts the wire text to the constant, throwing {@link IllegalArgumentException} for an unknown
      *     value
      * @param <E> enum type
      * @return the constant
-     * @throws DatabindException if the property is missing or {@code null}, or {@code fromWire} rejects its value
+     * @throws DatabindException if the property is missing or {@code null}, or {@code toEnum} rejects its value
      */
-    public <E> E requiredWire(final String field, final Function<String, E> fromWire) {
+    public <E> E requiredEnum(final String field, final Function<String, E> toEnum) {
         final String value = requiredText(field);
         try {
-            return fromWire.apply(value);
+            return toEnum.apply(value);
         } catch (final IllegalArgumentException unknown) {
             LOG.atDebug()
                     .setMessage("Rejected the value of field {}: {}")
@@ -256,6 +259,49 @@ public final class BufferedJson implements AutoCloseable {
      */
     public DatabindException mismatch(final String message) {
         return DatabindException.from(context, message);
+    }
+
+    /**
+     * The top-level property names of an object in document order, each once (its first occurrence), with a
+     * {@code null} value too.
+     *
+     * @return the names; empty when the value is not an object
+     */
+    public Set<String> names() {
+        final Set<String> found = new LinkedHashSet<>();
+        try (JsonParser parser = replay()) {
+            if (parser.currentToken() != JsonToken.START_OBJECT) {
+                return found;
+            }
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                found.add(parser.currentName());
+                parser.nextToken();
+                parser.skipChildren();
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Reads the object at the parser's current token with {@code deserializer}, or returns {@code null} for an object
+     * with no properties.
+     *
+     * @param parser parser positioned on the first token of the value; it ends after the value
+     * @param context context used for the read
+     * @param deserializer reads any other value
+     * @param <T> type the deserializer reads
+     * @return the value, or {@code null} for an object with no properties
+     */
+    public static <T> @Nullable T readNonEmpty(
+            final JsonParser parser, final DeserializationContext context, final ValueDeserializer<T> deserializer) {
+        try (BufferedJson json = capture(parser, context)) {
+            if (json.isEmptyObject()) {
+                return null;
+            }
+            try (JsonParser replayed = json.replay()) {
+                return deserializer.deserialize(replayed, context);
+            }
+        }
     }
 
     /**

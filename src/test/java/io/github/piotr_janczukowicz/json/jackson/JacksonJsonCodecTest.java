@@ -76,8 +76,8 @@ class JacksonJsonCodecTest {
     }
 
     @Test
-    void fromWire_shouldStillReject_whenValueIsUnknown() {
-        final Throwable thrown = catchThrowable(() -> TestStateReason.fromWire("brand_new_reason"));
+    void of_shouldStillReject_whenValueIsUnknown() {
+        final Throwable thrown = catchThrowable(() -> TestStateReason.of("brand_new_reason"));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }

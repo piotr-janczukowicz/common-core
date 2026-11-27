@@ -343,13 +343,13 @@ class HttpClientTest {
     }
 
     @Test
-    void redirectLocation_shouldThrowIllegalState_whenResponseIsOk() throws IOException {
+    void location_shouldThrowIllegalState_whenResponseIsOk() throws IOException {
         when(transport.execute(any())).thenReturn(new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.get("/tarball").withQuery(Map.of("token", "secret"));
 
-            final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
+            final Throwable thrown = catchThrowable(() -> client.location(call));
 
             assertThat(thrown)
                     .isInstanceOf(IllegalStateException.class)
@@ -360,44 +360,44 @@ class HttpClientTest {
     }
 
     @Test
-    void redirectLocation_shouldMapError_whenResponseIsNotFound() throws IOException {
+    void location_shouldMapError_whenResponseIsNotFound() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.get("/missing");
 
-            final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
+            final Throwable thrown = catchThrowable(() -> client.location(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
     }
 
     @Test
-    void redirectLocationIfAny_shouldReturnEmpty_whenResponseIsOk() throws IOException {
+    void findLocation_shouldReturnEmpty_whenResponseIsOk() throws IOException {
         when(transport.execute(any())).thenReturn(new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
-            final Optional<URI> location = client.redirectLocationIfAny(HttpCall.get("/contents/readme"));
+            final Optional<URI> location = client.findLocation(HttpCall.get("/contents/readme"));
 
             assertThat(location).isEmpty();
         }
     }
 
     @Test
-    void redirectLocationIfAny_shouldReturnEmpty_whenResponseIsAccepted() throws IOException {
+    void findLocation_shouldReturnEmpty_whenResponseIsAccepted() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(HttpStatus.ACCEPTED.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final Optional<URI> location = client.redirectLocationIfAny(HttpCall.get("/sbom"));
+            final Optional<URI> location = client.findLocation(HttpCall.get("/sbom"));
 
             assertThat(location).isEmpty();
         }
     }
 
     @Test
-    void redirectLocationIfAny_shouldReturnLocation_whenResponseIsFound() throws IOException {
+    void findLocation_shouldReturnLocation_whenResponseIsFound() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
@@ -405,37 +405,37 @@ class HttpClientTest {
                         HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final Optional<URI> location = client.redirectLocationIfAny(HttpCall.get("/tarball"));
+            final Optional<URI> location = client.findLocation(HttpCall.get("/tarball"));
 
             assertThat(location).contains(URI.create("https://download.example.test/x"));
         }
     }
 
     @Test
-    void redirectLocationIfAny_shouldMapError_whenResponseIsNotFound() throws IOException {
+    void findLocation_shouldMapError_whenResponseIsNotFound() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.get("/missing");
 
-            final Throwable thrown = catchThrowable(() -> client.redirectLocationIfAny(call));
+            final Throwable thrown = catchThrowable(() -> client.findLocation(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
     }
 
     @Test
-    void redirectLocationIfAny_shouldThrow_whenCallNull() {
+    void findLocation_shouldThrow_whenCallNull() {
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.redirectLocationIfAny(null));
+            final Throwable thrown = catchThrowable(() -> client.findLocation(null));
 
             assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("call");
         }
     }
 
     @Test
-    void redirectLocation_shouldReturnLocation_whenResponseIsFound() throws IOException {
+    void location_shouldReturnLocation_whenResponseIsFound() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
@@ -443,7 +443,7 @@ class HttpClientTest {
                         HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final URI location = client.redirectLocation(HttpCall.get("/tarball"));
+            final URI location = client.location(HttpCall.get("/tarball"));
 
             assertThat(location).hasToString("https://download.example.test/x");
         }
@@ -483,7 +483,7 @@ class HttpClientTest {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of("Location", List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of("Location", List.of("https://api.example.test/next"))),
                         null));
         final RedirectPolicy policy = new RedirectPolicy(1, Set.of(HttpMethod.GET), Set.of());
         try (final HttpClient client =
@@ -527,7 +527,7 @@ class HttpClientTest {
             }
 
             @Override
-            public boolean isRenewableAfterRejection(final Authentication rejected) {
+            public boolean canRenew(final Authentication rejected) {
                 throw renewalFailure;
             }
         };

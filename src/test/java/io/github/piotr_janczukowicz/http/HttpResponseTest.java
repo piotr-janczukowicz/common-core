@@ -74,7 +74,7 @@ class HttpResponseTest {
     }
 
     @Test
-    void fromWire_shouldMapHeaders_whenProvided() {
+    void of_shouldMapHeaders_whenProvided() {
         final HttpResponse response = HttpResponses.of(
                 HttpStatus.CREATED.code(), Map.of("X-Test", List.of("value")), HttpBody.of(new byte[] {1, 2}));
 

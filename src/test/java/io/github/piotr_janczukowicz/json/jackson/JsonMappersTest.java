@@ -4,10 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.piotr_janczukowicz.json.OptionalNull;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import io.github.piotr_janczukowicz.util.FileUtils;
 import java.lang.reflect.Constructor;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -162,6 +166,43 @@ class JsonMappersTest {
     }
 
     @Test
+    void defaults_shouldWriteANullMapValue_whenTheRecordIsNonNull() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+        final Map<String, @Nullable String> files = new LinkedHashMap<>();
+        files.put("a.txt", null);
+        files.put("b.txt", "x");
+
+        final String encoded = mapper.writeValueAsString(new Files(files, null));
+
+        assertThat(encoded).isEqualTo("{\"files\":{\"a.txt\":null,\"b.txt\":\"x\"}}");
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Files(
+            Map<String, @Nullable String> files, @Nullable String description) {}
+
+    @Test
+    void defaults_shouldWriteWholeDoublesAsIntegers_whenEncoding() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+
+        final String encoded = mapper.writeValueAsString(new Measures(5.0, 2.0, List.of(1.0, 1.5), Map.of("k", 3.0)));
+
+        assertThat(encoded).isEqualTo("{\"boxed\":5,\"primitive\":2,\"list\":[1,1.5],\"map\":{\"k\":3}}");
+    }
+
+    @Test
+    void defaults_shouldKeepFractionsAndNegativeZeroAsNumbers_whenEncoding() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+
+        final String encoded = mapper.writeValueAsString(new Measures(5.5, -0.0, List.of(), Map.of()));
+
+        assertThat(encoded).isEqualTo("{\"boxed\":5.5,\"primitive\":-0.0,\"list\":[],\"map\":{}}");
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Measures(@Nullable Double boxed, double primitive, List<Double> list, Map<String, Double> map) {}
+
+    @Test
     void constructor_shouldThrow_whenInstantiatedViaReflection() throws Exception {
         final Constructor<JsonMappers> constructor = JsonMappers.class.getDeclaredConstructor();
         constructor.setAccessible(true);
@@ -169,6 +210,33 @@ class JsonMappersTest {
         final Throwable thrown = catchThrowable(constructor::newInstance);
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
+
+    sealed interface Shape permits Circle {}
+
+    record Circle(int radius) implements Shape {}
+
+    @Test
+    void defaults_shouldReadMissingExternalTypeIdValueAsNull_whenTheDiscriminatorIsPresentWithoutTheValue() {
+        final JsonMapper mapper = JsonMappers.snakeCase().build();
+        record Holder(
+                @JsonTypeInfo(
+                        use = JsonTypeInfo.Id.NAME,
+                        include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
+                        property = "kind")
+                @JsonSubTypes(@JsonSubTypes.Type(value = Circle.class, name = "circle"))
+                @Nullable Shape shape,
+
+                String kind) {}
+
+        final Holder withValue = mapper.readValue("{\"kind\":\"circle\",\"shape\":{\"radius\":2}}", Holder.class);
+        final Holder withoutValue = mapper.readValue("{\"kind\":\"circle\"}", Holder.class);
+
+        assertSoftly(softly -> {
+            softly.assertThat(withValue.shape()).isEqualTo(new Circle(2));
+            softly.assertThat(withoutValue.shape()).isNull();
+            softly.assertThat(withoutValue.kind()).isEqualTo("circle");
+        });
     }
 
     @Test

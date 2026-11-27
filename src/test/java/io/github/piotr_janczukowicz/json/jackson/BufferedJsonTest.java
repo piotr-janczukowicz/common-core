@@ -118,7 +118,7 @@ class BufferedJsonTest {
         final String converted;
 
         try (BufferedJson json = capture("{\"kind\":\"a\"}")) {
-            converted = json.requiredWire("kind", String::toUpperCase);
+            converted = json.requiredEnum("kind", String::toUpperCase);
         }
 
         assertThat(converted).isEqualTo("A");
@@ -129,7 +129,7 @@ class BufferedJsonTest {
         final Throwable thrown;
 
         try (BufferedJson json = capture("{\"kind\":\"zzz\"}")) {
-            thrown = catchThrowable(() -> json.requiredWire("kind", value -> {
+            thrown = catchThrowable(() -> json.requiredEnum("kind", value -> {
                 throw new IllegalArgumentException("Unknown kind: " + value);
             }));
         }
@@ -145,7 +145,7 @@ class BufferedJsonTest {
         final Throwable thrown;
 
         try (BufferedJson json = capture("{}")) {
-            thrown = catchThrowable(() -> json.requiredWire("kind", String::toUpperCase));
+            thrown = catchThrowable(() -> json.requiredEnum("kind", String::toUpperCase));
         }
 
         assertThat(thrown).isInstanceOf(DatabindException.class).hasMessageContaining("kind");

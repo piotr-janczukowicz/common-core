@@ -2,15 +2,30 @@ package io.github.piotr_janczukowicz.json;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Three-state JSON field: omit when the wrapper is {@code null}, write JSON {@code null} when {@link #ofNull()}, or
- * write the wrapped value when {@link #of(Object)}.
+ * Three-state JSON property: absent, JSON {@code null}, or a value.
+ *
+ * <ul>
+ *   <li>absent: a {@code null} wrapper; the property is left out when writing;
+ *   <li>{@code null}: {@link #ofNull()}; the property is written as JSON {@code null};
+ *   <li>a value: {@link #of(Object)}; the wrapped value is written.
+ * </ul>
+ *
+ * <p>Writing needs no module: {@link #ofNull()} is written as JSON {@code null} even when the enclosing type leaves out
+ * nulls. Reading needs the Jackson {@code OptionalNullModule}: an absent property stays a {@code null} wrapper, JSON
+ * {@code null} becomes {@link #ofNull()}, and any other value becomes {@link #of(Object)}.
+ *
+ * <p>Note: generated records reject a {@code null} wrapper for a required property, so a required property is always
+ * written, as JSON {@code null} or a value.
  *
  * @param <T> value type
  */
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public final class OptionalNull<T> {
 
     private final @Nullable T value;
@@ -24,6 +39,7 @@ public final class OptionalNull<T> {
      *
      * @return wrapped value
      */
+    @JsonValue
     public @Nullable T value() {
         return value;
     }

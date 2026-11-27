@@ -9,14 +9,14 @@ import tools.jackson.databind.ser.std.StdSerializer;
  * including non-finite ones, negative zero (an integer cannot carry its sign) and values outside the {@code long} range
  * (such as 2^63), are written as ordinary JSON numbers.
  */
-public final class IntegralDoubleSerializer extends StdSerializer<Double> {
+final class IntegralDoubleSerializer extends StdSerializer<Double> {
 
     /** 2^63: {@code Long.MIN_VALUE} negated; exactly representable, one above {@code Long.MAX_VALUE}. */
     private static final double TWO_POW_63 = 0x1p63;
 
     private static final long NEGATIVE_ZERO_BITS = Double.doubleToRawLongBits(-0.0);
 
-    public IntegralDoubleSerializer() {
+    IntegralDoubleSerializer() {
         super(Double.class);
     }
 

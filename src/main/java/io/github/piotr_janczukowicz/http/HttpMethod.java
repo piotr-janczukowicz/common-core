@@ -11,11 +11,11 @@ public enum HttpMethod {
     OPTIONS;
 
     /**
-     * Whether an empty body is sent when the caller omitted one (POST, PUT, PATCH).
+     * Whether requests of this method carry a body, an empty one when the caller supplied none (POST, PUT, PATCH).
      *
-     * @return {@code true} if an empty body should be sent
+     * @return {@code true} if a request of this method is sent with a body
      */
-    public boolean isEmptyBodySentWhenAbsent() {
+    public boolean expectsBody() {
         return this == POST || this == PUT || this == PATCH;
     }
 

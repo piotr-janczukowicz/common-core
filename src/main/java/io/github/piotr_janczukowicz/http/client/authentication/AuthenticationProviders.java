@@ -41,24 +41,22 @@ public final class AuthenticationProviders {
     }
 
     /**
-     * Bearer token from {@code tokens} on each request, which is renewed after a 401 when
-     * {@code isRenewableAfterRejection} accepts the rejected token. Use it for a token that the caller refreshes after
-     * it expires, such as an OAuth user token: the predicate receives the token value that the server rejected and
-     * returns {@code true} once a different token is available from {@code tokens}. The client then sends the request
-     * once more; a second 401 is the result. A predicate that returns {@code false} behaves like
-     * {@link #bearer(Supplier)}.
+     * Bearer token from {@code tokens} on each request, which is renewed after a 401 when {@code canRenew} accepts the
+     * rejected token. Use it for a token that the caller refreshes after it expires, such as an OAuth user token: the
+     * predicate receives the token value that the server rejected and returns {@code true} once a different token is
+     * available from {@code tokens}. The client then sends the request once more; a second 401 is the result. A
+     * predicate that returns {@code false} behaves like {@link #bearer(Supplier)}.
      *
      * @param tokens token supplier, called on each request
-     * @param isRenewableAfterRejection receives the rejected token value; {@code true} to send the request again with
-     *     the token {@code tokens} returns now
+     * @param canRenew receives the rejected token value; {@code true} to send the request again with the token
+     *     {@code tokens} returns now
      * @return provider that sends {@code Bearer} with the value {@code tokens} returns, and renews it after a 401 as
-     *     {@code isRenewableAfterRejection} decides; its {@code toString} does not show the token
+     *     {@code canRenew} decides; its {@code toString} does not show the token
      * @throws NullPointerException if an argument is {@code null}
      * @throws IllegalArgumentException at request time if {@code tokens} returns a blank value
      */
-    public static AuthenticationProvider bearer(
-            final Supplier<String> tokens, final Predicate<String> isRenewableAfterRejection) {
-        return new RenewableBearerAuthenticationProvider(tokens, isRenewableAfterRejection);
+    public static AuthenticationProvider bearer(final Supplier<String> tokens, final Predicate<String> canRenew) {
+        return new RenewableBearerAuthenticationProvider(tokens, canRenew);
     }
 
     /**

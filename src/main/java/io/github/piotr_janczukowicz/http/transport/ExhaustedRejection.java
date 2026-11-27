@@ -43,7 +43,7 @@ final class ExhaustedRejection {
                 wire.put(name, List.of(value));
             }
         });
-        return new HttpResponse(HttpStatus.TOO_MANY_REQUESTS.code(), HttpHeaders.fromWire(wire), HttpBody.absent());
+        return new HttpResponse(HttpStatus.TOO_MANY_REQUESTS.code(), HttpHeaders.ofLists(wire), HttpBody.absent());
     }
 
     private static boolean isReplayable(final String name) {

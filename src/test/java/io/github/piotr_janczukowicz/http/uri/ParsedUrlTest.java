@@ -172,13 +172,6 @@ class ParsedUrlTest {
     }
 
     @Test
-    void toOkHttpUrl_shouldExposeTheParsedUrl() {
-        final ParsedUrl url = ParsedUrl.of(URI.create("https://api.example.test/a?x=1"));
-
-        assertThat(url.toOkHttpUrl()).hasToString("https://api.example.test/a?x=1");
-    }
-
-    @Test
     void equals_shouldBeTrue_whenComparedWithItself() {
         final ParsedUrl url = ParsedUrl.of(URI.create("https://api.example.test/a"));
 

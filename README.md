@@ -14,6 +14,7 @@ Jackson 3, in one artifact:
   ISO-8601 and HTTP date handling, a memoized supplier, immutable collection copies, pagination helpers and annotations such as `@RecordBuilder`.
 - **JSON**: a Jackson-free `JsonCodec` contract, an `OptionalNull` wrapper for PATCH-style payloads, Jackson adapters for
   union-shaped JSON, a module that reads collections as immutable ones, and a serializer that writes `5.0` as `5`.
+- **GraphQL**: `Variables`, a builder for the variables of a GraphQL request that keeps their JSON types.
 - **HTTP**: a small stack for REST clients, built on OkHttp, with immutable request and response types, a transport with
   composable decorators, and a client with authentication, redirects, an origin guard and polling.
 
@@ -35,8 +36,7 @@ OkHttp, Jackson 3 (`tools.jackson`) and SLF4J come with it. `org.jspecify` and `
 the module descriptor: nothing needs them at run time except your own use of the `@RecordBuilder` annotation processor.
 
 The test helpers are published as a test-jar: scripted transports and loopback servers for the HTTP stack, a mutable clock,
-the `@UnitTest` and `@IntegrationTest` tags, ArchUnit rules for models, and the base classes of the catalog tests that check
-models against an API description:
+the `@UnitTest` and `@IntegrationTest` tags:
 
 ```xml
 <dependency>
@@ -50,7 +50,7 @@ models against an API description:
 
 ## Utilities
 
-Packages `util`, `annotation`, `openapi.model` and `pagination` under `io.github.piotr_janczukowicz`. The code uses only the
+Packages `util`, `annotation` and `pagination` under `io.github.piotr_janczukowicz`. The code uses only the
 JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 
 ### What is in it
@@ -58,10 +58,10 @@ JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 | Class | What it does |
 |---|---|
 | [`ValidationUtils`](src/main/java/io/github/piotr_janczukowicz/util/ValidationUtils.java) | `require*` checks for arguments and configuration: not null, not blank, positive, at least, at most, between, non-empty, size, unique items, no blank or null elements, length, pattern, path safety (`requireSafePath`, `requireFilePath`), and group checks such as exactly one. Each returns the value so you can assign it |
-| [`ListUtils`](src/main/java/io/github/piotr_janczukowicz/util/ListUtils.java), [`SetUtils`](src/main/java/io/github/piotr_janczukowicz/util/SetUtils.java), [`MapUtils`](src/main/java/io/github/piotr_janczukowicz/util/MapUtils.java) | Unmodifiable copies: `copyOf` for a required collection, `copyOrNull` to keep an absent one absent, `copyOrEmpty` to turn it into an empty one, and `orEmpty` to do that without copying |
+| [`ListUtils`](src/main/java/io/github/piotr_janczukowicz/util/ListUtils.java), [`SetUtils`](src/main/java/io/github/piotr_janczukowicz/util/SetUtils.java), [`MapUtils`](src/main/java/io/github/piotr_janczukowicz/util/MapUtils.java) | Unmodifiable copies: `copyOf` for a required collection, `copy` to keep an absent one absent, `copyNonNull` to turn it into an empty one, and `orEmpty` to do that without copying |
 | [`StringUtils`](src/main/java/io/github/piotr_janczukowicz/util/StringUtils.java) | `isBlank`, `isNotBlank` and `stripToNull`, with the semantics of Apache Commons Lang 3 and no dependency on it |
-| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `WireIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional`, a default, or `requireFromWire`, which fails with `Unknown <label>: <value>` for an unknown value |
-| [`IoUtils`](src/main/java/io/github/piotr_janczukowicz/util/IoUtils.java) | `readAllBounded` and `copyBounded` stop with `BoundedReadLimitException` instead of reading past a limit |
+| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `ValueIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional`, a default, or `require`, which fails with `Unknown <label>: <value>` for an unknown value |
+| [`IoUtils`](src/main/java/io/github/piotr_janczukowicz/util/IoUtils.java) | `readAllBounded` and `copyAtMost` stop with `BoundedReadLimitException` instead of reading past a limit |
 | [`DateTimeUtils`](src/main/java/io/github/piotr_janczukowicz/util/DateTimeUtils.java) | `Instant` to ISO-8601 UTC text, `Instant` to and from RFC 1123 (HTTP dates), epoch seconds to `Instant` within a valid range, ISO dates and the start of a day in UTC |
 | [`EncodingUtils`](src/main/java/io/github/piotr_janczukowicz/util/EncodingUtils.java) | Base64 encoding, and decoding (also of text wrapped over several lines) that reports your message and never echoes the input |
 | [`NumberUtils`](src/main/java/io/github/piotr_janczukowicz/util/NumberUtils.java) | `parseInt` and `parseLong` for text from outside, such as a header: an empty result instead of an exception for text that is absent, blank, out of range, or not an optional `-` and ASCII digits |
@@ -74,7 +74,6 @@ JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 | [`PageWalkGuard`](src/main/java/io/github/piotr_janczukowicz/pagination/PageWalkGuard.java) | Refuses a next link that was already followed, so a server cannot walk the caller in circles |
 | [`PageQueries`](src/main/java/io/github/piotr_janczukowicz/pagination/PageQueries.java) | `boundPerPage` picks the page size within an endpoint maximum, and `withParameters` adds page parameters to a base query |
 | `@RecordBuilder` | Generates a `RecordNameBuilder` for an annotated record at compile time, marked as generated for JaCoCo |
-| `@CatalogSchema`, `@CatalogSimpleXor`, `@SuppressSchemaTypeMismatch` | Runtime annotations that map a type to a schema, for tests that check models against an API description |
 
 ### Validate arguments
 
@@ -99,15 +98,15 @@ Build the index once, in a `static final` field of the enum:
 enum State {
     OPEN("open"), CLOSED("closed"), UNKNOWN("unknown");
 
-    private static final EnumUtils.WireIndex<State> INDEX = EnumUtils.index(State.class, State::wire);
+    private static final EnumUtils.ValueIndex<State> VALUE_INDEX = EnumUtils.index(State.class, State::value);
 
-    private final String wire;
+    private final String value;
 
-    State(String wire) { this.wire = wire; }
+    State(String value) { this.value = value; }
 
-    String wire() { return wire; }
+    String value() { return value; }
 
-    static State fromWire(String value) { return INDEX.fromWire(value, UNKNOWN); }
+    static State of(String value) { return VALUE_INDEX.of(value, UNKNOWN); }
 }
 ```
 
@@ -132,7 +131,7 @@ This needs the `io.soabase.record-builder:record-builder-processor` annotation p
 ## JSON
 
 The `io.github.piotr_janczukowicz.json` package has no Jackson types: `JsonCodec` (decode and encode bytes), `JsonType` and
-`JsonTypes` (generic target types), `OptionalNull`, and the `JsonDecodeException` / `JsonEncodeException` failures. Implement
+`JsonTypes` (generic target types), `OptionalNull`, the `@ValueUnion` annotation, and the `JsonDecodeException` / `JsonEncodeException` failures. Implement
 `JsonCodec` over your own mapper; the contract is in its Javadoc. The adapters live in
 `io.github.piotr_janczukowicz.json.jackson` and target Jackson 3 (`tools.jackson`). All of them register on a `SimpleModule`.
 
@@ -147,28 +146,67 @@ A value that the inner deserializer reads as `null` (for example an unknown enum
 `READ_UNKNOWN_ENUM_VALUES_AS_NULL`) fails instead of becoming `OptionalNull.ofNull()`, so a PATCH cannot clear a field by
 accident.
 
-### Union adapters
+### Value unions
 
-| Adapter | Use it for |
-| --- | --- |
-| `StringOrObjectAdapters` | a value that is either a string or an object |
-| `ArrayOrWrappedAdapters` | a string array that is either bare or wrapped in one named property |
-| `PolymorphicObjectAdapters` | an object whose type is picked by the first present, non-null property |
-| `ScalarUnionReaders` | building a value from a string, number, boolean, string array or `null` inside your own deserializer |
+`@ValueUnion` marks a type whose JSON value is one of several token kinds: it names one branch class per token (`string`,
+`integer`, `number`, `flag`, `array`, `object`) and optionally an `unknown` class that keeps any other token as it came;
+without it such a token is refused (`X takes a string or an object`). `ValueUnionModule` (package `io.github.piotr_janczukowicz.json.jackson.module.valueunion`) reads the annotated type: it picks
+the class from the first token and lets that class read the value (a record with a delegating `@JsonCreator`, a plain record,
+or an object union). An integer goes to `integer` when it fits a `long`, else to `number`; a fraction never goes to
+`integer`. A branch created from a `BigDecimal` gets the number exactly, in plain notation; a branch created from a list of
+strings takes JSON strings only; with an `unknown` class, an array holding any other item goes to it as a whole, and without one it is refused. The annotation is not inherited, so a branch that implements the union reads as itself.
+`JsonMappers.snakeCase()` registers the module; on another mapper call `builder.addModule(new ValueUnionModule())`.
 
 ```java
-StringOrObjectAdapters.register(
-        module,
-        Label.class,
-        Label::name,
-        Label::details,
-        Label::ofName,
-        Label::ofDetails,
-        Label.Details.class);
+@ValueUnion(string = Rule.Text.class, object = RuleDetails.class)
+public sealed interface Rule permits Rule.Text, RuleDetails {
+    record Text(@JsonValue String value) implements Rule {
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+        public Text {}
+    }
+}
 ```
 
-Every `register` method rejects a `null` argument when `register` is called. A union value that holds neither of its forms
-fails to serialize instead of being written as `null`.
+### Presence unions
+
+`@PresenceUnion` marks an object union whose branch is picked by the names the object has, where Jackson's deduction
+cannot pick it (a branch with no property of its own beside properties several other branches share). `keys` names each
+property only one branch declares; the first of them in the object (document order) picks its branch. With none, the
+`fallback` is read when the object has every name of `fallbackRequires`; else the `unknown` class keeps the object as it
+came, and without it the object is refused. A name counts when present, also with `null`; a non-object value is refused.
+`ValueUnionModule` reads it too, so no other wiring is needed; the interface carries no `@JsonTypeInfo`.
+
+```java
+@PresenceUnion(keys = {@PresenceUnion.Key(name = "blob_url", type = Commit.class)},
+        fallback = ActionsLog.class, fallbackRequires = {"path", "start_line"}, unknown = LocationUnknown.class)
+public sealed interface Location permits Commit, ActionsLog, LocationUnknown {}
+```
+
+### Empty object as null
+
+`@EmptyObjectAsNull` marks a record component (or field, accessor or parameter) whose JSON value may be an object with no
+properties standing for "no value". Such an object and JSON `null` both read as `null`; any other value reads as the
+declared type, refused as that type refuses it. Writing is unchanged: a `null` is written as the property's usual null.
+`ValueUnionModule` reads it, so no other wiring is needed.
+
+```java
+record Commit(String sha, @EmptyObjectAsNull @Nullable User author) {}
+```
+
+### Epoch instants
+
+`@EpochInstant(EpochUnit.SECONDS)` or `@EpochInstant(EpochUnit.MILLIS)` marks an `Instant` record component (or field,
+accessor or parameter) whose JSON value is an integer count of that unit since 1970-01-01T00:00:00Z. Reading is
+lenient: it accepts an integer, a number with a zero fraction (`5.0`, `1.7E12`, read exactly) and ISO-8601 text; JSON
+`null` reads as `null`. A number with a non-zero fraction, a boolean, object or array, and an integer outside the range
+of `Instant` are refused with a Jackson `DatabindException`. Writing is strict: the integer count is written, and an
+`Instant` finer than the unit is refused; a `null` follows the property's usual null handling. `ValueUnionModule` reads
+and writes it, so no other wiring is needed. `ValidationUtils.requireWholeSeconds` and `requireWholeMillis` (which let `null`
+pass) give a record constructor the same precision check.
+
+```java
+record Event(String name, @EpochInstant(EpochUnit.MILLIS) Instant at) {}
+```
 
 ### Immutable collections
 
@@ -185,13 +223,12 @@ JsonMapper mapper = JsonMapper.builder().addModule(new ImmutableCollectionsModul
 `JsonMappers.snakeCase()` returns a `JsonMapper.Builder` for APIs whose JSON uses `snake_case` names and add properties over
 time: unknown properties are ignored, duplicate keys and fractional numbers for integers are refused, an unknown enum constant
 reads as `null`, a single value reads as a one-element array, dates are written as text, collections are immutable,
-`OptionalNull` is registered, and `Instant` values are read with `FastInstantDeserializer`. Add your own modules and build the
+`OptionalNull` and `@ValueUnion` types are registered, and `Instant` values are read with `FastInstantDeserializer`. Add your own modules and build the
 mapper once. `JacksonJsonCodec` is a `JsonCodec` over such a mapper.
 
 ### Reading nodes and tokens
 
-`JsonNodes.textOrNull(node, field)` reads a string field and gives `null` for a missing or non-string one. `JsonTokens` checks
-the token a parser is on and reads an object unless it is empty. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
+`JsonNodes.text(node, field)` reads a string field and gives `null` for a missing or non-string one. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
 field and then bind a type without building a tree.
 
 ### Integral doubles
@@ -203,8 +240,22 @@ value, including `NaN`, infinities, negative zero and values beyond the `long` r
 ### Mapper expectations
 
 Do not enable default typing on a mapper that reads untrusted JSON. Keep Jackson's `StreamReadConstraints` at their defaults or
-tighter: they bound the size of numbers, and `ScalarUnionReaders` additionally rejects a number with an exponent beyond 1000
+tighter: they bound the size of numbers, and `ValueUnionModule` additionally rejects a number with an exponent beyond 1000
 decimal places.
+
+## GraphQL
+
+The `io.github.piotr_janczukowicz.graphql` package holds `Variables`, which builds the variables of a GraphQL request, or the
+fields of one input object, in the order they are added. A `null` value is left out, `clearable` writes JSON `null` for
+`OptionalNull.ofNull()`, lists are stored as unmodifiable copies without `null` items, and a name can be added only once:
+
+```java
+Map<String, @Nullable Object> variables = Variables.builder()
+        .value("owner", owner)
+        .values("states", states, State::value)
+        .value("input", input, CreateLabelInput::toVariable)
+        .build();
+```
 
 ## HTTP
 
@@ -232,7 +283,7 @@ transport, hand it to the client, and the client owns it from then on: `close()`
 ### Send a request
 
 ```java
-HttpTransport transport = new RetryingHttpTransport(HttpTransports.okHttp());
+HttpTransport transport = new RetryingHttpTransport(HttpTransports.create());
 
 try (HttpClient client = HttpClient.builder(
                 transport, HttpClientConfiguration.of(URI.create("https://api.example.com/v1/")))
@@ -250,9 +301,9 @@ try (HttpClient client = HttpClient.builder(
 
 A 2xx answer becomes an `HttpResponse` or a decoded value. Any other status becomes the unchecked exception that the client's
 `HttpErrorMapper` builds (an `HttpException` by default), and a failure of the network stays an `IOException`. The caller
-also has `fetchOptional`, `fetchOrEmpty` and `fetchUnless` for answers that may be absent, `fetchResult` for the response
-headers next to the value (an `ETag`, say), `fetchByStatus`, `isExisting`, `stream`, `download`, `redirectLocation` and
-`redirectLocationIfAny`, and `multipart` and `jsonIfPresent` to build a call.
+also has `fetchOptional`, `find` (an HTTP 404 gives empty), `findOptional` and `fetchExcept` for answers that may be
+absent, `fetchWithResponse` for the response headers next to the value (an `ETag`, say), `fetchByStatus`, `exists`,
+`stream`, `download`, `location` and `findLocation`, and `multipart` to build a call.
 
 A client can be shared between threads when its transport, authentication provider and observers are.
 
@@ -266,17 +317,19 @@ Each decorator wraps another transport and adds one behavior. From the outside i
 | `RetryingHttpTransport` | Retries failed attempts and waits out rate limits, with separate budgets for I/O failures, rate limits and 5xx; it remembers a reported limit so later calls of the same credential do not send a doomed request |
 | `MutationPacingHttpTransport` | Keeps a minimum interval between the starts of POST, PUT, PATCH and DELETE for APIs that throttle writes; GET is never delayed |
 | `ConcurrencyLimitingHttpTransport` | Lets at most N requests run at once, since the OkHttp transport sends on the caller's thread |
-| OkHttp (`HttpTransports.okHttp`) | The network, with timeouts, optional proxy, TLS trust and certificate pins |
+| OkHttp (`HttpTransports.create`) | The network, with timeouts, optional proxy, TLS trust and certificate pins |
 
 ```java
 HttpTransport transport = new RetryingHttpTransport(
-        new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 4),
+        new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 4),
         RetryConfiguration.defaults());
 ```
 
 Retries use an I/O budget and a 5xx budget (GET, HEAD and OPTIONS by default) and a rate-limit budget that covers every
 method. A limit that names its wait through `Retry-After` or a reset time is waited out when it is at most five minutes;
 without a named wait the transport waits 60, 120 and 240 seconds with some jitter. Every value is in `RetryConfiguration`.
+The default detector recognizes HTTP 429 only; a provider that signals limits otherwise passes its own `RateLimitDetector` as the
+third argument of the `RetryingHttpTransport` constructor. The limits of the conditional cache are `ConditionalCacheConfiguration`.
 
 ### Authenticate
 
@@ -301,11 +354,11 @@ base origin and path prefix.
 
 ### Wait for a result that is computed in the background
 
-Some endpoints answer 202 until a report is ready. `fetchWhenReady` repeats the request a fixed number of times with a fixed
+Some endpoints answer 202 until a report is ready. `awaitFetch` repeats the request a fixed number of times with a fixed
 pause and returns `HttpComputed.Ready`, `NotReady` or `NoData`:
 
 ```java
-HttpComputed<Report> report = caller.fetchWhenReady(
+HttpComputed<Report> report = caller.awaitFetch(
         HttpCall.get("reports/7"), Report.class, HttpAcceptedPolling.defaults());
 ```
 

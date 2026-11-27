@@ -1,3 +1,5 @@
+// The modules that get the internal package are not on this module's path.
+@SuppressWarnings("module")
 module common.core {
     requires transitive tools.jackson.databind;
     requires transitive okhttp3;
@@ -8,16 +10,20 @@ module common.core {
     requires static java.compiler;
 
     exports io.github.piotr_janczukowicz.annotation;
-    exports io.github.piotr_janczukowicz.openapi.model;
+    exports io.github.piotr_janczukowicz.graphql;
     exports io.github.piotr_janczukowicz.pagination;
     exports io.github.piotr_janczukowicz.util;
     exports io.github.piotr_janczukowicz.json;
     exports io.github.piotr_janczukowicz.json.jackson;
     exports io.github.piotr_janczukowicz.json.jackson.module.immutable;
     exports io.github.piotr_janczukowicz.json.jackson.module.optionalnull;
+    exports io.github.piotr_janczukowicz.json.jackson.module.valueunion;
     exports io.github.piotr_janczukowicz.http;
     exports io.github.piotr_janczukowicz.http.client;
     exports io.github.piotr_janczukowicz.http.client.authentication;
+    exports io.github.piotr_janczukowicz.http.client.internal to
+            io.github.piotr_janczukowicz.githubclient,
+            io.github.piotr_janczukowicz.gitlabclient;
     exports io.github.piotr_janczukowicz.http.transport;
     exports io.github.piotr_janczukowicz.http.uri;
     exports io.github.piotr_janczukowicz.uri;
@@ -29,5 +35,7 @@ module common.core {
     opens io.github.piotr_janczukowicz.json.jackson.module.immutable to
             tools.jackson.databind;
     opens io.github.piotr_janczukowicz.json.jackson.module.optionalnull to
+            tools.jackson.databind;
+    opens io.github.piotr_janczukowicz.json.jackson.module.valueunion to
             tools.jackson.databind;
 }

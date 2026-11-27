@@ -247,7 +247,7 @@ class OkHttpTransportTest {
 
     @Test
     void close_shouldNotThrow_whenTransportOwnsClient() {
-        final HttpTransport transport = HttpTransports.okHttp(HttpTransportConfiguration.defaults());
+        final HttpTransport transport = HttpTransports.create(HttpTransportConfiguration.defaults());
 
         final Throwable thrown = catchThrowable(transport::close);
 

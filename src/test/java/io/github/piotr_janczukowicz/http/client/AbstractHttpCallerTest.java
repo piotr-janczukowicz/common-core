@@ -19,6 +19,7 @@ import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.http.HttpResponse;
 import io.github.piotr_janczukowicz.http.HttpStatus;
 import io.github.piotr_janczukowicz.http.HttpStreamResponse;
+import io.github.piotr_janczukowicz.http.HttpUpsertOutcome;
 import io.github.piotr_janczukowicz.http.MultipartFormData;
 import io.github.piotr_janczukowicz.http.ResponseTooLargeException;
 import io.github.piotr_janczukowicz.http.transport.HttpTransport;
@@ -157,22 +158,22 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchOrEmpty_shouldBeEmpty_whenNotFound() throws IOException {
+    void find_shouldBeEmpty_whenNotFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
-            final Optional<User> user = caller(client).fetchOrEmpty(HttpCall.of(HttpMethod.GET, "/user"), User.class);
+            final Optional<User> user = caller(client).find(HttpCall.of(HttpMethod.GET, "/user"), User.class);
 
             assertThat(user).isEmpty();
         }
     }
 
     @Test
-    void fetchOrEmpty_shouldDecodeGenericType_whenFound() throws IOException {
+    void find_shouldDecodeGenericType_whenFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[" + USER_JSON + "]"));
 
         try (final HttpClient client = client()) {
-            final Optional<List<User>> users = caller(client).fetchOrEmpty(HttpCall.get("/users"), USERS);
+            final Optional<List<User>> users = caller(client).find(HttpCall.get("/users"), USERS);
 
             assertThat(users)
                     .hasValueSatisfying(
@@ -181,12 +182,11 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchOrEmpty_shouldBeEmptyForGenericType_whenNotFound() throws IOException {
+    void find_shouldBeEmptyForGenericType_whenNotFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
-            assertThat(caller(client).fetchOrEmpty(HttpCall.get("/users"), USERS))
-                    .isEmpty();
+            assertThat(caller(client).find(HttpCall.get("/users"), USERS)).isEmpty();
         }
     }
 
@@ -206,7 +206,7 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchOrEmpty_shouldThrowDescriptiveFailure_whenBodyAbsentAndNotNotFound() throws IOException {
+    void find_shouldThrowDescriptiveFailure_whenBodyAbsentAndNotNotFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
@@ -214,7 +214,7 @@ class AbstractHttpCallerTest {
 
             final HttpClientCaller caller = caller(client);
 
-            final Throwable thrown = catchThrowable(() -> caller.fetchOrEmpty(call, User.class));
+            final Throwable thrown = catchThrowable(() -> caller.find(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -224,7 +224,7 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchOrEmpty_shouldThrowEmptyResponseWithoutQuery_whenBodyAbsent() throws IOException {
+    void find_shouldThrowEmptyResponseWithoutQuery_whenBodyAbsent() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
 
         try (final HttpClient client = client()) {
@@ -232,7 +232,7 @@ class AbstractHttpCallerTest {
 
             final HttpClientCaller caller = caller(client);
 
-            final Throwable thrown = catchThrowable(() -> caller.fetchOrEmpty(call, User.class));
+            final Throwable thrown = catchThrowable(() -> caller.find(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -263,6 +263,63 @@ class AbstractHttpCallerTest {
     }
 
     @Test
+    void findOptional_shouldBeEmpty_whenNotFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).findOptional(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isEmpty();
+        }
+    }
+
+    @Test
+    void findOptional_shouldBeEmpty_whenNoContent() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).findOptional(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isEmpty();
+        }
+    }
+
+    @Test
+    void findOptional_shouldBeEmptyForGenericType_whenNotFoundOrNoContent() throws IOException {
+        when(transport.execute(any()))
+                .thenReturn(response(HttpStatus.NOT_FOUND.code(), null))
+                .thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+
+            assertThat(caller.findOptional(HttpCall.get("/users"), USERS)).isEmpty();
+            assertThat(caller.findOptional(HttpCall.get("/users"), USERS)).isEmpty();
+        }
+    }
+
+    @Test
+    void findOptional_shouldDecodeBody_whenFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{\"login\":\"octocat\"}"));
+
+        try (final HttpClient client = client()) {
+            final Optional<User> user = caller(client).findOptional(HttpCall.get("/user"), User.class);
+
+            assertThat(user).isPresent();
+        }
+    }
+
+    @Test
+    void findOptional_shouldDecodeGenericType_whenFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[{\"login\":\"octocat\"}]"));
+
+        try (final HttpClient client = client()) {
+            assertThat(caller(client).findOptional(HttpCall.get("/users"), USERS))
+                    .hasValueSatisfying(users -> assertThat(users).hasSize(1));
+        }
+    }
+
+    @Test
     void fetchOptional_shouldBeEmpty_whenAcceptedWithoutBody() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
@@ -285,7 +342,7 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchResult_shouldKeepEtagAndValue_whenOk() throws IOException {
+    void fetchWithResponse_shouldKeepEtagAndValue_whenOk() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.OK.code(),
@@ -293,7 +350,7 @@ class AbstractHttpCallerTest {
                         HttpBody.of(USERS_JSON.getBytes(StandardCharsets.UTF_8))));
 
         try (final HttpClient client = client()) {
-            final HttpResult<List<User>> result = caller(client).fetchResult(HttpCall.get("/users"), USERS);
+            final HttpResult<List<User>> result = caller(client).fetchWithResponse(HttpCall.get("/users"), USERS);
 
             assertSoftly(softly -> {
                 softly.assertThat(result.value()).contains(List.of(new User("octo")));
@@ -304,11 +361,11 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchResult_shouldBeNotModifiedWithoutValue_whenTypeHasArgumentsAnd304() throws IOException {
+    void fetchWithResponse_shouldBeNotModifiedWithoutValue_whenTypeHasArgumentsAnd304() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_MODIFIED.code(), null));
 
         try (final HttpClient client = client()) {
-            final HttpResult<List<User>> result = caller(client).fetchResult(HttpCall.get("/users"), USERS);
+            final HttpResult<List<User>> result = caller(client).fetchWithResponse(HttpCall.get("/users"), USERS);
 
             assertSoftly(softly -> {
                 softly.assertThat(result.isNotModified()).isTrue();
@@ -318,61 +375,59 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchUnless_shouldBeEmpty_whenStatusListed() throws IOException {
+    void fetchExcept_shouldBeEmpty_whenStatusListed() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
-                    caller(client).fetchUnless(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
+                    caller(client).fetchExcept(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
 
             assertThat(user).isEmpty();
         }
     }
 
     @Test
-    void fetchUnless_shouldDecodeBody_whenTypeHasArgumentsAndStatusNotListed() throws IOException {
+    void fetchExcept_shouldDecodeBody_whenTypeHasArgumentsAndStatusNotListed() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users =
-                    caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND);
+                    caller(client).fetchExcept(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND);
 
             assertThat(users).contains(List.of(new User("octo")));
         }
     }
 
     @Test
-    void fetchUnless_shouldBeEmpty_whenTypeHasArgumentsAndBodyIsEmptyObject() throws IOException {
+    void fetchExcept_shouldBeEmpty_whenTypeHasArgumentsAndBodyIsEmptyObject() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{}"));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users =
-                    caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND);
+                    caller(client).fetchExcept(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND);
 
             assertThat(users).isEmpty();
         }
     }
 
     @Test
-    void fetchWhenReady_shouldReturnReady_whenOk() throws IOException {
+    void awaitFetch_shouldReturnReady_whenOk() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<User> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, NO_WAIT);
+            final HttpComputed<User> computed = caller(client).awaitFetch(HttpCall.get("/user"), User.class, NO_WAIT);
 
             assertThat(computed).isEqualTo(new HttpComputed.Ready<>(new User("octo")));
         }
     }
 
     @Test
-    void fetchWhenReady_shouldAskAgain_whenAcceptedBeforeData() throws IOException {
+    void awaitFetch_shouldAskAgain_whenAcceptedBeforeData() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(response(HttpStatus.ACCEPTED.code(), null), response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<User> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, NO_WAIT);
+            final HttpComputed<User> computed = caller(client).awaitFetch(HttpCall.get("/user"), User.class, NO_WAIT);
 
             assertThat(computed).isEqualTo(new HttpComputed.Ready<>(new User("octo")));
             verify(transport, times(2)).execute(any());
@@ -380,12 +435,11 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchWhenReady_shouldReturnNotReady_whenStillAcceptedAfterLastTry() throws IOException {
+    void awaitFetch_shouldReturnNotReady_whenStillAcceptedAfterLastTry() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<User> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, NO_WAIT);
+            final HttpComputed<User> computed = caller(client).awaitFetch(HttpCall.get("/user"), User.class, NO_WAIT);
 
             assertThat(computed).isInstanceOf(HttpComputed.NotReady.class);
             verify(transport, times(NO_WAIT.maxAttempts())).execute(any());
@@ -393,49 +447,45 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchWhenReady_shouldReturnNoData_whenNoContent() throws IOException {
+    void awaitFetch_shouldReturnNoData_whenNoContent() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<User> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, NO_WAIT);
+            final HttpComputed<User> computed = caller(client).awaitFetch(HttpCall.get("/user"), User.class, NO_WAIT);
 
             assertThat(computed).isInstanceOf(HttpComputed.NoData.class);
         }
     }
 
     @Test
-    void fetchWhenReady_shouldReturnNoData_whenBodyIsEmptyObject() throws IOException {
+    void awaitFetch_shouldReturnNoData_whenBodyIsEmptyObject() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{}"));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<User> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, NO_WAIT);
+            final HttpComputed<User> computed = caller(client).awaitFetch(HttpCall.get("/user"), User.class, NO_WAIT);
 
             assertThat(computed).isInstanceOf(HttpComputed.NoData.class);
         }
     }
 
     @Test
-    void fetchWhenReady_shouldReturnReady_whenTypeHasArgumentsAndAcceptedBeforeData() throws IOException {
+    void awaitFetch_shouldReturnReady_whenTypeHasArgumentsAndAcceptedBeforeData() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(response(HttpStatus.ACCEPTED.code(), null), response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<List<User>> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/users"), USERS, NO_WAIT);
+            final HttpComputed<List<User>> computed = caller(client).awaitFetch(HttpCall.get("/users"), USERS, NO_WAIT);
 
             assertThat(computed).isEqualTo(new HttpComputed.Ready<>(List.of(new User("octo"))));
         }
     }
 
     @Test
-    void fetchWhenReady_shouldReturnNotReady_whenTypeHasArgumentsAndStillAccepted() throws IOException {
+    void awaitFetch_shouldReturnNotReady_whenTypeHasArgumentsAndStillAccepted() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
-            final HttpComputed<List<User>> computed =
-                    caller(client).fetchWhenReady(HttpCall.get("/users"), USERS, NO_WAIT);
+            final HttpComputed<List<User>> computed = caller(client).awaitFetch(HttpCall.get("/users"), USERS, NO_WAIT);
 
             assertThat(computed).isInstanceOf(HttpComputed.NotReady.class);
         }
@@ -524,7 +574,7 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchWhenReady_shouldThrowInterruptedIo_whenThreadIsInterruptedWhileWaiting() throws IOException {
+    void awaitFetch_shouldThrowInterruptedIo_whenThreadIsInterruptedWhileWaiting() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
         final HttpAcceptedPolling slow = new HttpAcceptedPolling(3, Duration.ofSeconds(30));
 
@@ -535,7 +585,7 @@ class AbstractHttpCallerTest {
             final HttpClientCaller caller = caller(client);
             final HttpCall call = HttpCall.get("/user");
 
-            thrown = catchThrowable(() -> caller.fetchWhenReady(call, User.class, slow));
+            thrown = catchThrowable(() -> caller.awaitFetch(call, User.class, slow));
             isFlagRestored = Thread.currentThread().isInterrupted();
         } finally {
             Thread.interrupted();
@@ -604,20 +654,20 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void isExisting_shouldReturnTrue_whenNoContent() throws IOException {
+    void exists_shouldReturnTrue_whenNoContent() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
-            assertThat(caller(client).isExisting(HttpCall.get("/user"))).isTrue();
+            assertThat(caller(client).exists(HttpCall.get("/user"))).isTrue();
         }
     }
 
     @Test
-    void isExisting_shouldReturnFalse_whenNotFound() throws IOException {
+    void exists_shouldReturnFalse_whenNotFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
-            assertThat(caller(client).isExisting(HttpCall.get("/user"))).isFalse();
+            assertThat(caller(client).exists(HttpCall.get("/user"))).isFalse();
         }
     }
 
@@ -668,17 +718,94 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void jsonIfPresent_shouldOmitBodyAndContentType_whenValueNull() throws IOException {
-        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
+    void upsert_shouldReturnCreated_whenCreated() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.CREATED.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
-            caller.send(caller.jsonIfPresent(HttpCall.of(HttpMethod.PATCH, "/user"), null));
+
+            assertThat(caller.upsert(HttpCall.of(HttpMethod.PUT, "/secret"))).isEqualTo(HttpUpsertOutcome.CREATED);
+        }
+    }
+
+    @Test
+    void upsert_shouldReturnUpdated_whenNoContent() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+
+            assertThat(caller.upsert(HttpCall.of(HttpMethod.PUT, "/secret"))).isEqualTo(HttpUpsertOutcome.UPDATED);
+        }
+    }
+
+    @Test
+    void upsert_shouldThrow_whenNotFound() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.PUT, "/secret");
+
+            assertThat(catchThrowable(() -> caller.upsert(call))).isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    @Test
+    void text_shouldSendUtf8BodyAndMediaType_whenTextGiven() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            caller.send(caller.text(HttpCall.of(HttpMethod.POST, "/render"), "# hé", "text/x-markdown"));
         }
 
         final HttpRequest request = capturedRequest();
-        assertThat(request.body().isAbsent()).isTrue();
-        assertThat(request.headers().get(CONTENT_TYPE)).isEmpty();
+        assertSoftly(softly -> {
+            softly.assertThat(request.headers().get(CONTENT_TYPE)).contains("text/x-markdown");
+            softly.assertThat(request.body().bytes()).isEqualTo("# hé".getBytes(StandardCharsets.UTF_8));
+        });
+    }
+
+    @Test
+    void text_shouldThrow_whenTextNull() {
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.POST, "/render");
+
+            final Throwable thrown = catchThrowable(() -> caller.text(call, null, "text/plain"));
+
+            assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("text");
+        }
+    }
+
+    @Test
+    void binary_shouldSendBodyAndMediaType_whenBodyGiven() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.CREATED.code(), null));
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            caller.send(caller.binary(
+                    HttpCall.of(HttpMethod.POST, "/assets"), HttpBody.of(new byte[] {1, 2}), "image/png"));
+        }
+
+        final HttpRequest request = capturedRequest();
+        assertSoftly(softly -> {
+            softly.assertThat(request.headers().get(CONTENT_TYPE)).contains("image/png");
+            softly.assertThat(request.body().bytes()).containsExactly(1, 2);
+        });
+    }
+
+    @Test
+    void binary_shouldThrow_whenBodyNull() {
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.POST, "/assets");
+
+            final Throwable thrown = catchThrowable(() -> caller.binary(call, null, "image/png"));
+
+            assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("body");
+        }
     }
 
     private HttpRequest capturedRequest() throws IOException {
@@ -699,56 +826,41 @@ class AbstractHttpCallerTest {
     public record User(String login) {}
 
     @Test
-    void fetchOrEmpty_shouldDecodeClassType_whenFound() throws IOException {
+    void find_shouldDecodeClassType_whenFound() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
-            final Optional<User> user = caller(client).fetchOrEmpty(HttpCall.get("/user"), User.class);
+            final Optional<User> user = caller(client).find(HttpCall.get("/user"), User.class);
 
             assertThat(user).contains(new User("octo"));
         }
     }
 
     @Test
-    void fetchUnless_shouldDecodeClassType_whenStatusNotListed() throws IOException {
+    void fetchExcept_shouldDecodeClassType_whenStatusNotListed() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
-                    caller(client).fetchUnless(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
+                    caller(client).fetchExcept(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
 
             assertThat(user).contains(new User("octo"));
         }
     }
 
     @Test
-    void jsonIfPresent_shouldEncodeBody_whenValuePresent() throws IOException {
-        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
-
-        try (final HttpClient client = client()) {
-            final HttpClientCaller caller = caller(client);
-
-            caller.send(caller.jsonIfPresent(HttpCall.of(HttpMethod.PATCH, "/user"), new User("octo")));
-
-            final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-            verify(transport).execute(captor.capture());
-            assertThat(captor.getValue().headers().get(CONTENT_TYPE)).contains("application/json");
-        }
-    }
-
-    @Test
-    void redirectLocation_shouldReturnLocation_whenRedirect() throws IOException {
+    void location_shouldReturnLocation_whenRedirect() throws IOException {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of("Location", List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of("Location", List.of("https://api.example.test/next"))),
                         HttpBody.absent()));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
 
-            final URI location = caller.redirectLocation(HttpCall.get("/tarball"));
-            final Optional<URI> optionalLocation = caller.redirectLocationIfAny(HttpCall.get("/tarball"));
+            final URI location = caller.location(HttpCall.get("/tarball"));
+            final Optional<URI> optionalLocation = caller.findLocation(HttpCall.get("/tarball"));
 
             assertSoftly(softly -> {
                 softly.assertThat(location).isEqualTo(URI.create("https://api.example.test/next"));
@@ -759,7 +871,7 @@ class AbstractHttpCallerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"{", "{\"login\":\"octo\"}", "{} x"})
-    void fetchUnless_shouldDecode_whenBodyIsNotAnEmptyObject(final String body) throws IOException {
+    void fetchExcept_shouldDecode_whenBodyIsNotAnEmptyObject(final String body) throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), body));
 
         try (final HttpClient client = client()) {
@@ -767,29 +879,29 @@ class AbstractHttpCallerTest {
 
             final HttpCall call = HttpCall.get("/users");
 
-            final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, USERS, HttpStatus.NOT_FOUND));
+            final Throwable thrown = catchThrowable(() -> caller.fetchExcept(call, USERS, HttpStatus.NOT_FOUND));
 
             assertThat(thrown).isInstanceOf(JsonDecodeException.class);
         }
     }
 
     @Test
-    void fetchUnless_shouldDecode_whenBodyIsEmptyArray() throws IOException {
+    void fetchExcept_shouldDecode_whenBodyIsEmptyArray() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[]"));
 
         try (final HttpClient client = client()) {
-            assertThat(caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
+            assertThat(caller(client).fetchExcept(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
                     .contains(List.of());
         }
     }
 
     @Test
-    void fetchUnless_shouldBeEmpty_whenBodyIsEmptyObjectWithWhitespace() throws IOException {
+    void fetchExcept_shouldBeEmpty_whenBodyIsEmptyObjectWithWhitespace() throws IOException {
         final String body = " \t\r\n\u000b\f{ \n}\t ";
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), body));
 
         try (final HttpClient client = client()) {
-            assertThat(caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
+            assertThat(caller(client).fetchExcept(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
                     .isEmpty();
         }
     }
@@ -808,19 +920,19 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void fetchUnless_shouldBeEmpty_whenBodyAbsent() throws IOException {
+    void fetchExcept_shouldBeEmpty_whenBodyAbsent() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
-                    caller(client).fetchUnless(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
+                    caller(client).fetchExcept(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND);
 
             assertThat(user).isEmpty();
         }
     }
 
     @Test
-    void fetchUnless_shouldDecode_whenBodyIsBlank() throws IOException {
+    void fetchExcept_shouldDecode_whenBodyIsBlank() throws IOException {
         when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "   "));
 
         try (final HttpClient client = client()) {
@@ -828,7 +940,7 @@ class AbstractHttpCallerTest {
 
             final HttpCall call = HttpCall.get("/user");
 
-            final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, User.class, HttpStatus.NOT_FOUND));
+            final Throwable thrown = catchThrowable(() -> caller.fetchExcept(call, User.class, HttpStatus.NOT_FOUND));
 
             assertThat(thrown).isInstanceOf(JsonDecodeException.class);
         }

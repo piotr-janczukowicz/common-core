@@ -68,7 +68,7 @@ public final class RateLimitDetectors {
             }
 
             @Override
-            public Optional<RateLimitSignal> detectExhaustion(
+            public Optional<RateLimitSignal> detectSpent(
                     final HttpResponse response, final HttpRequest request, final Clock clock) {
                 if (response.statusCode() >= 400
                         || response.header(SPENT_HEADER).isEmpty()) {

@@ -118,14 +118,14 @@ class HttpClientTransportIntegrationTest {
 
     private static HttpTransport limitedTransport() {
         return new RetryingHttpTransport(
-                HttpTransports.okHttp(HttpTransportConfiguration.builder()
+                HttpTransports.create(HttpTransportConfiguration.builder()
                         .maxResponseBytes(SMALL_LIMIT)
                         .build()),
                 RetryConfiguration.defaults());
     }
 
     private static HttpTransport newTransport() {
-        return new RetryingHttpTransport(HttpTransports.okHttp(), RetryConfiguration.defaults());
+        return new RetryingHttpTransport(HttpTransports.create(), RetryConfiguration.defaults());
     }
 
     private static HttpClient client(final HttpTransport transport) {

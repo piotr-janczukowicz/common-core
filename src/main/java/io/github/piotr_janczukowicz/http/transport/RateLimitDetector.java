@@ -55,7 +55,7 @@ public interface RateLimitDetector {
      * @param clock clock that the reset instant is compared with, when {@code response} has no {@code Date}
      * @return present when the quota is spent until a reset instant in the future
      */
-    default Optional<RateLimitSignal> detectExhaustion(
+    default Optional<RateLimitSignal> detectSpent(
             final HttpResponse response, final HttpRequest request, final Clock clock) {
         return Optional.empty();
     }
@@ -74,8 +74,7 @@ public interface RateLimitDetector {
     }
 
     /**
-     * Detector that treats HTTP 429 as a rate limit and reads {@code Retry-After}. Always the same instance, which
-     * {@link RetryConfiguration#hasDefaultRateLimitDetector()} relies on.
+     * Detector that treats HTTP 429 as a rate limit and reads {@code Retry-After}. Always the same instance.
      *
      * @return default detector
      */

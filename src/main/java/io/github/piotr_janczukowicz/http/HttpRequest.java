@@ -165,6 +165,6 @@ public record HttpRequest(
         if (!body.isAbsent()) {
             return body;
         }
-        return method.isEmptyBodySentWhenAbsent() ? HttpBody.zeroLength() : body;
+        return method.expectsBody() ? HttpBody.zeroLength() : body;
     }
 }

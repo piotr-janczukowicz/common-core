@@ -100,7 +100,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 })
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpResponse response = transport.execute(
                     request("http://fixed-address.invalid:" + HTTP.baseUri().getPort() + "/ping"));
 
@@ -116,7 +116,7 @@ class OkHttpTransportNetworkIntegrationTest {
         final HttpTransportConfiguration configuration = configuration(
                 HttpNetworkConfiguration.builder().hostResolver(host -> null).build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpRequest request = request("http://null-answer.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -133,7 +133,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .hostResolver(host -> List.of())
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpRequest request = request("http://empty-answer.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -151,7 +151,7 @@ class OkHttpTransportNetworkIntegrationTest {
                         InetAddress.getByAddress(new byte[] {127, 0, 0, 1})))
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpResponse response = transport.execute(new HttpRequest(
                     HttpMethod.POST,
                     URI.create("http://failover.invalid:" + HTTP.baseUri().getPort() + "/ping"),
@@ -172,7 +172,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 })
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpRequest request = request("http://nowhere.invalid:80/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -188,7 +188,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()))
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpResponse response = transport.execute(request("http://upstream.invalid/ping"));
 
             assertThat(response.statusCode()).isEqualTo(OK.code());
@@ -208,7 +208,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()).withCredentials("octo", "s3cret"))
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpResponse response = transport.execute(request("http://upstream.invalid/ping"));
 
             assertThat(response.statusCode()).isEqualTo(OK.code());
@@ -229,7 +229,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()).withCredentials("octo", "wrong"))
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpResponse response = transport.execute(request("http://upstream.invalid/ping"));
 
             assertThat(response.statusCode()).isEqualTo(407);
@@ -245,7 +245,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .proxy(HttpProxy.socks("127.0.0.1", closedPort))
                 .build());
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             final HttpRequest request = request("http://upstream.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -259,7 +259,7 @@ class OkHttpTransportNetworkIntegrationTest {
         final HostResolver brokenResolver = host -> {
             throw new IllegalStateException("resolver is broken");
         };
-        try (HttpTransport transport = HttpTransports.okHttp(configuration(
+        try (HttpTransport transport = HttpTransports.create(configuration(
                 HttpNetworkConfiguration.builder().hostResolver(brokenResolver).build()))) {
             final HttpRequest request = request("http://upstream.invalid/ping");
 
@@ -271,7 +271,7 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldFailHandshake_whenServerCertificateIsNotTrusted() {
-        try (HttpTransport transport = HttpTransports.okHttp(configuration(HttpNetworkConfiguration.builder()
+        try (HttpTransport transport = HttpTransports.create(configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(IPV4_ONLY_RESOLVER)
                 .build()))) {
             final HttpRequest httpsRequest = httpsRequest();
@@ -285,7 +285,7 @@ class OkHttpTransportNetworkIntegrationTest {
     @Test
     void execute_shouldSucceed_whenCustomTrustAcceptsServerCertificate() throws Exception {
         try (HttpTransport transport =
-                HttpTransports.okHttp(configuration(trusting().build()))) {
+                HttpTransports.create(configuration(trusting().build()))) {
             final HttpResponse response = transport.execute(httpsRequest());
 
             assertThat(response.statusCode()).isEqualTo(OK.code());
@@ -297,7 +297,7 @@ class OkHttpTransportNetworkIntegrationTest {
         final HttpNetworkConfiguration network =
                 trusting().certificatePin("localhost", serverPin(), backupPin()).build();
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration(network))) {
+        try (HttpTransport transport = HttpTransports.create(configuration(network))) {
             assertThat(transport.execute(httpsRequest()).statusCode()).isEqualTo(OK.code());
         }
     }
@@ -307,7 +307,7 @@ class OkHttpTransportNetworkIntegrationTest {
         final HttpNetworkConfiguration network =
                 trusting().certificatePin("localhost", backupPin()).build();
 
-        try (HttpTransport transport = HttpTransports.okHttp(configuration(network))) {
+        try (HttpTransport transport = HttpTransports.create(configuration(network))) {
             final HttpRequest httpsRequest = httpsRequest();
 
             final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest));
@@ -319,7 +319,7 @@ class OkHttpTransportNetworkIntegrationTest {
     @Test
     void wrap_shouldApplyNetworkSettings_whenConfigurationSetsThem() throws Exception {
         try (HttpTransport transport =
-                HttpTransports.okHttp(configuration(trusting().build()))) {
+                HttpTransports.create(configuration(trusting().build()))) {
             assertThat(transport.execute(httpsRequest()).statusCode()).isEqualTo(OK.code());
         }
     }

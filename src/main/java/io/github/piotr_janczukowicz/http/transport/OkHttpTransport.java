@@ -11,6 +11,7 @@ import io.github.piotr_janczukowicz.http.HttpStatus;
 import io.github.piotr_janczukowicz.http.HttpStreamResponse;
 import io.github.piotr_janczukowicz.http.NonRetryableIOException;
 import io.github.piotr_janczukowicz.http.ResponseTooLargeException;
+import io.github.piotr_janczukowicz.http.internal.ParsedUrlAccess;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -257,7 +258,7 @@ final class OkHttpTransport implements HttpTransport {
 
     private static Request newRequest(final HttpRequest request) throws IOException {
         return new Request.Builder()
-                .url(request.url().toOkHttpUrl())
+                .url(ParsedUrlAccess.okHttpUrl(request.url()))
                 .headers(toOkHttpHeaders(request.headers()))
                 .method(request.method().name(), OkHttpRequestBodies.create(request))
                 .build();
@@ -322,6 +323,6 @@ final class OkHttpTransport implements HttpTransport {
         for (int i = 0; i < size; i++) {
             wire.computeIfAbsent(headers.name(i), name -> new ArrayList<>(2)).add(headers.value(i));
         }
-        return HttpHeaders.fromWire(wire);
+        return HttpHeaders.ofLists(wire);
     }
 }

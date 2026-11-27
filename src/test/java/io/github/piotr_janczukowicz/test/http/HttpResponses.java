@@ -18,7 +18,7 @@ public final class HttpResponses {
 
     public static HttpResponse of(
             final int statusCode, final Map<String, List<String>> headers, final @Nullable HttpBody body) {
-        return new HttpResponse(statusCode, HttpHeaders.fromWire(headers), body);
+        return new HttpResponse(statusCode, HttpHeaders.ofLists(headers), body);
     }
 
     public static HttpResponse ok(final String body) {

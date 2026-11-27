@@ -19,7 +19,7 @@ import java.util.Optional;
  * </ul>
  *
  * <pre>{@code
- * switch (caller.fetchWhenReady(call, Stats.class, HttpAcceptedPolling.defaults())) {
+ * switch (caller.awaitFetch(call, Stats.class, HttpAcceptedPolling.defaults())) {
  *     case HttpComputed.Ready<Stats> ready -> use(ready.value());
  *     case HttpComputed.NotReady<Stats> notReady -> retryLater();
  *     case HttpComputed.NoData<Stats> noData -> showEmpty();

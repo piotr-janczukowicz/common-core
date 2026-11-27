@@ -57,7 +57,7 @@ public interface AuthenticationProvider {
      * @return {@code true} if {@link #authentication()} may now return a different credential; {@code false} by
      *     default, which fits fixed credentials
      */
-    default boolean isRenewableAfterRejection(final Authentication rejected) {
+    default boolean canRenew(final Authentication rejected) {
         return false;
     }
 }

@@ -17,6 +17,7 @@ import io.github.piotr_janczukowicz.test.http.RateLimitDetectors;
 import io.github.piotr_janczukowicz.test.http.StubHttpServer;
 import io.github.piotr_janczukowicz.testsupport.IntegrationTest;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -138,7 +139,7 @@ class RetryingHttpTransportIntegrationTest {
 
         final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
-        final HttpTransport delegate = HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        final HttpTransport delegate = HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
@@ -155,16 +156,16 @@ class RetryingHttpTransportIntegrationTest {
     }
 
     private static RetryingHttpTransport newTransport(final RetryingHttpTransport.Sleeper sleeper) {
-        final HttpTransport delegate = HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        final HttpTransport delegate = HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .rateLimitDetector(RateLimitDetectors.resetHeader())
                 .defaultBackoff(Duration.ZERO)
                 .maxBackoff(Duration.ZERO)
                 .rateLimitJitter(Duration.ZERO)
                 .clockSkewMargin(Duration.ZERO)
                 .build();
-        return new RetryingHttpTransport(delegate, configuration, sleeper);
+        return new RetryingHttpTransport(
+                delegate, configuration, RateLimitDetectors.resetHeader(), sleeper, Clock.systemUTC());
     }
 }

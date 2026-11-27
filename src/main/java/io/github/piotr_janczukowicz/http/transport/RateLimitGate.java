@@ -220,7 +220,7 @@ final class RateLimitGate {
         final Map<String, List<String>> wire = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         source.asMap().forEach((name, value) -> wire.put(name, List.of(value)));
         added.forEach((name, value) -> wire.put(name, List.of(value)));
-        return HttpHeaders.fromWire(wire);
+        return HttpHeaders.ofLists(wire);
     }
 
     private static HttpResponse truncated(final HttpResponse response) {
