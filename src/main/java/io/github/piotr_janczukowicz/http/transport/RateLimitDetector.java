@@ -74,8 +74,7 @@ public interface RateLimitDetector {
     }
 
     /**
-     * Detector that treats HTTP 429 as a rate limit and reads {@code Retry-After}. Always the same instance, which
-     * {@link RetryConfiguration#hasDefaultRateLimitDetector()} relies on.
+     * Detector that treats HTTP 429 as a rate limit and reads {@code Retry-After}. Always the same instance.
      *
      * @return default detector
      */

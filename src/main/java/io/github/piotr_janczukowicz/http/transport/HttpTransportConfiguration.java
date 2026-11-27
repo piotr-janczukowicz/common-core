@@ -48,9 +48,8 @@ import org.jspecify.annotations.Nullable;
  * concurrent requests: more requests than that can run at once, but connections beyond the limit are closed as soon as
  * they go idle and opened again for the next request, which costs a TCP and TLS handshake each time. Unless set
  * explicitly, the builder makes {@code maxIdleConnections} equal to {@code maxConcurrentRequests}, so that a steady
- * concurrency does not churn connections over HTTP/1.1; when concurrency is unlimited it uses
- * {@link #DEFAULT_MAX_IDLE_CONNECTIONS}. With HTTP/2 (for example {@code api.example.com}) all requests to a host share
- * one connection anyway.
+ * concurrency does not churn connections over HTTP/1.1; when concurrency is unlimited it uses 32. With HTTP/2 (for
+ * example {@code api.example.com}) all requests to a host share one connection anyway.
  *
  * <p><b>Concurrency.</b> {@code maxConcurrentRequests} (default 100) caps the requests in flight on one transport; a
  * further caller waits for a free slot, which keeps a burst of threads from overwhelming a server that limits
@@ -87,9 +86,6 @@ public record HttpTransportConfiguration(
         int maxConcurrentRequests,
         Duration maxSlotWait) {
 
-    /** {@code maxIdleConnections} used when none is set and concurrent requests are unlimited: 32. */
-    public static final int DEFAULT_MAX_IDLE_CONNECTIONS = 32;
-
     /** Default {@code maxSlotWait}: 60 seconds. */
     public static final Duration DEFAULT_MAX_SLOT_WAIT = Duration.ofSeconds(60);
 
@@ -97,6 +93,9 @@ public record HttpTransportConfiguration(
     public static final int UNLIMITED_REQUESTS = Integer.MAX_VALUE;
 
     private static final Duration MAX_TIMEOUT = Duration.ofMillis(Integer.MAX_VALUE);
+
+    // maxIdleConnections used when none is set and concurrent requests are unlimited.
+    private static final int DEFAULT_MAX_IDLE_CONNECTIONS = 32;
 
     public HttpTransportConfiguration {
         requireTimeoutAtMostOkHttpLimit(requirePositive(connectTimeout, "connectTimeout"), "connectTimeout");
@@ -109,15 +108,6 @@ public record HttpTransportConfiguration(
         requirePositive(connectionKeepAlive, "connectionKeepAlive");
         requirePositive(maxConcurrentRequests, "maxConcurrentRequests");
         requireSlotWait(maxSlotWait);
-    }
-
-    /**
-     * Whether {@code maxConcurrentRequests} is an actual limit.
-     *
-     * @return {@code false} for {@link #UNLIMITED_REQUESTS}
-     */
-    public boolean isConcurrencyLimited() {
-        return maxConcurrentRequests != UNLIMITED_REQUESTS;
     }
 
     /**
@@ -250,9 +240,8 @@ public record HttpTransportConfiguration(
 
         /**
          * Sets the most idle connections the connection pool keeps. Unless set, it equals
-         * {@code maxConcurrentRequests}, or {@link #DEFAULT_MAX_IDLE_CONNECTIONS} when that is
-         * {@link #UNLIMITED_REQUESTS}; a value set here always wins. The limit is on idle connections, not on
-         * concurrent requests; see {@link HttpTransportConfiguration}.
+         * {@code maxConcurrentRequests}, or 32 when that is {@link #UNLIMITED_REQUESTS}; a value set here always wins.
+         * The limit is on idle connections, not on concurrent requests; see {@link HttpTransportConfiguration}.
          *
          * @param maxIdleConnections idle connection limit, above 0
          * @return this builder

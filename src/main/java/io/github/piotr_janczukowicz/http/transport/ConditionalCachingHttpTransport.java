@@ -11,7 +11,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.LAST_MODIFIED;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.RANGE;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.TRANSFER_ENCODING;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.VARY;
-import static io.github.piotr_janczukowicz.util.ValidationUtils.requireAtLeast;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNotBlank;
 
@@ -47,7 +46,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>When a GET returns HTTP 200 with an {@code ETag} or a {@code Last-Modified} header, a body of at most
  * {@code maxBodyBytes}, and no {@code no-store} directive in {@code Cache-Control}, the response is kept. The bodies
- * kept never add up to more than {@code maxTotalBytes}, and at most {@code maxEntries} responses are kept; the least
+ * kept never add up to more than {@code maxBytes}, and at most {@code maxEntries} responses are kept; the least
  * recently used entries go first. The next GET for the same key is sent with {@code If-None-Match} (when an entity tag
  * was kept) and {@code If-Modified-Since} (when a modification time was kept). On HTTP 304 the caller gets HTTP 200
  * with the kept body, and the headers of the 304 overlaid on the kept ones, so that {@code Date}, the rate-limit
@@ -100,37 +99,6 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
      * Caches GETs of {@code delegate}.
      *
      * @param delegate transport that sends the requests; closed when this one is closed
-     * @param maxEntries most responses kept, at least one; the least recently used one is dropped beyond it
-     * @param maxBodyBytes largest body kept, zero or more; a larger response is passed on but not kept
-     * @param maxTotalBytes most body bytes kept in all, zero or more; the least recently used entries are dropped until
-     *     the bodies kept fit, and a body larger than the smaller of {@code maxBodyBytes} and {@code maxTotalBytes} is
-     *     not kept
-     * @param varyingHeaders header names whose values are part of the key, such as {@code Accept}; names are compared
-     *     without regard to case, and a blank name is refused
-     * @throws NullPointerException if an argument is {@code null}, or {@code varyingHeaders} contains {@code null}
-     * @throws IllegalArgumentException if {@code maxEntries} is below one, {@code maxBodyBytes} or
-     *     {@code maxTotalBytes} is negative, or a varying header name is blank
-     */
-    public ConditionalCachingHttpTransport(
-            final HttpTransport delegate,
-            final int maxEntries,
-            final int maxBodyBytes,
-            final long maxTotalBytes,
-            final Set<String> varyingHeaders) {
-        this.delegate = requireNonNull(delegate, "delegate");
-        requireAtLeast(maxEntries, 1, "maxEntries");
-        requireAtLeast(maxBodyBytes, 0, "maxBodyBytes");
-        requireAtLeast(maxTotalBytes, 0L, "maxTotalBytes");
-        this.maxEntries = maxEntries;
-        this.maxBodyBytes = maxBodyBytes;
-        this.maxTotalBytes = maxTotalBytes;
-        this.varyingHeaders = copyNames(withAcceptEncoding(requireNonNull(varyingHeaders, "varyingHeaders")));
-    }
-
-    /**
-     * Caches GETs of {@code delegate}.
-     *
-     * @param delegate transport that sends the requests; closed when this one is closed
      * @param cache limits of what is kept
      * @param varyingHeaders header names whose values are part of the key, such as {@code Accept}; names are compared
      *     without regard to case, and a blank name is refused
@@ -139,12 +107,12 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
      */
     public ConditionalCachingHttpTransport(
             final HttpTransport delegate, final ConditionalCacheConfiguration cache, final Set<String> varyingHeaders) {
-        this(
-                delegate,
-                requireNonNull(cache, "cache").maxEntries(),
-                cache.maxBodyBytes(),
-                cache.maxBytes(),
-                varyingHeaders);
+        this.delegate = requireNonNull(delegate, "delegate");
+        requireNonNull(cache, "cache");
+        this.maxEntries = cache.maxEntries();
+        this.maxBodyBytes = cache.maxBodyBytes();
+        this.maxTotalBytes = cache.maxBytes();
+        this.varyingHeaders = copyNames(withAcceptEncoding(requireNonNull(varyingHeaders, "varyingHeaders")));
     }
 
     /**

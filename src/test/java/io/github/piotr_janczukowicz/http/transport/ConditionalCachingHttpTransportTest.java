@@ -77,7 +77,9 @@ class ConditionalCachingHttpTransportTest {
 
     private static ConditionalCachingHttpTransport cached(final HttpTransport delegate) {
         return new ConditionalCachingHttpTransport(
-                delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+                delegate,
+                new ConditionalCacheConfiguration(MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES),
+                Set.of(ACCEPT));
     }
 
     /** A cache whose first request already got a 200 with an ETag; {@code afterFirst} are the replies that follow. */
@@ -188,8 +190,8 @@ class ConditionalCachingHttpTransportTest {
             final HttpRequest sent = invocation.getArgument(0);
             return sent.headers().get(IF_NONE_MATCH).isPresent() ? response(304, null, ETAG, ETAG_VALUE) : cacheable();
         });
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 4, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate, new ConditionalCacheConfiguration(4, MAX_BODY_BYTES, MAX_TOTAL_BYTES), Set.of(ACCEPT));
         final int threads = 8;
         final int rounds = 300;
         final ExecutorService executor = Executors.newFixedThreadPool(threads);
@@ -303,7 +305,9 @@ class ConditionalCachingHttpTransportTest {
     void execute_shouldNotShareEntry_whenVaryingHeaderDiffers() throws Exception {
         final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
-                delegate.transport(), 16, 1024, MAX_TOTAL_BYTES, Set.of(ACCEPT, VERSION_HEADER));
+                delegate.transport(),
+                new ConditionalCacheConfiguration(16, 1024, MAX_TOTAL_BYTES),
+                Set.of(ACCEPT, VERSION_HEADER));
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2022-11-28")));
@@ -400,8 +404,8 @@ class ConditionalCachingHttpTransportTest {
             }
             return responses.poll();
         });
-        transport.set(
-                new ConditionalCachingHttpTransport(delegate, 1, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT)));
+        transport.set(new ConditionalCachingHttpTransport(
+                delegate, new ConditionalCacheConfiguration(1, MAX_BODY_BYTES, MAX_TOTAL_BYTES), Set.of(ACCEPT)));
         transport.get().execute(get(URL, HttpHeaders.empty()));
         final ConditionalCachingHttpTransport cache = transport.get();
 
@@ -414,7 +418,9 @@ class ConditionalCachingHttpTransportTest {
     void execute_shouldIgnoreVersionHeader_whenHeaderNotVarying() throws Exception {
         final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(304, null));
         final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
-                delegate.transport(), MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+                delegate.transport(),
+                new ConditionalCacheConfiguration(MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES),
+                Set.of(ACCEPT));
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2022-11-28")));
@@ -506,7 +512,9 @@ class ConditionalCachingHttpTransportTest {
                 response(200, BODY, ETAG, "W/\"third\""),
                 response(200, BODY));
         final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
-                delegate.transport(), 2, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+                delegate.transport(),
+                new ConditionalCacheConfiguration(2, MAX_BODY_BYTES, MAX_TOTAL_BYTES),
+                Set.of(ACCEPT));
         fetch(transport, URL, OTHER_URL, URL);
         transport.execute(get(urlC, HttpHeaders.empty()));
 
@@ -525,8 +533,8 @@ class ConditionalCachingHttpTransportTest {
                 response(200, "1234", ETAG, ETAG_NEXT),
                 response(200, "12345", ETAG, ETAG_VALUE),
                 response(304, null));
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate.transport(), 16, 4, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(), new ConditionalCacheConfiguration(16, 4, MAX_TOTAL_BYTES), Set.of(ACCEPT));
         fetch(transport, URL, OTHER_URL);
 
         fetch(transport, URL, OTHER_URL);
@@ -626,30 +634,6 @@ class ConditionalCachingHttpTransportTest {
     }
 
     @Test
-    void constructor_shouldThrow_whenMaxEntriesBelowOne() {
-        final HttpTransport delegate = HttpTransportMocks.mock();
-
-        final Set<String> headers = Set.of(ACCEPT);
-
-        final Throwable thrown = catchThrowable(
-                () -> new ConditionalCachingHttpTransport(delegate, 0, MAX_BODY_BYTES, MAX_TOTAL_BYTES, headers));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxEntries");
-    }
-
-    @Test
-    void constructor_shouldThrow_whenMaxBodyBytesNegative() {
-        final HttpTransport delegate = HttpTransportMocks.mock();
-
-        final Set<String> headers = Set.of(ACCEPT);
-
-        final Throwable thrown = catchThrowable(
-                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, -1, MAX_TOTAL_BYTES, headers));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxBodyBytes");
-    }
-
-    @Test
     void constructor_shouldThrow_whenCacheLimitsNull() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 
@@ -679,8 +663,8 @@ class ConditionalCachingHttpTransportTest {
 
         final Set<String> headers = Set.of(" ");
 
-        final Throwable thrown = catchThrowable(() ->
-                new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, headers));
+        final Throwable thrown = catchThrowable(() -> new ConditionalCachingHttpTransport(
+                delegate, new ConditionalCacheConfiguration(MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES), headers));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
@@ -696,8 +680,8 @@ class ConditionalCachingHttpTransportTest {
                 response(304, null),
                 response(304, null),
                 response(200, BODY));
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(), new ConditionalCacheConfiguration(16, MAX_BODY_BYTES, 3 * 1024), Set.of(ACCEPT));
         fetch(transport, URL, OTHER_URL);
         transport.execute(get(urlC, HttpHeaders.empty()));
 
@@ -721,8 +705,8 @@ class ConditionalCachingHttpTransportTest {
                 response(200, kilobyteAndAHalf, ETAG, "W/\"other\""),
                 response(304, null),
                 response(304, null));
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(), new ConditionalCacheConfiguration(16, MAX_BODY_BYTES, 3 * 1024), Set.of(ACCEPT));
         fetch(transport, URL, URL, OTHER_URL);
 
         fetch(transport, URL, OTHER_URL);
@@ -738,8 +722,8 @@ class ConditionalCachingHttpTransportTest {
     void execute_shouldNotKeepBody_whenLargerThanTotalLimit() throws Exception {
         final ScriptedTransport delegate =
                 ScriptedTransport.replying(response(200, "12345", ETAG, ETAG_VALUE), response(200, BODY));
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 4, Set.of(ACCEPT));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(), new ConditionalCacheConfiguration(16, MAX_BODY_BYTES, 4), Set.of(ACCEPT));
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
@@ -824,18 +808,6 @@ class ConditionalCachingHttpTransportTest {
         transport.execute(get(URL, HttpHeaders.empty()));
 
         assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
-    }
-
-    @Test
-    void constructor_shouldThrow_whenMaxTotalBytesNegative() {
-        final HttpTransport delegate = HttpTransportMocks.mock();
-
-        final Set<String> headers2 = Set.of(ACCEPT);
-
-        final Throwable thrown = catchThrowable(
-                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, MAX_BODY_BYTES, -1L, headers2));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxTotalBytes");
     }
 
     private static HttpRequest get(final String url, final HttpHeaders headers) {

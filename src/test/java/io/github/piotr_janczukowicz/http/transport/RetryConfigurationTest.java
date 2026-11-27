@@ -8,7 +8,6 @@ import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.time.Duration;
 import java.util.EnumSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -134,37 +133,6 @@ class RetryConfigurationTest {
         final Throwable thrown = catchThrowable(builder::build);
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("totalDeadline");
-    }
-
-    @Test
-    void hasDefaultRateLimitDetector_shouldBeFalse_whenCustomDetectorSet() {
-        final RetryConfiguration explicit = RetryConfiguration.builder()
-                .rateLimitDetector((response, clock) -> Optional.empty())
-                .build();
-
-        assertSoftly(softly -> {
-            softly.assertThat(RetryConfiguration.defaults().hasDefaultRateLimitDetector())
-                    .isTrue();
-            softly.assertThat(explicit.hasDefaultRateLimitDetector()).isFalse();
-        });
-    }
-
-    @Test
-    void hasDefaultRateLimitDetector_shouldBeTrue_whenDefaultsDetectorSetExplicitly() {
-        final RetryConfiguration custom = RetryConfiguration.builder()
-                .rateLimitDetector((response, clock) -> Optional.empty())
-                .build();
-
-        assertSoftly(softly -> {
-            softly.assertThat(custom.withRateLimitDetector(RateLimitDetector.defaults())
-                            .hasDefaultRateLimitDetector())
-                    .isTrue();
-            softly.assertThat(RetryConfiguration.builder()
-                            .rateLimitDetector(RateLimitDetector.defaults())
-                            .build()
-                            .hasDefaultRateLimitDetector())
-                    .isTrue();
-        });
     }
 
     @Test
@@ -384,23 +352,6 @@ class RetryConfigurationTest {
     }
 
     @Test
-    void withRateLimitDetector_shouldKeepOtherSettings_whenDetectorReplaced() {
-        final RateLimitEventListener listener = event -> {};
-        final RetryConfiguration original = RetryConfiguration.builder()
-                .coordinateRateLimits(false)
-                .rateLimitEventListener(listener)
-                .build();
-
-        final RetryConfiguration copy = original.withRateLimitDetector((response, clock) -> Optional.empty());
-
-        assertSoftly(softly -> {
-            softly.assertThat(copy.coordinateRateLimits()).isFalse();
-            softly.assertThat(copy.rateLimitEventListener()).isSameAs(listener);
-            softly.assertThat(copy.attempts()).isEqualTo(original.attempts());
-        });
-    }
-
-    @Test
     void constructor_shouldThrow_whenWaitCapsAreInconsistent() {
         final RetryConfiguration valid = RetryConfiguration.defaults();
         final RetryConfiguration.WaitCaps waits = new RetryConfiguration.WaitCaps(
@@ -420,10 +371,9 @@ class RetryConfigurationTest {
         final RetryConfiguration.AttemptBudgets attempts = valid.attempts();
         final RetryConfiguration.Jitter jitter = valid.jitter();
         final RetryConfiguration.Retryable retryable = valid.retryable();
-        final RateLimitDetector rateLimitDetector = valid.rateLimitDetector();
         final RateLimitEventListener rateLimitEventListener = valid.rateLimitEventListener();
 
-        return catchThrowable(() -> new RetryConfiguration(
-                attempts, waits, jitter, retryable, rateLimitDetector, true, rateLimitEventListener, null));
+        return catchThrowable(
+                () -> new RetryConfiguration(attempts, waits, jitter, retryable, true, rateLimitEventListener, null));
     }
 }

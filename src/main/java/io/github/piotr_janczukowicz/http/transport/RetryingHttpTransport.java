@@ -33,12 +33,13 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Rate-limited responses, retryable 5xx responses, and I/O failures are retried when the configuration allows it,
  * each with its own attempt budget; the rate-limit budget is spent on every wait for a rate limit, a call's own and the
- * gate's. Which responses count as rate-limited is decided by the {@link RetryConfiguration#rateLimitDetector()
- * detector}: the default one recognizes HTTP 429 only, so a provider that signals limits otherwise (some APIs use HTTP
- * 403) needs a provider-specific detector. {@link RetryConfiguration#totalDeadline()} bounds one {@link #execute} call:
- * once the next attempt would begin after it, the last response is returned or the last failure thrown. The budget
- * starts afresh on every call, so each redirect hop and each pagination page issued through this transport has its own.
- * {@link #close()} closes the delegate.
+ * gate's. Which responses count as rate-limited is decided by the {@link RateLimitDetector}: the default one recognizes
+ * HTTP 429 only, so a provider that signals limits otherwise (some APIs use HTTP 403) needs a provider-specific
+ * detector, passed to {@link #RetryingHttpTransport(HttpTransport, RetryConfiguration, RateLimitDetector)}.
+ * {@link RetryConfiguration#totalDeadline()} bounds one {@link #execute} call: once the next attempt would begin after
+ * it, the last response is returned or the last failure thrown. The budget starts afresh on every call, so each
+ * redirect hop and each pagination page issued through this transport has its own. {@link #close()} closes the
+ * delegate.
  *
  * <p>Failures that are not retried, because repeating the call cannot succeed or must not happen: a
  * {@link NonRetryableIOException} (a request body source that failed or announced the wrong length, or a transport that
@@ -241,14 +242,7 @@ public final class RetryingHttpTransport implements HttpTransport {
             final Clock policyClock,
             final Clock gateClock,
             final RandomGenerator random) {
-        this(
-                delegate,
-                configuration,
-                requireNonNull(configuration, "configuration").rateLimitDetector(),
-                sleeper,
-                policyClock,
-                gateClock,
-                random);
+        this(delegate, configuration, RateLimitDetector.defaults(), sleeper, policyClock, gateClock, random);
     }
 
     RetryingHttpTransport(

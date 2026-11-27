@@ -24,8 +24,7 @@ final class BoundedBodyReaders {
      * Reads {@code in} to its end, sizing the buffer from {@code expectedLength}; see
      * {@link IoUtils#readAllBounded(InputStream, long, long)}.
      *
-     * <p>A negative {@code maxBytes} is treated as {@code 0}.
-     * {@link IoUtils} itself still rejects negative limits.
+     * <p>A negative {@code maxBytes} is treated as {@code 0}. {@link IoUtils} itself still rejects negative limits.
      *
      * @param in stream to drain; not closed
      * @param maxBytes most bytes accepted; a negative value is treated as {@code 0}, so any byte is refused; capped at

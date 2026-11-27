@@ -330,6 +330,8 @@ HttpTransport transport = new RetryingHttpTransport(
 Retries use an I/O budget and a 5xx budget (GET, HEAD and OPTIONS by default) and a rate-limit budget that covers every
 method. A limit that names its wait through `Retry-After` or a reset time is waited out when it is at most five minutes;
 without a named wait the transport waits 60, 120 and 240 seconds with some jitter. Every value is in `RetryConfiguration`.
+The default detector recognizes HTTP 429 only; a provider that signals limits otherwise passes its own `RateLimitDetector` as the
+third argument of the `RetryingHttpTransport` constructor. The limits of the conditional cache are `ConditionalCacheConfiguration`.
 
 ### Authenticate
 

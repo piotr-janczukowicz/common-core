@@ -77,7 +77,7 @@ final class RetryPolicy {
     }
 
     RetryPolicy(final RetryConfiguration configuration, final Clock clock, final RandomGenerator random) {
-        this(configuration, requireNonNull(configuration, "configuration").rateLimitDetector(), clock, random);
+        this(configuration, RateLimitDetector.defaults(), clock, random);
     }
 
     RetryPolicy(

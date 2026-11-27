@@ -11,8 +11,7 @@ import java.util.Optional;
 /**
  * The detector behind {@link RateLimitDetector#defaults()}: HTTP 429 with its {@code Retry-After}, when that is a
  * positive delay. Its limits apply to every request ({@link RateLimitSignal#bucket()} is {@code null}). An enum
- * constant, so there is exactly one instance and {@link RetryConfiguration#hasDefaultRateLimitDetector()} can rely on
- * identity.
+ * constant, so there is exactly one instance.
  */
 enum DefaultRateLimitDetector implements RateLimitDetector {
     INSTANCE;

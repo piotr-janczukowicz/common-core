@@ -54,7 +54,6 @@ import org.jspecify.annotations.Nullable;
  * @param waits backoff and wait-to-retry caps
  * @param jitter jitter and clock-skew settings
  * @param retryable which failures are retried
- * @param rateLimitDetector recognizes rate-limited responses
  * @param coordinateRateLimits whether a rate limit also holds back later calls of the same credential
  * @param rateLimitEventListener receives rate-limit waits and give-ups
  * @param totalDeadline time budget for all attempts and waits of one transport call, or {@code null} for none
@@ -64,15 +63,12 @@ public record RetryConfiguration(
         WaitCaps waits,
         Jitter jitter,
         Retryable retryable,
-        RateLimitDetector rateLimitDetector,
         boolean coordinateRateLimits,
         RateLimitEventListener rateLimitEventListener,
         @Nullable Duration totalDeadline) {
 
     private static final Set<HttpMethod> DEFAULT_IO_RETRYABLE_METHODS =
             Set.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS);
-
-    private static final RateLimitDetector DEFAULT_RATE_LIMIT_DETECTOR = RateLimitDetector.defaults();
 
     private static final RateLimitEventListener NO_EVENT_LISTENER = event -> {};
 
@@ -88,7 +84,6 @@ public record RetryConfiguration(
         requireNonNull(waits, "waits");
         requireNonNull(jitter, "jitter");
         requireNonNull(retryable, "retryable");
-        requireNonNull(rateLimitDetector, "rateLimitDetector");
         requireNonNull(rateLimitEventListener, "rateLimitEventListener");
         requireAtLeast(waits.maxBackoff(), waits.defaultBackoff(), "maxBackoff");
         requireAtLeast(waits.maxRateLimitWait(), waits.minRateLimitWait(), MAX_RATE_LIMIT_WAIT);
@@ -114,35 +109,6 @@ public record RetryConfiguration(
      */
     public static RetryConfiguration defaults() {
         return builder().build();
-    }
-
-    /**
-     * Copy using {@code detector}.
-     *
-     * @param detector detector that recognizes rate-limited responses
-     * @return configuration with {@code detector}
-     * @throws NullPointerException if {@code detector} is {@code null}
-     */
-    public RetryConfiguration withRateLimitDetector(final RateLimitDetector detector) {
-        return new RetryConfiguration(
-                attempts,
-                waits,
-                jitter,
-                retryable,
-                detector,
-                coordinateRateLimits,
-                rateLimitEventListener,
-                totalDeadline);
-    }
-
-    /**
-     * Whether the generic default detector is in place, which is also what {@link RateLimitDetector#defaults()}
-     * returns. Callers that supply a provider-specific detector use this to tell whether one was already chosen.
-     *
-     * @return {@code true} when the detector is {@link RateLimitDetector#defaults()}
-     */
-    public boolean hasDefaultRateLimitDetector() {
-        return rateLimitDetector == DEFAULT_RATE_LIMIT_DETECTOR;
     }
 
     /** Builder initialized to {@link #defaults()}. */
@@ -240,7 +206,6 @@ public record RetryConfiguration(
         private Duration clockSkewMargin = Duration.ofSeconds(1);
         private Set<Integer> retriedStatuses = DEFAULT_RETRYABLE_SERVER_STATUSES;
         private int maxServerErrorAttempts = 3;
-        private RateLimitDetector rateLimitDetector = DEFAULT_RATE_LIMIT_DETECTOR;
         private boolean isCoordinatingRateLimits = true;
         private RateLimitEventListener rateLimitEventListener = NO_EVENT_LISTENER;
         private @Nullable Duration totalDeadline;
@@ -339,7 +304,7 @@ public record RetryConfiguration(
          * every method regardless; this relies on a transport throwing them only when no byte of the request was sent
          * (see {@link io.github.piotr_janczukowicz.http.transport.HttpTransport#execute}). PUT and DELETE are
          * idempotent by specification but a lost response may hide an applied change, so add them only when that is
-         * acceptable. Rate-limited responses (429, and what the detector recognizes) are retried for every method
+         * acceptable. Rate-limited responses (what the rate-limit detector recognizes) are retried for every method
          * regardless of this set.
          *
          * @param retriedMethods methods to retry, not empty when the configuration is built
@@ -433,8 +398,8 @@ public record RetryConfiguration(
 
         /**
          * Server error statuses that are retried for the methods in {@link #retriedMethods(Set)}. A response that the
-         * {@link #rateLimitDetector(RateLimitDetector) rate-limit detector} flags is handled only by the rate-limit
-         * settings, even when its status is listed here: it is never retried as a server error.
+         * rate-limit detector flags is handled only by the rate-limit settings, even when its status is listed here: it
+         * is never retried as a server error.
          *
          * @param retriedStatuses status codes; copied
          * @return this builder
@@ -453,18 +418,6 @@ public record RetryConfiguration(
          */
         public Builder maxServerErrorAttempts(final int maxServerErrorAttempts) {
             this.maxServerErrorAttempts = maxServerErrorAttempts;
-            return this;
-        }
-
-        /**
-         * Detector that recognizes rate-limited responses.
-         *
-         * @param rateLimitDetector detector; default {@link RateLimitDetector#defaults()}
-         * @return this builder
-         * @throws NullPointerException if {@code rateLimitDetector} is {@code null}
-         */
-        public Builder rateLimitDetector(final RateLimitDetector rateLimitDetector) {
-            this.rateLimitDetector = requireNonNull(rateLimitDetector, "rateLimitDetector");
             return this;
         }
 
@@ -536,7 +489,6 @@ public record RetryConfiguration(
                     new Jitter(isFullJitter, rateLimitJitter, clockSkewMargin),
                     new Retryable(
                             isRetryingRateLimitedResponses, isRetryingIoExceptions, retriedMethods, retriedStatuses),
-                    rateLimitDetector,
                     isCoordinatingRateLimits,
                     rateLimitEventListener,
                     totalDeadline);
