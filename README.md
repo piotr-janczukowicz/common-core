@@ -59,10 +59,10 @@ JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 | Class | What it does |
 |---|---|
 | [`ValidationUtils`](src/main/java/io/github/piotr_janczukowicz/util/ValidationUtils.java) | `require*` checks for arguments and configuration: not null, not blank, positive, at least, at most, between, non-empty, size, unique items, no blank or null elements, length, pattern, path safety (`requireSafePath`, `requireFilePath`), and group checks such as exactly one. Each returns the value so you can assign it |
-| [`ListUtils`](src/main/java/io/github/piotr_janczukowicz/util/ListUtils.java), [`SetUtils`](src/main/java/io/github/piotr_janczukowicz/util/SetUtils.java), [`MapUtils`](src/main/java/io/github/piotr_janczukowicz/util/MapUtils.java) | Unmodifiable copies: `copyOf` for a required collection, `copyOrNull` to keep an absent one absent, `copyOrEmpty` to turn it into an empty one, and `orEmpty` to do that without copying |
+| [`ListUtils`](src/main/java/io/github/piotr_janczukowicz/util/ListUtils.java), [`SetUtils`](src/main/java/io/github/piotr_janczukowicz/util/SetUtils.java), [`MapUtils`](src/main/java/io/github/piotr_janczukowicz/util/MapUtils.java) | Unmodifiable copies: `copyOf` for a required collection, `copy` to keep an absent one absent, `copyNonNull` to turn it into an empty one, and `orEmpty` to do that without copying |
 | [`StringUtils`](src/main/java/io/github/piotr_janczukowicz/util/StringUtils.java) | `isBlank`, `isNotBlank` and `stripToNull`, with the semantics of Apache Commons Lang 3 and no dependency on it |
-| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `WireIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional`, a default, or `requireFromWire`, which fails with `Unknown <label>: <value>` for an unknown value |
-| [`IoUtils`](src/main/java/io/github/piotr_janczukowicz/util/IoUtils.java) | `readAllBounded` and `copyBounded` stop with `BoundedReadLimitException` instead of reading past a limit |
+| [`EnumUtils`](src/main/java/io/github/piotr_janczukowicz/util/EnumUtils.java) | `ValueIndex`: an immutable lookup of enum constants by the string a protocol uses, with an `Optional`, a default, or `require`, which fails with `Unknown <label>: <value>` for an unknown value |
+| [`IoUtils`](src/main/java/io/github/piotr_janczukowicz/util/IoUtils.java) | `readAllBounded` and `copyAtMost` stop with `BoundedReadLimitException` instead of reading past a limit |
 | [`DateTimeUtils`](src/main/java/io/github/piotr_janczukowicz/util/DateTimeUtils.java) | `Instant` to ISO-8601 UTC text, `Instant` to and from RFC 1123 (HTTP dates), epoch seconds to `Instant` within a valid range, ISO dates and the start of a day in UTC |
 | [`EncodingUtils`](src/main/java/io/github/piotr_janczukowicz/util/EncodingUtils.java) | Base64 encoding, and decoding (also of text wrapped over several lines) that reports your message and never echoes the input |
 | [`NumberUtils`](src/main/java/io/github/piotr_janczukowicz/util/NumberUtils.java) | `parseInt` and `parseLong` for text from outside, such as a header: an empty result instead of an exception for text that is absent, blank, out of range, or not an optional `-` and ASCII digits |
@@ -100,15 +100,15 @@ Build the index once, in a `static final` field of the enum:
 enum State {
     OPEN("open"), CLOSED("closed"), UNKNOWN("unknown");
 
-    private static final EnumUtils.WireIndex<State> INDEX = EnumUtils.index(State.class, State::wire);
+    private static final EnumUtils.ValueIndex<State> VALUE_INDEX = EnumUtils.index(State.class, State::value);
 
-    private final String wire;
+    private final String value;
 
-    State(String wire) { this.wire = wire; }
+    State(String value) { this.value = value; }
 
-    String wire() { return wire; }
+    String value() { return value; }
 
-    static State fromWire(String value) { return INDEX.fromWire(value, UNKNOWN); }
+    static State of(String value) { return VALUE_INDEX.of(value, UNKNOWN); }
 }
 ```
 
@@ -203,8 +203,8 @@ lenient: it accepts an integer, a number with a zero fraction (`5.0`, `1.7E12`, 
 `null` reads as `null`. A number with a non-zero fraction, a boolean, object or array, and an integer outside the range
 of `Instant` are refused with a Jackson `DatabindException`. Writing is strict: the integer count is written, and an
 `Instant` finer than the unit is refused; a `null` follows the property's usual null handling. `ValueUnionModule` reads
-and writes it, so no other wiring is needed. `ValidationUtils.requireWholeSeconds` and `requireWholeMillis` (and their
-`IfPresent` forms) give a record constructor the same precision check.
+and writes it, so no other wiring is needed. `ValidationUtils.requireWholeSeconds` and `requireWholeMillis` (which let `null`
+pass) give a record constructor the same precision check.
 
 ```java
 record Event(String name, @EpochInstant(EpochUnit.MILLIS) Instant at) {}
@@ -230,7 +230,7 @@ mapper once. `JacksonJsonCodec` is a `JsonCodec` over such a mapper.
 
 ### Reading nodes and tokens
 
-`JsonNodes.textOrNull(node, field)` reads a string field and gives `null` for a missing or non-string one. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
+`JsonNodes.text(node, field)` reads a string field and gives `null` for a missing or non-string one. `BufferedJson` copies one JSON value as tokens, so a deserializer can inspect a
 field and then bind a type without building a tree.
 
 ### Integral doubles
@@ -254,7 +254,7 @@ fields of one input object, in the order they are added. A `null` value is left 
 ```java
 Map<String, @Nullable Object> variables = Variables.builder()
         .value("owner", owner)
-        .values("states", states, State::wireValue)
+        .values("states", states, State::value)
         .value("input", input, CreateLabelInput::toVariable)
         .build();
 ```
@@ -285,7 +285,7 @@ transport, hand it to the client, and the client owns it from then on: `close()`
 ### Send a request
 
 ```java
-HttpTransport transport = new RetryingHttpTransport(HttpTransports.okHttp());
+HttpTransport transport = new RetryingHttpTransport(HttpTransports.create());
 
 try (HttpClient client = HttpClient.builder(
                 transport, HttpClientConfiguration.of(URI.create("https://api.example.com/v1/")))
@@ -303,9 +303,9 @@ try (HttpClient client = HttpClient.builder(
 
 A 2xx answer becomes an `HttpResponse` or a decoded value. Any other status becomes the unchecked exception that the client's
 `HttpErrorMapper` builds (an `HttpException` by default), and a failure of the network stays an `IOException`. The caller
-also has `fetchOptional`, `fetchOrEmpty` and `fetchUnless` for answers that may be absent, `fetchResult` for the response
-headers next to the value (an `ETag`, say), `fetchByStatus`, `isExisting`, `stream`, `download`, `redirectLocation` and
-`redirectLocationIfAny`, and `multipart` and `jsonIfPresent` to build a call.
+also has `fetchOptional`, `find` (an HTTP 404 gives empty), `findOptional` and `fetchExcept` for answers that may be
+absent, `fetchWithResponse` for the response headers next to the value (an `ETag`, say), `fetchByStatus`, `exists`,
+`stream`, `download`, `location` and `findLocation`, and `multipart` to build a call.
 
 A client can be shared between threads when its transport, authentication provider and observers are.
 
@@ -319,11 +319,11 @@ Each decorator wraps another transport and adds one behavior. From the outside i
 | `RetryingHttpTransport` | Retries failed attempts and waits out rate limits, with separate budgets for I/O failures, rate limits and 5xx; it remembers a reported limit so later calls of the same credential do not send a doomed request |
 | `MutationPacingHttpTransport` | Keeps a minimum interval between the starts of POST, PUT, PATCH and DELETE for APIs that throttle writes; GET is never delayed |
 | `ConcurrencyLimitingHttpTransport` | Lets at most N requests run at once, since the OkHttp transport sends on the caller's thread |
-| OkHttp (`HttpTransports.okHttp`) | The network, with timeouts, optional proxy, TLS trust and certificate pins |
+| OkHttp (`HttpTransports.create`) | The network, with timeouts, optional proxy, TLS trust and certificate pins |
 
 ```java
 HttpTransport transport = new RetryingHttpTransport(
-        new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 4),
+        new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 4),
         RetryConfiguration.defaults());
 ```
 
@@ -356,11 +356,11 @@ base origin and path prefix.
 
 ### Wait for a result that is computed in the background
 
-Some endpoints answer 202 until a report is ready. `fetchWhenReady` repeats the request a fixed number of times with a fixed
+Some endpoints answer 202 until a report is ready. `awaitFetch` repeats the request a fixed number of times with a fixed
 pause and returns `HttpComputed.Ready`, `NotReady` or `NoData`:
 
 ```java
-HttpComputed<Report> report = caller.fetchWhenReady(
+HttpComputed<Report> report = caller.awaitFetch(
         HttpCall.get("reports/7"), Report.class, HttpAcceptedPolling.defaults());
 ```
 
