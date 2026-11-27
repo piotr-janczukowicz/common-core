@@ -122,16 +122,16 @@ public final class BufferedJson implements AutoCloseable {
      * the wrong shape, so decoding through a mapper fails with the usual decode exception.
      *
      * @param field property name
-     * @param fromWire converts the wire text to the constant, throwing {@link IllegalArgumentException} for an unknown
+     * @param toEnum converts the wire text to the constant, throwing {@link IllegalArgumentException} for an unknown
      *     value
      * @param <E> enum type
      * @return the constant
-     * @throws DatabindException if the property is missing or {@code null}, or {@code fromWire} rejects its value
+     * @throws DatabindException if the property is missing or {@code null}, or {@code toEnum} rejects its value
      */
-    public <E> E requiredWire(final String field, final Function<String, E> fromWire) {
+    public <E> E requiredWire(final String field, final Function<String, E> toEnum) {
         final String value = requiredText(field);
         try {
-            return fromWire.apply(value);
+            return toEnum.apply(value);
         } catch (final IllegalArgumentException unknown) {
             LOG.atDebug()
                     .setMessage("Rejected the value of field {}: {}")

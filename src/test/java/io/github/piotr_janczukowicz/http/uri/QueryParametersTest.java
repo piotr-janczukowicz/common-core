@@ -335,7 +335,7 @@ class QueryParametersTest {
 
         final Throwable thrown = catchThrowable(() -> parameters.wireRepeated("a", null, null));
 
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("wireValue");
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("toValue");
     }
 
     @Test

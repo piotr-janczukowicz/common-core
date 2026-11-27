@@ -38,7 +38,7 @@ import org.jspecify.annotations.Nullable;
 public final class QueryParameters {
 
     private static final String NAME = "name";
-    private static final String WIRE_VALUE = "wireValue";
+    private static final String TO_VALUE = "toValue";
     private static final int SINGLE_VALUE = 1;
 
     // a String per single parameter, an unmodifiable List<String> per repeated one, in the order they were added
@@ -110,18 +110,18 @@ public final class QueryParameters {
      *
      * @param name the parameter name
      * @param value the constant, or {@code null} to leave it out
-     * @param wireValue gives the wire value of a constant
+     * @param toValue gives the value of a constant
      * @param <E> the enum type
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is blank
-     * @throws NullPointerException if {@code wireValue} returns {@code null} for {@code value}
+     * @throws NullPointerException if {@code toValue} returns {@code null} for {@code value}
      */
-    public <E> QueryParameters wire(final String name, final @Nullable E value, final Function<E, ?> wireValue) {
+    public <E> QueryParameters wire(final String name, final @Nullable E value, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
-        requireNonNull(wireValue, WIRE_VALUE);
+        requireNonNull(toValue, TO_VALUE);
         if (value != null) {
-            query.put(name, String.valueOf(requireNonNull(wireValue.apply(value), name + " wire value")));
+            query.put(name, String.valueOf(requireNonNull(toValue.apply(value), name + " wire value")));
         }
         return this;
     }
@@ -150,24 +150,24 @@ public final class QueryParameters {
      *
      * @param name the parameter name
      * @param values the constants, or {@code null} to leave the parameter out
-     * @param wireValue gives the wire value of a constant
+     * @param toValue gives the value of a constant
      * @param <E> the enum type
      * @return this builder
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is blank
      * @throws IllegalArgumentException if {@code values} holds {@code null}
-     * @throws NullPointerException if {@code wireValue} returns {@code null} for an item
+     * @throws NullPointerException if {@code toValue} returns {@code null} for an item
      */
     public <E> QueryParameters wireList(
-            final String name, final @Nullable List<E> values, final Function<E, ?> wireValue) {
+            final String name, final @Nullable List<E> values, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
-        requireNonNull(wireValue, WIRE_VALUE);
+        requireNonNull(toValue, TO_VALUE);
         if (values != null && !values.isEmpty()) {
             requireNoNullElements(values, name);
             query.put(
                     name,
                     values.stream()
-                            .map(item -> requireNonNull(wireValue.apply(item), name + " wire value"))
+                            .map(item -> requireNonNull(toValue.apply(item), name + " wire value"))
                             .map(String::valueOf)
                             .collect(Collectors.joining(",")));
         }
@@ -229,23 +229,23 @@ public final class QueryParameters {
      * @param name the parameter name
      * @param values the constants, or {@code null} to leave the parameter out; an item that is {@code null} is left
      *     out, and the parameter is left out when no item is left
-     * @param wireValue gives the wire value of a constant
+     * @param toValue gives the value of a constant
      * @param <E> the enum type
      * @return this builder
-     * @throws NullPointerException if {@code name} or {@code wireValue} is {@code null}
+     * @throws NullPointerException if {@code name} or {@code toValue} is {@code null}
      * @throws IllegalArgumentException if {@code name} is blank
-     * @throws NullPointerException if {@code wireValue} returns {@code null} for an item
+     * @throws NullPointerException if {@code toValue} returns {@code null} for an item
      */
     public <E> QueryParameters wireRepeated(
-            final String name, final @Nullable List<E> values, final Function<E, ?> wireValue) {
+            final String name, final @Nullable List<E> values, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
-        requireNonNull(wireValue, WIRE_VALUE);
+        requireNonNull(toValue, TO_VALUE);
         if (values != null) {
             putRepeated(
                     name,
                     values.stream()
                             .filter(Objects::nonNull)
-                            .map(item -> wired(name, item, wireValue))
+                            .map(item -> wired(name, item, toValue))
                             .toList());
         }
         return this;
@@ -308,7 +308,7 @@ public final class QueryParameters {
         return value instanceof String text ? List.of(text) : (List<String>) value;
     }
 
-    private static <E> String wired(final String name, final E value, final Function<E, ?> wireValue) {
-        return String.valueOf(requireNonNull(wireValue.apply(value), name + " wire value"));
+    private static <E> String wired(final String name, final E value, final Function<E, ?> toValue) {
+        return String.valueOf(requireNonNull(toValue.apply(value), name + " wire value"));
     }
 }

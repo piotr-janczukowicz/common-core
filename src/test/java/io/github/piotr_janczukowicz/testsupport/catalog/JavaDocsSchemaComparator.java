@@ -1055,13 +1055,13 @@ public final class JavaDocsSchemaComparator {
             mismatches.add(path + ": docs enum, java " + raw.getTypeName());
             return;
         }
-        final Method wireValue = wireValueMethod(raw);
-        if (wireValue == null) {
+        final Method valueMethod = valueMethod(raw);
+        if (valueMethod == null) {
             mismatches.add(path + ": java enum missing value()");
             return;
         }
         final Set<String> docsValues = stringEnumValues(enumNode);
-        final Set<String> javaValues = javaWireValues(raw, wireValue);
+        final Set<String> javaValues = javaStringValues(raw, valueMethod);
         for (final String value : docsValues) {
             if (!javaValues.contains(value)) {
                 mismatches.add(path + ": docs enum " + value + ", missing on java");
@@ -1111,7 +1111,7 @@ public final class JavaDocsSchemaComparator {
         return false;
     }
 
-    private static Method wireValueMethod(final Class<?> raw) {
+    private static Method valueMethod(final Class<?> raw) {
         try {
             final Method method = raw.getMethod("value");
             if (method.getParameterCount() == 0 && method.getReturnType() == String.class) {
@@ -1123,11 +1123,11 @@ public final class JavaDocsSchemaComparator {
         return null;
     }
 
-    private static Set<String> javaWireValues(final Class<?> raw, final Method wireValue) {
+    private static Set<String> javaStringValues(final Class<?> raw, final Method valueMethod) {
         final Set<String> values = new LinkedHashSet<>();
         for (final Object constant : raw.getEnumConstants()) {
             try {
-                values.add((String) wireValue.invoke(constant));
+                values.add((String) valueMethod.invoke(constant));
             } catch (final IllegalAccessException | InvocationTargetException ex) {
                 throw new IllegalStateException(raw.getName() + " value()", ex);
             }
@@ -1137,17 +1137,17 @@ public final class JavaDocsSchemaComparator {
 
     private static void alignIntegerEnum(
             final String path, final Class<?> raw, final JsonNode enumNode, final List<String> mismatches) {
-        final Method wireValue = integerWireValueMethod(raw);
-        if (wireValue == null) {
+        final Method valueMethod = integerValueMethod(raw);
+        if (valueMethod == null) {
             mismatches.add(path + ": java enum missing value()");
             return;
         }
-        if (!isInteger(wireValue.getReturnType())) {
+        if (!isInteger(valueMethod.getReturnType())) {
             mismatches.add(path + ": java enum value() not integer");
             return;
         }
         final Set<Long> docsValues = integerEnumValues(enumNode);
-        final Set<Long> javaValues = javaIntegerWireValues(raw, wireValue);
+        final Set<Long> javaValues = javaIntegerValues(raw, valueMethod);
         for (final Long value : docsValues) {
             if (!javaValues.contains(value)) {
                 mismatches.add(path + ": docs enum " + value + ", missing on java");
@@ -1166,7 +1166,7 @@ public final class JavaDocsSchemaComparator {
         return values;
     }
 
-    private static Method integerWireValueMethod(final Class<?> raw) {
+    private static Method integerValueMethod(final Class<?> raw) {
         try {
             return raw.getMethod("value");
         } catch (final NoSuchMethodException ignored) {
@@ -1174,11 +1174,11 @@ public final class JavaDocsSchemaComparator {
         }
     }
 
-    private static Set<Long> javaIntegerWireValues(final Class<?> raw, final Method wireValue) {
+    private static Set<Long> javaIntegerValues(final Class<?> raw, final Method valueMethod) {
         final Set<Long> values = new LinkedHashSet<>();
         for (final Object constant : raw.getEnumConstants()) {
             try {
-                values.add(((Number) wireValue.invoke(constant)).longValue());
+                values.add(((Number) valueMethod.invoke(constant)).longValue());
             } catch (final IllegalAccessException | InvocationTargetException ex) {
                 throw new IllegalStateException(raw.getName() + " value()", ex);
             }

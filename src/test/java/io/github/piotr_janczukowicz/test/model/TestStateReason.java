@@ -11,7 +11,7 @@ public enum TestStateReason {
     COMPLETED("completed"),
     NOT_PLANNED("not_planned");
 
-    private static final EnumUtils.ValueIndex<TestStateReason> WIRE_INDEX =
+    private static final EnumUtils.ValueIndex<TestStateReason> VALUE_INDEX =
             EnumUtils.index(TestStateReason.class, TestStateReason::value);
 
     private final String value;
@@ -29,7 +29,7 @@ public enum TestStateReason {
     public static TestStateReason of(final String value) {
         requireNonNull(value, "value");
 
-        return WIRE_INDEX
+        return VALUE_INDEX
                 .of(value)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown test state reason: " + value));
     }
