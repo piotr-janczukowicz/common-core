@@ -33,4 +33,9 @@ class SampleXorCatalogTest extends AbstractXorCatalogTest {
                 Arguments.of("sample-xor-text.json", new SampleSupport.SampleXor("hello", null), new String[] {"text"}),
                 Arguments.of("sample-xor-number.json", new SampleSupport.SampleXor(null, 7), new String[] {"number"}));
     }
+
+    @Override
+    protected String specExamples() {
+        return "sample-xor.examples.json";
+    }
 }

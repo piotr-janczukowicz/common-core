@@ -10,7 +10,10 @@ import io.github.piotr_janczukowicz.util.FileUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -85,6 +88,23 @@ public abstract class AbstractCatalogTest {
 
     protected String[] nullableComponents() {
         return new String[0];
+    }
+
+    /**
+     * The resource that holds the examples the OpenAPI description gives for the type, read next to the test class:
+     * {@code {"examples": [{"from": ..., "json": ..., "refused": ...}]}}. Each example must decode, except one marked
+     * {@code refused}, whose decoding must fail.
+     *
+     * @return the resource name, or {@code null} when the description has no example of the type
+     */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
+    protected String specExamples() {
+        return null;
+    }
+
+    @TestFactory
+    protected final Stream<DynamicTest> decode_shouldMatchSpecExamples() {
+        return SpecExamples.tests(getClass(), specExamples(), type, codec());
     }
 
     @Test

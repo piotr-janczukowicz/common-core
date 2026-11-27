@@ -23,4 +23,9 @@ class SampleUnionCatalogTest extends AbstractUnionCatalogTest {
                 Arguments.of("sample-union-cat.json", SampleSupport.SampleCat.class),
                 Arguments.of("sample-union-dog.json", SampleSupport.SampleDog.class));
     }
+
+    @Override
+    protected String specExamples() {
+        return "sample-union.examples.json";
+    }
 }

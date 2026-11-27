@@ -1,0 +1,6 @@
+{
+  "examples": [
+    {"from": "spec#/components/examples/union/value", "json": {"meow": "purr"}},
+    {"from": "spec#/components/examples/union-bad/value", "json": {"unknown": "x"}, "refused": "no union branch at /"}
+  ]
+}

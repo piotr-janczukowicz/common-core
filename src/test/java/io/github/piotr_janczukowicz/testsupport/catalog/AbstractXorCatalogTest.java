@@ -13,7 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -86,6 +88,23 @@ public abstract class AbstractXorCatalogTest {
     }
 
     protected abstract Stream<Arguments> cases();
+
+    /**
+     * The resource that holds the examples the OpenAPI description gives for the type, read next to the test class:
+     * {@code {"examples": [{"from": ..., "json": ..., "refused": ...}]}}. Each example must decode, except one marked
+     * {@code refused}, whose decoding must fail.
+     *
+     * @return the resource name, or {@code null} when the description has no example of the type
+     */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract") // optional hook: subclasses override it
+    protected String specExamples() {
+        return null;
+    }
+
+    @TestFactory
+    protected final Stream<DynamicTest> decode_shouldMatchSpecExamples() {
+        return SpecExamples.tests(getClass(), specExamples(), type, codec());
+    }
 
     @ParameterizedTest
     @MethodSource("cases")

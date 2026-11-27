@@ -1,0 +1,8 @@
+{
+  "examples": [
+    {"from": "decodes", "json": {"name": "octocat", "count": 3}},
+    {"from": "refused and throws", "json": {"name": "octocat", "count": "many"}, "refused": "x"},
+    {"from": "refused but decodes", "json": {"name": "octocat", "count": 3}, "refused": "x"},
+    {"from": "decodes not", "json": {"name": "octocat", "count": "many"}}
+  ]
+}

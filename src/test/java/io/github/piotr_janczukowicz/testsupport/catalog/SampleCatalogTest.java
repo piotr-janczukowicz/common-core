@@ -24,4 +24,9 @@ class SampleCatalogTest extends AbstractCatalogTest {
     protected String schema() {
         return "sample-schema.json";
     }
+
+    @Override
+    protected String specExamples() {
+        return "sample.examples.json";
+    }
 }
