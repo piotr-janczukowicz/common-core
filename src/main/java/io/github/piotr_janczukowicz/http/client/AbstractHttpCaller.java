@@ -753,8 +753,8 @@ public abstract class AbstractHttpCaller {
         return response.body().mapBytes(AbstractHttpCaller::isEmptyJsonObjectBytes, () -> true);
     }
 
-    // Scans the bytes in place: whitespace, '{', whitespace, '}', whitespace. The whitespace is space, tab, LF and CR,
-    // plus vertical tab and form feed that earlier versions also tolerated around the braces.
+    // Scans the bytes in place: whitespace, '{', whitespace, '}', whitespace. The whitespace is space, tab, LF, CR,
+    // vertical tab and form feed.
     private static boolean isEmptyJsonObjectBytes(final byte[] bytes) {
         int index = skipWhitespace(bytes, 0);
         if (index == bytes.length || bytes[index] != '{') {
