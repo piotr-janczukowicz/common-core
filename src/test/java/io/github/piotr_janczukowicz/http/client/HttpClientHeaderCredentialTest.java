@@ -217,7 +217,7 @@ class HttpClientHeaderCredentialTest {
             }
 
             @Override
-            public boolean isRenewableAfterRejection(final Authentication rejected) {
+            public boolean canRenew(final Authentication rejected) {
                 if (isRenewable) {
                     renewals.incrementAndGet();
                 }

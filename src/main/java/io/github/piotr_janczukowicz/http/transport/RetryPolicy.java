@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  * Applies {@link RetryConfiguration} to a failed attempt. Used only by {@link RetryingHttpTransport}.
  *
  * <p>I/O failures, rate limits and retryable 5xx each have their own attempt budget ({@code maxIoAttempts},
- * {@code maxRateLimitAttempts}, {@code maxServerErrorAttempts}). I/O and 5xx share {@code ioRetryableMethods}. The
+ * {@code maxRateLimitAttempts}, {@code maxServerErrorAttempts}). I/O and 5xx share {@code retriedMethods}. The
  * rate-limit budget allows {@code maxRateLimitAttempts - 1} waits in total, whether a call waits out its own
  * rate-limited response or pauses for a limit that another call reported.
  *
@@ -43,8 +43,8 @@ import org.jspecify.annotations.Nullable;
  * A wait that the server asked for and that exceeds {@code maxRateLimitWait} is not taken.
  *
  * <p>A response that the rate-limit detector flags is handled only by the rate-limit settings, even when its status is
- * also listed in {@code retryableServerStatuses}: if the rate limit is not retried, the response is returned and the
- * 5xx rules are not applied to it.
+ * also listed in {@code retriedStatuses}: if the rate limit is not retried, the response is returned and the 5xx rules
+ * are not applied to it.
  */
 final class RetryPolicy {
 
@@ -147,9 +147,9 @@ final class RetryPolicy {
         requireNonNull(request, REQUEST);
         requireNonNull(response, RESPONSE);
         if (attempt >= attempts.maxServerErrorAttempts()
-                || retryable.retryableServerStatuses().isEmpty()
+                || retryable.retriedStatuses().isEmpty()
                 || isNotRetryableMethod(request.method())
-                || !retryable.retryableServerStatuses().contains(response.statusCode())) {
+                || !retryable.retriedStatuses().contains(response.statusCode())) {
             return Optional.empty();
         }
         final Duration wait = nonNegative(serverErrorWait(response, attempt));
@@ -162,7 +162,7 @@ final class RetryPolicy {
     /**
      * Wait after an I/O failure, or empty when that failure should not be retried. A failure to open the connection is
      * retried for every method, because no request byte was sent; any other failure only for the
-     * {@code ioRetryableMethods}, because the server may have applied the request.
+     * {@code retriedMethods}, because the server may have applied the request.
      *
      * @param request failed request
      * @param failure the failure
@@ -320,7 +320,7 @@ final class RetryPolicy {
     Optional<RateLimitSignal> exhaustion(final HttpRequest request, final HttpResponse response) {
         requireNonNull(request, REQUEST);
         requireNonNull(response, RESPONSE);
-        return rateLimitDetector.detectExhaustion(response, request, clock);
+        return rateLimitDetector.detectSpent(response, request, clock);
     }
 
     /**
@@ -402,7 +402,7 @@ final class RetryPolicy {
     }
 
     private boolean isNotRetryableMethod(final HttpMethod method) {
-        return !retryable.ioRetryableMethods().contains(method);
+        return !retryable.retriedMethods().contains(method);
     }
 
     private Duration withJitter(final Duration base) {

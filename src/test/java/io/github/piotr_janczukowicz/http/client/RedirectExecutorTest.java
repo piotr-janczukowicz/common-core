@@ -85,7 +85,7 @@ class RedirectExecutorTest {
             softly.assertThat(error.statusCode()).isEqualTo(status.code());
             softly.assertThat(error.method()).contains(method);
             softly.assertThat(error.getMessage()).contains(method.name()).doesNotContain("token");
-            softly.assertThat(error.rawBody()).contains("https://api.example.test/next");
+            softly.assertThat(error.body()).contains("https://api.example.test/next");
             softly.assertThat(error.uri()).contains(URI.create("https://api.example.test/start"));
             softly.assertThat(error.headers().get(LOCATION)).isEmpty();
         });
@@ -452,7 +452,7 @@ class RedirectExecutorTest {
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
                 .hasMessage("redirect to unsupported scheme")
-                .extracting(error -> ((HttpException) error).rawBody().orElseThrow())
+                .extracting(error -> ((HttpException) error).body().orElseThrow())
                 .isEqualTo("ftp://files.example/a/b");
     }
 
@@ -469,7 +469,7 @@ class RedirectExecutorTest {
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
                 .hasMessage("redirect Location is malformed")
-                .extracting(error -> ((HttpException) error).rawBody())
+                .extracting(error -> ((HttpException) error).body())
                 .isEqualTo(Optional.empty());
     }
 

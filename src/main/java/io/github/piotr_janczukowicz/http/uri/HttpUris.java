@@ -233,7 +233,7 @@ public final class HttpUris {
      * @return raw path, never {@code null}
      * @throws NullPointerException if {@code uri} is {@code null}
      */
-    public static String rawPathOrEmpty(final URI uri) {
+    public static String rawPath(final URI uri) {
         final String path = requireNonNull(uri, URI_ARG).getRawPath();
         return path == null ? "" : path;
     }
@@ -246,7 +246,7 @@ public final class HttpUris {
      * @return copy
      * @throws NullPointerException if {@code query} is {@code null}
      */
-    public static Map<String, List<String>> copyQueryValues(final Map<String, List<String>> query) {
+    public static Map<String, List<String>> copyQuery(final Map<String, List<String>> query) {
         requireNonNull(query, QUERY);
         final Map<String, List<String>> copy = new LinkedHashMap<>();
         query.forEach((name, values) -> copy.put(name, List.copyOf(values)));
@@ -254,14 +254,14 @@ public final class HttpUris {
     }
 
     /**
-     * Copies {@code query} like {@link #copyQueryValues(Map)}, and wraps the copy so that it cannot be changed.
+     * Copies {@code query} like {@link #copyQuery(Map)}, and wraps the copy so that it cannot be changed.
      *
      * @param query name to values
      * @return unmodifiable copy, in the order of {@code query}, with immutable value lists
      * @throws NullPointerException if {@code query} is {@code null}
      */
     public static Map<String, List<String>> unmodifiableQueryValues(final Map<String, List<String>> query) {
-        return Collections.unmodifiableMap(copyQueryValues(query));
+        return Collections.unmodifiableMap(copyQuery(query));
     }
 
     /**

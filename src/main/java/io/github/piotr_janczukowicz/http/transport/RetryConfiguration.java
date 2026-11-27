@@ -18,8 +18,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Three independent budgets count tries including the first: {@code maxIoAttempts} for I/O failures,
  * {@code maxRateLimitAttempts} for rate limits and {@code maxServerErrorAttempts} for retryable 5xx. I/O and 5xx share
- * {@code ioRetryableMethods} (default GET, HEAD, OPTIONS); rate-limited responses are retried for every method. The
- * wait caps for I/O and 5xx default to {@code maxBackoff}.
+ * {@code retriedMethods} (default GET, HEAD, OPTIONS); rate-limited responses are retried for every method. The wait
+ * caps for I/O and 5xx default to {@code maxBackoff}.
  *
  * <p>A rate limit that names its wait, as {@code Retry-After} or a reset time (or both, when the later one counts), is
  * waited out if that is at most {@code maxRateLimitWait} (5 minutes by default) and otherwise not retried. A rate limit
@@ -103,7 +103,7 @@ public record RetryConfiguration(
      * OPTIONS only, because a replayed PUT or DELETE may repeat an effect the server already applied; the exception is
      * a failure to open the connection ({@link java.net.ConnectException}, {@link java.net.NoRouteToHostException}),
      * which is retried for every method since the request was never sent. Opt the other methods in with
-     * {@link Builder#ioRetryableMethods(Set)}.
+     * {@link Builder#retriedMethods(Set)}.
      *
      * <p>A rate limit waits at least 60 seconds and at most 5 minutes, plus up to 10 seconds of jitter: a primary limit
      * that resets within 5 minutes is waited out, a longer one is returned at once, and repeated limits that name no
@@ -207,15 +207,15 @@ public record RetryConfiguration(
     public record Retryable(
             boolean retryRateLimitedResponses,
             boolean retryIoExceptions,
-            Set<HttpMethod> ioRetryableMethods,
-            Set<Integer> retryableServerStatuses) {
+            Set<HttpMethod> retriedMethods,
+            Set<Integer> retriedStatuses) {
         public Retryable {
-            ioRetryableMethods = Set.copyOf(requireNonEmpty(ioRetryableMethods, "ioRetryableMethods"));
-            retryableServerStatuses = SetUtils.copyOf(retryableServerStatuses, "retryableServerStatuses");
-            for (final int status : retryableServerStatuses) {
+            retriedMethods = Set.copyOf(requireNonEmpty(retriedMethods, "retriedMethods"));
+            retriedStatuses = SetUtils.copyOf(retriedStatuses, "retriedStatuses");
+            for (final int status : retriedStatuses) {
                 if (status < 400 || status > 599) {
                     throw new IllegalArgumentException(
-                            "retryableServerStatuses must hold only 4xx and 5xx statuses, got " + status);
+                            "retriedStatuses must hold only 4xx and 5xx statuses, got " + status);
                 }
             }
         }
@@ -231,14 +231,14 @@ public record RetryConfiguration(
         private boolean isFullJitter = true;
         private boolean isRetryingRateLimitedResponses = true;
         private boolean isRetryingIoExceptions = true;
-        private Set<HttpMethod> ioRetryableMethods = DEFAULT_IO_RETRYABLE_METHODS;
+        private Set<HttpMethod> retriedMethods = DEFAULT_IO_RETRYABLE_METHODS;
         private Duration maxRateLimitWait = Duration.ofMinutes(5);
         private @Nullable Duration maxServerErrorWait;
         private Duration minRateLimitWait = Duration.ofSeconds(60);
         private Duration maxRateLimitBlock = Duration.ofHours(1);
         private Duration rateLimitJitter = Duration.ofSeconds(10);
         private Duration clockSkewMargin = Duration.ofSeconds(1);
-        private Set<Integer> retryableServerStatuses = DEFAULT_RETRYABLE_SERVER_STATUSES;
+        private Set<Integer> retriedStatuses = DEFAULT_RETRYABLE_SERVER_STATUSES;
         private int maxServerErrorAttempts = 3;
         private RateLimitDetector rateLimitDetector = DEFAULT_RATE_LIMIT_DETECTOR;
         private boolean isCoordinatingRateLimits = true;
@@ -320,7 +320,7 @@ public record RetryConfiguration(
         }
 
         /**
-         * Whether I/O failures are retried for the methods in {@link #ioRetryableMethods(Set)}. A
+         * Whether I/O failures are retried for the methods in {@link #retriedMethods(Set)}. A
          * {@link java.net.ConnectException} or {@link java.net.NoRouteToHostException} is retried for every method,
          * because the transport may throw them only when no byte of the request was sent; see
          * {@link io.github.piotr_janczukowicz.http.transport.HttpTransport#execute}.
@@ -342,12 +342,12 @@ public record RetryConfiguration(
          * acceptable. Rate-limited responses (429, and what the detector recognizes) are retried for every method
          * regardless of this set.
          *
-         * @param ioRetryableMethods methods to retry, not empty when the configuration is built
+         * @param retriedMethods methods to retry, not empty when the configuration is built
          * @return this builder
-         * @throws NullPointerException if {@code ioRetryableMethods} is {@code null}
+         * @throws NullPointerException if {@code retriedMethods} is {@code null}
          */
-        public Builder ioRetryableMethods(final Set<HttpMethod> ioRetryableMethods) {
-            this.ioRetryableMethods = SetUtils.copyOf(ioRetryableMethods, "ioRetryableMethods");
+        public Builder retriedMethods(final Set<HttpMethod> retriedMethods) {
+            this.retriedMethods = SetUtils.copyOf(retriedMethods, "retriedMethods");
             return this;
         }
 
@@ -432,16 +432,16 @@ public record RetryConfiguration(
         }
 
         /**
-         * Server error statuses that are retried for the methods in {@link #ioRetryableMethods(Set)}. A response that
-         * the {@link #rateLimitDetector(RateLimitDetector) rate-limit detector} flags is handled only by the rate-limit
+         * Server error statuses that are retried for the methods in {@link #retriedMethods(Set)}. A response that the
+         * {@link #rateLimitDetector(RateLimitDetector) rate-limit detector} flags is handled only by the rate-limit
          * settings, even when its status is listed here: it is never retried as a server error.
          *
-         * @param retryableServerStatuses status codes; copied
+         * @param retriedStatuses status codes; copied
          * @return this builder
-         * @throws NullPointerException if {@code retryableServerStatuses} is {@code null}
+         * @throws NullPointerException if {@code retriedStatuses} is {@code null}
          */
-        public Builder retryableServerStatuses(final Set<Integer> retryableServerStatuses) {
-            this.retryableServerStatuses = SetUtils.copyOf(retryableServerStatuses, "retryableServerStatuses");
+        public Builder retriedStatuses(final Set<Integer> retriedStatuses) {
+            this.retriedStatuses = SetUtils.copyOf(retriedStatuses, "retriedStatuses");
             return this;
         }
 
@@ -520,8 +520,7 @@ public record RetryConfiguration(
          * @throws NullPointerException if a backoff, jitter, margin, or method set is {@code null}
          * @throws IllegalArgumentException if an attempt cap is below 1, a duration is negative, {@code maxBackoff} is
          *     below {@code defaultBackoff}, {@code maxRateLimitWait} is below {@code minRateLimitWait},
-         *     {@code ioRetryableMethods} is empty, or {@code totalDeadline} or {@code maxRateLimitBlock} is not
-         *     positive
+         *     {@code retriedMethods} is empty, or {@code totalDeadline} or {@code maxRateLimitBlock} is not positive
          */
         public RetryConfiguration build() {
             final Duration serverErrorWaitCap = maxServerErrorWait == null ? maxBackoff : maxServerErrorWait;
@@ -536,10 +535,7 @@ public record RetryConfiguration(
                             maxRateLimitBlock),
                     new Jitter(isFullJitter, rateLimitJitter, clockSkewMargin),
                     new Retryable(
-                            isRetryingRateLimitedResponses,
-                            isRetryingIoExceptions,
-                            ioRetryableMethods,
-                            retryableServerStatuses),
+                            isRetryingRateLimitedResponses, isRetryingIoExceptions, retriedMethods, retriedStatuses),
                     rateLimitDetector,
                     isCoordinatingRateLimits,
                     rateLimitEventListener,

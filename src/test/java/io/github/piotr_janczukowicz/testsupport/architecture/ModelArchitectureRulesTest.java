@@ -38,7 +38,7 @@ class ModelArchitectureRulesTest {
         KNOWN,
         UNRECOGNIZED;
 
-        public String wireValue() {
+        public String value() {
             return name().toLowerCase(Locale.ROOT);
         }
     }
@@ -51,7 +51,7 @@ class ModelArchitectureRulesTest {
         KNOWN,
         UNRECOGNIZED;
 
-        public String wireValue() {
+        public String value() {
             return "other";
         }
     }
@@ -122,19 +122,19 @@ class ModelArchitectureRulesTest {
     }
 
     @Test
-    void wireValue_shouldReturnTheConstantName_whenTheEnumHasNoWireValueMethod() {
+    void value_shouldReturnTheConstantName_whenTheEnumHasNoWireValueMethod() {
         final Object constant = NoWireValue.KNOWN;
 
-        final String wire = ModelArchitectureRules.wireValue(NoWireValue.class, constant);
+        final String wire = ModelArchitectureRules.value(NoWireValue.class, constant);
 
         assertThat(wire).isEqualTo("KNOWN");
     }
 
     @Test
-    void wireValue_shouldCallTheMethod_whenTheEnumHasOne() {
+    void value_shouldCallTheMethod_whenTheEnumHasOne() {
         final Object constant = PairedFallback.UNRECOGNIZED;
 
-        final String wire = ModelArchitectureRules.wireValue(PairedFallback.class, constant);
+        final String wire = ModelArchitectureRules.value(PairedFallback.class, constant);
 
         assertThat(wire).isEqualTo("unrecognized");
     }

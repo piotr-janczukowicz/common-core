@@ -27,29 +27,29 @@ class JsonNodesTest {
     }
 
     @Test
-    void textOrNull_shouldReturnText_whenFieldIsAString() {
+    void text_shouldReturnText_whenFieldIsAString() {
         final JsonNode node = MAPPER.readTree("{\"message\":\"boom\"}");
 
-        final String text = JsonNodes.textOrNull(node, "message");
+        final String text = JsonNodes.text(node, "message");
 
         assertThat(text).isEqualTo("boom");
     }
 
     @Test
-    void textOrNull_shouldReturnNull_whenFieldIsMissing() {
+    void text_shouldReturnNull_whenFieldIsMissing() {
         final JsonNode node = MAPPER.readTree("{}");
 
-        final String text = JsonNodes.textOrNull(node, "message");
+        final String text = JsonNodes.text(node, "message");
 
         assertThat(text).isNull();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"{\"message\":12}", "{\"message\":null}", "{\"message\":[\"a\"]}"})
-    void textOrNull_shouldReturnNull_whenFieldIsNotAString(final String json) {
+    void text_shouldReturnNull_whenFieldIsNotAString(final String json) {
         final JsonNode node = MAPPER.readTree(json);
 
-        final String text = JsonNodes.textOrNull(node, "message");
+        final String text = JsonNodes.text(node, "message");
 
         assertThat(text).isNull();
     }

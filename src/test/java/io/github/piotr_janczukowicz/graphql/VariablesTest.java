@@ -26,7 +26,7 @@ class VariablesTest {
             this.wire = wire;
         }
 
-        String wireValue() {
+        String value() {
             return wire;
         }
     }
@@ -45,13 +45,13 @@ class VariablesTest {
                 .value("count", 3)
                 .value("draft", true)
                 .value("ids", List.of("a", "b"))
-                .value("state", State.OPEN, State::wireValue)
+                .value("state", State.OPEN, State::value)
                 .value("since", LocalDate.parse("2026-01-02"), Object::toString)
-                .values("states", List.of(State.OPEN, State.OPEN), State::wireValue)
+                .values("states", List.of(State.OPEN, State.OPEN), State::value)
                 .value("input", new Input("x"), Input::toVariable)
                 .values("inputs", List.of(new Input("y"), new Input("z")), Input::toVariable)
                 .clearable("after", OptionalNull.of("c"))
-                .clearable("mapped", OptionalNull.of(State.OPEN), State::wireValue)
+                .clearable("mapped", OptionalNull.of(State.OPEN), State::value)
                 .build();
 
         assertThat(built)
@@ -77,10 +77,10 @@ class VariablesTest {
 
         final Map<String, Object> built = Variables.builder()
                 .value("a", null)
-                .value("b", noState, State::wireValue)
-                .values("c", noStates, State::wireValue)
+                .value("b", noState, State::value)
+                .values("c", noStates, State::value)
                 .clearable("f", noText)
-                .clearable("g", noWrappedState, State::wireValue)
+                .clearable("g", noWrappedState, State::value)
                 .build();
 
         assertThat(built).isEmpty();
@@ -90,7 +90,7 @@ class VariablesTest {
     void clearable_shouldWriteJsonNull_whenTheValueIsExplicitlyNull() {
         final Map<String, Object> built = Variables.builder()
                 .clearable("after", OptionalNull.ofNull())
-                .clearable("state", OptionalNull.<State>ofNull(), State::wireValue)
+                .clearable("state", OptionalNull.<State>ofNull(), State::value)
                 .build();
 
         assertThat(built).containsExactly(entry("after", null), entry("state", null));
@@ -100,7 +100,7 @@ class VariablesTest {
     void build_shouldKeepAnEmptyList_whenAListIsEmpty() {
         final Map<String, Object> built = Variables.builder()
                 .value("ids", List.of())
-                .values("states", List.<State>of(), State::wireValue)
+                .values("states", List.<State>of(), State::value)
                 .build();
 
         assertThat(built).containsExactly(entry("ids", List.of()), entry("states", List.of()));
@@ -217,7 +217,7 @@ class VariablesTest {
         final Variables variables = Variables.builder();
         final List<State> values = Arrays.asList(State.OPEN, null);
 
-        final Throwable thrown = catchThrowable(() -> variables.values("states", values, State::wireValue));
+        final Throwable thrown = catchThrowable(() -> variables.values("states", values, State::value));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("states");
     }

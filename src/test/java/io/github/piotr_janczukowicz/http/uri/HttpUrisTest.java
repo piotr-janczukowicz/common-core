@@ -316,19 +316,19 @@ class HttpUrisTest {
     }
 
     @Test
-    void copyQueryValues_shouldCopyLists_whenCalled() {
+    void copyQuery_shouldCopyLists_whenCalled() {
         final Map<String, List<String>> original = new LinkedHashMap<>();
         original.put("labels[]", new ArrayList<>(List.of("a")));
 
-        final Map<String, List<String>> copy = HttpUris.copyQueryValues(original);
+        final Map<String, List<String>> copy = HttpUris.copyQuery(original);
         original.get("labels[]").add("b");
 
         assertThat(copy.get("labels[]")).containsExactly("a");
     }
 
     @Test
-    void copyQueryValues_shouldReturnImmutableValueLists_whenCalled() {
-        final Map<String, List<String>> copy = HttpUris.copyQueryValues(Map.of("q", List.of("a")));
+    void copyQuery_shouldReturnImmutableValueLists_whenCalled() {
+        final Map<String, List<String>> copy = HttpUris.copyQuery(Map.of("q", List.of("a")));
 
         final List<String> get = copy.get("q");
 
@@ -338,8 +338,8 @@ class HttpUrisTest {
     }
 
     @Test
-    void copyQueryValues_shouldThrow_whenQueryNull() {
-        final Throwable thrown = catchThrowable(() -> HttpUris.copyQueryValues(null));
+    void copyQuery_shouldThrow_whenQueryNull() {
+        final Throwable thrown = catchThrowable(() -> HttpUris.copyQuery(null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("query");
     }
@@ -423,20 +423,20 @@ class HttpUrisTest {
     }
 
     @Test
-    void rawPathOrEmpty_shouldReturnRawPath_whenPresent() {
+    void rawPath_shouldReturnRawPath_whenPresent() {
         final URI uri = URI.create("https://api.example.test/a%20b/c");
 
-        final String path = HttpUris.rawPathOrEmpty(uri);
+        final String path = HttpUris.rawPath(uri);
 
         assertThat(path).isEqualTo("/a%20b/c");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"mailto:dev@example.com", "https://api.example.test"})
-    void rawPathOrEmpty_shouldReturnEmpty_whenUriHasNoPath(final String value) {
+    void rawPath_shouldReturnEmpty_whenUriHasNoPath(final String value) {
         final URI uri = URI.create(value);
 
-        final String path = HttpUris.rawPathOrEmpty(uri);
+        final String path = HttpUris.rawPath(uri);
 
         assertThat(path).isEmpty();
     }

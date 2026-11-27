@@ -112,7 +112,7 @@ class RateLimitDetectorTest {
                 new HttpRequest(HttpMethod.GET, URI.create("https://api.example.test/user"), HttpHeaders.empty(), null);
         final HttpResponse ok = HttpResponses.of(HttpStatus.OK.code(), Map.of("X-Test-Reset", List.of("120")), null);
 
-        assertThat(RateLimitDetector.defaults().detectExhaustion(ok, request, FIXED_CLOCK))
+        assertThat(RateLimitDetector.defaults().detectSpent(ok, request, FIXED_CLOCK))
                 .isEmpty();
     }
 }

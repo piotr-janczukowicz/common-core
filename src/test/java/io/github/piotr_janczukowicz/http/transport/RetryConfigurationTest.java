@@ -36,7 +36,7 @@ class RetryConfigurationTest {
             softly.assertThat(config.jitter().fullJitter()).isTrue();
             softly.assertThat(config.retryable().retryRateLimitedResponses()).isTrue();
             softly.assertThat(config.retryable().retryIoExceptions()).isTrue();
-            softly.assertThat(config.retryable().ioRetryableMethods())
+            softly.assertThat(config.retryable().retriedMethods())
                     .containsExactlyInAnyOrder(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS);
             softly.assertThat(config.waits().maxRateLimitWait()).isEqualTo(Duration.ofMinutes(5));
             softly.assertThat(config.waits().maxServerErrorWait()).isEqualTo(Duration.ofSeconds(60));
@@ -44,7 +44,7 @@ class RetryConfigurationTest {
             softly.assertThat(config.waits().maxRateLimitBlock()).isEqualTo(Duration.ofHours(1));
             softly.assertThat(config.jitter().rateLimitJitter()).isEqualTo(Duration.ofSeconds(10));
             softly.assertThat(config.jitter().clockSkewMargin()).isEqualTo(Duration.ofSeconds(1));
-            softly.assertThat(config.retryable().retryableServerStatuses()).containsExactlyInAnyOrder(502, 503, 504);
+            softly.assertThat(config.retryable().retriedStatuses()).containsExactlyInAnyOrder(502, 503, 504);
             softly.assertThat(config.attempts().maxServerErrorAttempts()).isEqualTo(3);
         });
     }
@@ -63,13 +63,13 @@ class RetryConfigurationTest {
                 .fullJitter(false)
                 .retryRateLimitedResponses(false)
                 .retryIoExceptions(false)
-                .ioRetryableMethods(methods)
+                .retriedMethods(methods)
                 .maxRateLimitWait(Duration.ofSeconds(20))
                 .maxServerErrorWait(Duration.ofSeconds(15))
                 .minRateLimitWait(Duration.ofSeconds(20))
                 .rateLimitJitter(Duration.ofMillis(250))
                 .clockSkewMargin(Duration.ofMillis(500))
-                .retryableServerStatuses(Set.of(503))
+                .retriedStatuses(Set.of(503))
                 .maxServerErrorAttempts(4)
                 .totalDeadline(Duration.ofMinutes(2))
                 .build();
@@ -85,13 +85,13 @@ class RetryConfigurationTest {
             softly.assertThat(config.jitter().fullJitter()).isFalse();
             softly.assertThat(config.retryable().retryRateLimitedResponses()).isFalse();
             softly.assertThat(config.retryable().retryIoExceptions()).isFalse();
-            softly.assertThat(config.retryable().ioRetryableMethods()).containsExactly(HttpMethod.GET);
+            softly.assertThat(config.retryable().retriedMethods()).containsExactly(HttpMethod.GET);
             softly.assertThat(config.waits().maxRateLimitWait()).isEqualTo(Duration.ofSeconds(20));
             softly.assertThat(config.waits().maxServerErrorWait()).isEqualTo(Duration.ofSeconds(15));
             softly.assertThat(config.waits().minRateLimitWait()).isEqualTo(Duration.ofSeconds(20));
             softly.assertThat(config.jitter().rateLimitJitter()).isEqualTo(Duration.ofMillis(250));
             softly.assertThat(config.jitter().clockSkewMargin()).isEqualTo(Duration.ofMillis(500));
-            softly.assertThat(config.retryable().retryableServerStatuses()).containsExactly(503);
+            softly.assertThat(config.retryable().retriedStatuses()).containsExactly(503);
             softly.assertThat(config.attempts().maxServerErrorAttempts()).isEqualTo(4);
             softly.assertThat(config.totalDeadline()).isEqualTo(Duration.ofMinutes(2));
         });
@@ -100,7 +100,7 @@ class RetryConfigurationTest {
     @ParameterizedTest
     @ValueSource(ints = {399, 600})
     void build_shouldThrow_whenRetryableServerStatusIsOutsideErrorRange(final int status) {
-        final RetryConfiguration.Builder builder = RetryConfiguration.builder().retryableServerStatuses(Set.of(status));
+        final RetryConfiguration.Builder builder = RetryConfiguration.builder().retriedStatuses(Set.of(status));
 
         final Throwable thrown = catchThrowable(builder::build);
 
@@ -109,22 +109,21 @@ class RetryConfigurationTest {
 
     @Test
     void build_shouldAcceptBoundaryStatuses_whenTheyAreErrorStatuses() {
-        final RetryConfiguration config = RetryConfiguration.builder()
-                .retryableServerStatuses(Set.of(400, 599))
-                .build();
+        final RetryConfiguration config =
+                RetryConfiguration.builder().retriedStatuses(Set.of(400, 599)).build();
 
-        assertThat(config.retryable().retryableServerStatuses()).containsExactlyInAnyOrder(400, 599);
+        assertThat(config.retryable().retriedStatuses()).containsExactlyInAnyOrder(400, 599);
     }
 
     @Test
     void build_shouldThrow_whenRetryableServerStatusIsNotAnErrorStatus() {
-        final RetryConfiguration.Builder builder = RetryConfiguration.builder().retryableServerStatuses(Set.of(200));
+        final RetryConfiguration.Builder builder = RetryConfiguration.builder().retriedStatuses(Set.of(200));
 
         final Throwable thrown = catchThrowable(builder::build);
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("retryableServerStatuses")
+                .hasMessageContaining("retriedStatuses")
                 .hasMessageContaining("200");
     }
 
@@ -172,22 +171,22 @@ class RetryConfigurationTest {
     void build_shouldCopyIoRetryableMethods_whenSourceMutated() {
         final Set<HttpMethod> methods = EnumSet.of(HttpMethod.GET);
         final RetryConfiguration config =
-                RetryConfiguration.builder().ioRetryableMethods(methods).build();
+                RetryConfiguration.builder().retriedMethods(methods).build();
 
         methods.add(HttpMethod.POST);
 
-        assertThat(config.retryable().ioRetryableMethods()).containsExactly(HttpMethod.GET);
+        assertThat(config.retryable().retriedMethods()).containsExactly(HttpMethod.GET);
     }
 
     @Test
     void ioRetryableMethods_shouldCopySet_whenMutatedBeforeBuild() {
         final Set<HttpMethod> methods = EnumSet.of(HttpMethod.GET);
-        final RetryConfiguration.Builder builder = RetryConfiguration.builder().ioRetryableMethods(methods);
+        final RetryConfiguration.Builder builder = RetryConfiguration.builder().retriedMethods(methods);
         methods.add(HttpMethod.POST);
 
         final RetryConfiguration config = builder.build();
 
-        assertThat(config.retryable().ioRetryableMethods()).containsExactly(HttpMethod.GET);
+        assertThat(config.retryable().retriedMethods()).containsExactly(HttpMethod.GET);
     }
 
     @ParameterizedTest
@@ -220,8 +219,8 @@ class RetryConfigurationTest {
                                 builder.defaultBackoff(Duration.ofSeconds(10)).maxBackoff(Duration.ofSeconds(5)),
                         "maxBackoff"),
                 Arguments.of(
-                        (Consumer<RetryConfiguration.Builder>) builder -> builder.ioRetryableMethods(Set.of()),
-                        "ioRetryableMethods"),
+                        (Consumer<RetryConfiguration.Builder>) builder -> builder.retriedMethods(Set.of()),
+                        "retriedMethods"),
                 Arguments.of(
                         (Consumer<RetryConfiguration.Builder>)
                                 builder -> builder.maxRateLimitWait(Duration.ofSeconds(-1)),

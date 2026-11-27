@@ -78,10 +78,10 @@ import org.slf4j.LoggerFactory;
  * {@code maxRateLimitWait} starts it again. A limit that names its wait neither uses nor changes that escalation.
  *
  * <p>A response that is not a rejection can also report that its quota is used up, which the detector sees through
- * {@link RateLimitDetector#detectExhaustion}: a 2xx or 3xx with the remaining quota at zero and a reset in the future.
- * Then the transport returns that response unchanged, and holds back the bucket of its request until the reset, under
- * the same limits as a rejection (the wait is capped by {@code maxRateLimitBlock}, and a later call fails fast or waits
- * as described above). A streamed success is held back the same way, once its headers have arrived.
+ * {@link RateLimitDetector#detectSpent}: a 2xx or 3xx with the remaining quota at zero and a reset in the future. Then
+ * the transport returns that response unchanged, and holds back the bucket of its request until the reset, under the
+ * same limits as a rejection (the wait is capped by {@code maxRateLimitBlock}, and a later call fails fast or waits as
+ * described above). A streamed success is held back the same way, once its headers have arrived.
  *
  * <p>Each retry is logged at debug level, and a wait for a rate limit at info level, with the method, scheme, host,
  * path, status or exception class, attempt, and delay. A decision not to wait out a rate limit is logged at info level,

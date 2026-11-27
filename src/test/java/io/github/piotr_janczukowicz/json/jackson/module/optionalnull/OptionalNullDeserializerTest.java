@@ -178,7 +178,7 @@ class OptionalNullDeserializerTest {
         }
 
         @JsonCreator
-        static Color fromWire(final String value) {
+        static Color of(final String value) {
             if (RED.wire.equals(value)) {
                 return RED;
             }
@@ -192,7 +192,7 @@ class OptionalNullDeserializerTest {
         PRESENT;
 
         @JsonCreator
-        static @Nullable Nulling fromWire(final String value) {
+        static @Nullable Nulling of(final String value) {
             return "present".equals(value) ? PRESENT : null;
         }
     }

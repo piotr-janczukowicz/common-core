@@ -52,7 +52,7 @@ public final class PageQueries {
             final Map<String, List<String>> baseQuery, final Map<String, String> parameters) {
         requireNonNull(parameters, "parameters");
 
-        final Map<String, List<String>> query = HttpUris.copyQueryValues(baseQuery);
+        final Map<String, List<String>> query = HttpUris.copyQuery(baseQuery);
         parameters.forEach((name, value) -> query.put(name, List.of(value)));
         return Collections.unmodifiableMap(query);
     }

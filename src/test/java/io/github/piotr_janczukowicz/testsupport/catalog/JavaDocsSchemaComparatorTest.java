@@ -583,7 +583,7 @@ class JavaDocsSchemaComparatorTest {
                 """);
 
         assertThat(JavaDocsSchemaComparator.diff(StringWireMinuteField.class, schema))
-                .containsExactly("minute: java enum wireValue() not integer");
+                .containsExactly("minute: java enum value() not integer");
     }
 
     @Test
@@ -706,7 +706,7 @@ class JavaDocsSchemaComparatorTest {
             this.value = value;
         }
 
-        public int wireValue() {
+        public int value() {
             return value;
         }
     }
@@ -722,7 +722,7 @@ class JavaDocsSchemaComparatorTest {
             this.value = value;
         }
 
-        public int wireValue() {
+        public int value() {
             return value;
         }
     }
@@ -740,7 +740,7 @@ class JavaDocsSchemaComparatorTest {
             this.value = value;
         }
 
-        public int wireValue() {
+        public int value() {
             return value;
         }
     }
@@ -757,7 +757,7 @@ class JavaDocsSchemaComparatorTest {
             this.value = value;
         }
 
-        public String wireValue() {
+        public String value() {
             return value;
         }
     }
@@ -773,7 +773,7 @@ class JavaDocsSchemaComparatorTest {
             this.value = value;
         }
 
-        public String wireValue() {
+        public String value() {
             return value;
         }
     }
@@ -986,7 +986,7 @@ class JavaDocsSchemaComparatorTest {
         ZERO;
 
         @JsonValue
-        public int wireValue() {
+        public int value() {
             return 0;
         }
     }
@@ -1009,7 +1009,7 @@ class JavaDocsSchemaComparatorTest {
         }
 
         @JsonValue
-        public String wireValue() {
+        public String value() {
             return wire;
         }
     }
@@ -1035,7 +1035,7 @@ class JavaDocsSchemaComparatorTest {
         }
 
         @JsonValue
-        public String wireValue() {
+        public String value() {
             return wire;
         }
     }

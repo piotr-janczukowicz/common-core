@@ -48,10 +48,10 @@ import tools.jackson.databind.node.ObjectNode;
  * read as {@code 0} or {@code false}); listed names must not be {@code @Nullable} unless that property's {@code type}
  * includes {@code null} (or {@code anyOf}/{@code oneOf} includes {@code null}); {@link OptionalNull} satisfies JSON
  * null without {@code @Nullable} on the wrapper; names not listed must be {@code @Nullable} and not a primitive. Docs
- * {@code enum} must match a Java enum's {@code wireValue()} set. An empty schema object ({@code items: {}}) is
+ * {@code enum} must match a Java enum's {@code value()} set. An empty schema object ({@code items: {}}) is
  * unconstrained. Nested {@code allOf} without {@code properties} is merged into one object. Nested
  * {@code anyOf}/{@code oneOf} of {@code null} plus one object uses that object branch. Nested
- * {@code oneOf}/{@code anyOf} of only string {@code enum} branches is one Java enum ({@code wireValue} union). Nested
+ * {@code oneOf}/{@code anyOf} of only string {@code enum} branches is one Java enum ({@code value} union). Nested
  * simple {@code oneOf}/{@code anyOf} of JSON scalars (no array) is {@link String} with {@link CatalogSimpleXor}. Nested
  * string-or-string-array, or scalar-plus-string-array (or 3+ kinds), is {@code List<String>} with
  * {@link CatalogSimpleXor}. JSON {@code null} is field nullability, not a {@code |null} in that annotation. Map values
@@ -1057,7 +1057,7 @@ public final class JavaDocsSchemaComparator {
         }
         final Method wireValue = wireValueMethod(raw);
         if (wireValue == null) {
-            mismatches.add(path + ": java enum missing wireValue()");
+            mismatches.add(path + ": java enum missing value()");
             return;
         }
         final Set<String> docsValues = stringEnumValues(enumNode);
@@ -1113,7 +1113,7 @@ public final class JavaDocsSchemaComparator {
 
     private static Method wireValueMethod(final Class<?> raw) {
         try {
-            final Method method = raw.getMethod("wireValue");
+            final Method method = raw.getMethod("value");
             if (method.getParameterCount() == 0 && method.getReturnType() == String.class) {
                 return method;
             }
@@ -1129,7 +1129,7 @@ public final class JavaDocsSchemaComparator {
             try {
                 values.add((String) wireValue.invoke(constant));
             } catch (final IllegalAccessException | InvocationTargetException ex) {
-                throw new IllegalStateException(raw.getName() + " wireValue()", ex);
+                throw new IllegalStateException(raw.getName() + " value()", ex);
             }
         }
         return values;
@@ -1139,11 +1139,11 @@ public final class JavaDocsSchemaComparator {
             final String path, final Class<?> raw, final JsonNode enumNode, final List<String> mismatches) {
         final Method wireValue = integerWireValueMethod(raw);
         if (wireValue == null) {
-            mismatches.add(path + ": java enum missing wireValue()");
+            mismatches.add(path + ": java enum missing value()");
             return;
         }
         if (!isInteger(wireValue.getReturnType())) {
-            mismatches.add(path + ": java enum wireValue() not integer");
+            mismatches.add(path + ": java enum value() not integer");
             return;
         }
         final Set<Long> docsValues = integerEnumValues(enumNode);
@@ -1168,7 +1168,7 @@ public final class JavaDocsSchemaComparator {
 
     private static Method integerWireValueMethod(final Class<?> raw) {
         try {
-            return raw.getMethod("wireValue");
+            return raw.getMethod("value");
         } catch (final NoSuchMethodException ignored) {
             return null;
         }
@@ -1180,7 +1180,7 @@ public final class JavaDocsSchemaComparator {
             try {
                 values.add(((Number) wireValue.invoke(constant)).longValue());
             } catch (final IllegalAccessException | InvocationTargetException ex) {
-                throw new IllegalStateException(raw.getName() + " wireValue()", ex);
+                throw new IllegalStateException(raw.getName() + " value()", ex);
             }
         }
         return values;

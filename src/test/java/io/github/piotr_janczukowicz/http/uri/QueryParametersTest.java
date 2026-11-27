@@ -25,7 +25,7 @@ class QueryParametersTest {
             this.wire = wire;
         }
 
-        String wireValue() {
+        String value() {
             return wire;
         }
     }
@@ -38,7 +38,7 @@ class QueryParametersTest {
                 .text("state", "opened")
                 .value("confidential", true)
                 .value("created_after", Instant.parse("2026-01-01T00:00:00Z"))
-                .wire("order_by", Order.CREATED, Order::wireValue)
+                .wire("order_by", Order.CREATED, Order::value)
                 .build();
 
         assertThat(query)
@@ -58,9 +58,9 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .text("a", null)
                 .value("b", null)
-                .wire("c", noOrder, Order::wireValue)
+                .wire("c", noOrder, Order::value)
                 .list("d", null)
-                .wireList("e", noOrders, Order::wireValue)
+                .wireList("e", noOrders, Order::value)
                 .map("f", null)
                 .build();
 
@@ -74,7 +74,7 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .list("labels", List.of("a", "b"))
                 .list("ids", List.of(1L, 2L))
-                .wireList("order", List.of(Order.CREATED, Order.CREATED), Order::wireValue)
+                .wireList("order", List.of(Order.CREATED, Order.CREATED), Order::value)
                 .build();
 
         assertThat(query)
@@ -169,7 +169,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = Arrays.asList(Order.CREATED, null);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, Order::wireValue));
+        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, Order::value));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("order");
     }
@@ -250,7 +250,7 @@ class QueryParametersTest {
         final Map<String, List<String>> query = parameters
                 .text("state", "opened")
                 .repeated("owner[]", List.of("a", "b"))
-                .wireRepeated("order", List.of(Order.CREATED), Order::wireValue)
+                .wireRepeated("order", List.of(Order.CREATED), Order::value)
                 .list("labels", List.of("x", "y"))
                 .buildValues();
 
@@ -270,8 +270,8 @@ class QueryParametersTest {
         final Map<String, List<String>> query = parameters
                 .repeated("a", null)
                 .repeated("b", List.of())
-                .wireRepeated("c", noOrders, Order::wireValue)
-                .wireRepeated("d", List.of(), Order::wireValue)
+                .wireRepeated("c", noOrders, Order::value)
+                .wireRepeated("d", List.of(), Order::value)
                 .buildValues();
 
         assertThat(query).isEmpty();
@@ -305,7 +305,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
 
         final Map<String, List<String>> query =
-                parameters.wireRepeated("order", values, Order::wireValue).buildValues();
+                parameters.wireRepeated("order", values, Order::value).buildValues();
 
         assertThat(query).containsExactly(Map.entry("order", List.of("created_at")));
     }

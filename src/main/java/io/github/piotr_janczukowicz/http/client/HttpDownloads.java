@@ -87,7 +87,7 @@ final class HttpDownloads {
         final Path partialFile = Files.createTempFile(directory, TEMP_PREFIX, TEMP_SUFFIX);
         try {
             try (OutputStream out = Files.newOutputStream(partialFile)) {
-                copyBounded(body, out, maxBytes);
+                copyAtMost(body, out, maxBytes);
             }
             flushToDisk(partialFile);
             moveOntoTarget(partialFile, target, atomicMover);
@@ -98,10 +98,10 @@ final class HttpDownloads {
         return target;
     }
 
-    private static void copyBounded(final InputStream body, final OutputStream out, final long maxBytes)
+    private static void copyAtMost(final InputStream body, final OutputStream out, final long maxBytes)
             throws IOException {
         try {
-            IoUtils.copyBounded(body, out, maxBytes);
+            IoUtils.copyAtMost(body, out, maxBytes);
         } catch (final BoundedReadLimitException limit) {
             final ResponseTooLargeException tooLarge = new ResponseTooLargeException(limit.limit());
             tooLarge.initCause(limit);

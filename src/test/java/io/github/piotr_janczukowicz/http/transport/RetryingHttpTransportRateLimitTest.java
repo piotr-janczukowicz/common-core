@@ -594,8 +594,7 @@ class RetryingHttpTransportRateLimitTest {
         script.add(limited());
 
         final HttpResponse response = execute(
-                config(builder ->
-                        builder.retryableServerStatuses(Set.of(TOO_MANY)).retryRateLimitedResponses(false)),
+                config(builder -> builder.retriedStatuses(Set.of(TOO_MANY)).retryRateLimitedResponses(false)),
                 get("/user"));
 
         assertThat(response.statusCode()).isEqualTo(TOO_MANY);
@@ -606,7 +605,7 @@ class RetryingHttpTransportRateLimitTest {
     @Test
     void execute_shouldRetryAsRateLimit_whenItsStatusIsAlsoAServerStatus() throws Exception {
         script.add(limited());
-        final RetryConfiguration configuration = config(builder -> builder.retryableServerStatuses(Set.of(TOO_MANY)));
+        final RetryConfiguration configuration = config(builder -> builder.retriedStatuses(Set.of(TOO_MANY)));
 
         final HttpResponse response = execute(configuration, get("/user"));
 

@@ -20,7 +20,7 @@ class ScriptedHttpServerTest {
         final ScriptedHttpServer server = new ScriptedHttpServer((call, exchange) -> {
             throw new AssertionError("script expectation");
         });
-        final HttpTransport transport = HttpTransports.okHttp();
+        final HttpTransport transport = HttpTransports.create();
         final HttpRequest request = server.request();
         catchThrowable(() -> transport.execute(request));
 
@@ -34,7 +34,7 @@ class ScriptedHttpServerTest {
         final ScriptedHttpServer server = new ScriptedHttpServer((call, exchange) -> {
             throw new IllegalStateException("broken script");
         });
-        final HttpTransport transport = HttpTransports.okHttp();
+        final HttpTransport transport = HttpTransports.create();
         final HttpRequest request = server.request();
         catchThrowable(() -> transport.execute(request));
 
@@ -48,7 +48,7 @@ class ScriptedHttpServerTest {
         final ScriptedHttpServer server = new ScriptedHttpServer((call, exchange) -> {
             throw new IOException("client gone");
         });
-        final HttpTransport transport = HttpTransports.okHttp();
+        final HttpTransport transport = HttpTransports.create();
         final HttpRequest request = server.request();
         catchThrowable(() -> transport.execute(request));
 

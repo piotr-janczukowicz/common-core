@@ -88,9 +88,9 @@ class AuthenticationProvidersTest {
         final Authentication rejected = Authentication.ofBearer("tok_x");
 
         assertSoftly(softly -> {
-            softly.assertThat(AuthenticationProviders.bearer("tok_x").isRenewableAfterRejection(rejected))
+            softly.assertThat(AuthenticationProviders.bearer("tok_x").canRenew(rejected))
                     .isFalse();
-            softly.assertThat(AuthenticationProviders.bearer(() -> "tok_x").isRenewableAfterRejection(rejected))
+            softly.assertThat(AuthenticationProviders.bearer(() -> "tok_x").canRenew(rejected))
                     .isFalse();
         });
     }
@@ -200,7 +200,7 @@ class AuthenticationProvidersTest {
     void basic_shouldNotBeRenewable_whenRejected() {
         final AuthenticationProvider auth = AuthenticationProviders.basic("app1.abc", "s3cr3t");
 
-        final boolean isRenewable = auth.isRenewableAfterRejection(Authentication.ofBasic("app1.abc", "s3cr3t"));
+        final boolean isRenewable = auth.canRenew(Authentication.ofBasic("app1.abc", "s3cr3t"));
 
         assertThat(isRenewable).isFalse();
     }
@@ -241,14 +241,14 @@ class AuthenticationProvidersTest {
     void bearerRenewable_shouldThrow_whenPredicateNull() {
         final Throwable thrown = catchThrowable(() -> AuthenticationProviders.bearer(() -> "tok_x", null));
 
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("isRenewableAfterRejection");
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("canRenew");
     }
 
     @Test
     void bearerRenewable_shouldBeTrue_whenPredicateAccepts() {
         final AuthenticationProvider auth = AuthenticationProviders.bearer(() -> "tok_new", rejected -> true);
 
-        final boolean isRenewable = auth.isRenewableAfterRejection(Authentication.ofBearer("tok_old"));
+        final boolean isRenewable = auth.canRenew(Authentication.ofBearer("tok_old"));
 
         assertThat(isRenewable).isTrue();
     }
@@ -257,7 +257,7 @@ class AuthenticationProvidersTest {
     void bearerRenewable_shouldBeFalse_whenPredicateRejects() {
         final AuthenticationProvider auth = AuthenticationProviders.bearer(() -> "tok_new", rejected -> false);
 
-        final boolean isRenewable = auth.isRenewableAfterRejection(Authentication.ofBearer("tok_old"));
+        final boolean isRenewable = auth.canRenew(Authentication.ofBearer("tok_old"));
 
         assertThat(isRenewable).isFalse();
     }
@@ -270,7 +270,7 @@ class AuthenticationProvidersTest {
             return true;
         });
 
-        final boolean isRenewable = auth.isRenewableAfterRejection(Authentication.ofBearer("tok_old"));
+        final boolean isRenewable = auth.canRenew(Authentication.ofBearer("tok_old"));
 
         assertSoftly(softly -> {
             softly.assertThat(isRenewable).isTrue();

@@ -254,7 +254,7 @@ class RetryingHttpTransportTest {
             }
 
             @Override
-            public Optional<RateLimitSignal> detectExhaustion(
+            public Optional<RateLimitSignal> detectSpent(
                     final HttpResponse response, final HttpRequest sent, final Clock clock) {
                 throw new IllegalStateException("detector failed");
             }
@@ -888,7 +888,7 @@ class RetryingHttpTransportTest {
         final HttpResponse ok = new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null);
         when(delegate.execute(request)).thenReturn(unavailable, ok);
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .ioRetryableMethods(Set.of(HttpMethod.POST))
+                .retriedMethods(Set.of(HttpMethod.POST))
                 .fullJitter(false)
                 .defaultBackoff(Duration.ZERO)
                 .maxBackoff(Duration.ZERO)
@@ -969,7 +969,7 @@ class RetryingHttpTransportTest {
                 new HttpResponse(HttpStatus.SERVICE_UNAVAILABLE.code(), HttpHeaders.empty(), null);
         when(delegate.execute(request)).thenReturn(unavailable);
         final RetryConfiguration configuration =
-                RetryConfiguration.builder().retryableServerStatuses(Set.of()).build();
+                RetryConfiguration.builder().retriedStatuses(Set.of()).build();
 
         final HttpResponse response;
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(delegate, configuration, unused -> {})) {
@@ -1179,7 +1179,7 @@ class RetryingHttpTransportTest {
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 delegate,
                 RetryConfiguration.builder()
-                        .ioRetryableMethods(Set.of(HttpMethod.PUT))
+                        .retriedMethods(Set.of(HttpMethod.PUT))
                         .defaultBackoff(Duration.ZERO)
                         .maxBackoff(Duration.ZERO)
                         .build(),

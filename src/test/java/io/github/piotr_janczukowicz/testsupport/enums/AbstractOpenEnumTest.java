@@ -21,24 +21,24 @@ public abstract class AbstractOpenEnumTest<E extends Enum<E>, W> extends Abstrac
      * Creates the test of one open enum.
      *
      * @param type the enum
-     * @param fromWire resolves a constant from its wire value
-     * @param wireValue gives the wire value of a constant
+     * @param of resolves a constant from its wire value
+     * @param value gives the wire value of a constant
      * @param unknown a wire value no constant has
      * @param unrecognized the constant an unknown wire value resolves to
      */
     protected AbstractOpenEnumTest(
             final Class<E> type,
-            final Function<W, E> fromWire,
-            final Function<E, W> wireValue,
+            final Function<W, E> of,
+            final Function<E, W> value,
             final W unknown,
             final E unrecognized) {
-        super(type, fromWire, wireValue, unrecognized);
+        super(type, of, value, unrecognized);
         this.unknown = unknown;
         this.unrecognized = unrecognized;
     }
 
     @Test
-    protected final void fromWire_shouldReturnUnrecognized_whenTheValueIsUnknown() {
+    protected final void of_shouldReturnUnrecognized_whenTheValueIsUnknown() {
         final E decoded = resolve(unknown);
 
         assertThat(decoded).isEqualTo(unrecognized);

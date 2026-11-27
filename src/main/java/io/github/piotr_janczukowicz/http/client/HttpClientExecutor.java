@@ -100,11 +100,11 @@ public interface HttpClientExecutor {
      * @throws RuntimeException if the response is an error status, or {@code Location} is missing, malformed, or uses a
      *     non-http(s) scheme
      */
-    URI redirectLocation(HttpCall call) throws IOException;
+    URI location(HttpCall call) throws IOException;
 
     /**
-     * Like {@link #redirectLocation(HttpCall)}, but a successful (2xx) response is an answer and not an error: it means
-     * the endpoint did not redirect, for example because the content is small enough to be sent directly or because the
+     * Like {@link #location(HttpCall)}, but a successful (2xx) response is an answer and not an error: it means the
+     * endpoint did not redirect, for example because the content is small enough to be sent directly or because the
      * server is still preparing the result (HTTP 202).
      *
      * @param call call to send
@@ -114,7 +114,7 @@ public interface HttpClientExecutor {
      *     non-http(s) scheme
      * @throws NullPointerException if {@code call} is {@code null}
      */
-    Optional<URI> redirectLocationIfAny(HttpCall call) throws IOException;
+    Optional<URI> findLocation(HttpCall call) throws IOException;
 
     /**
      * Configured API base URI, with a trailing slash on the path.

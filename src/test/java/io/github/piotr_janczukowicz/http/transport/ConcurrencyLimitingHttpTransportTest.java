@@ -48,7 +48,7 @@ class ConcurrencyLimitingHttpTransportTest {
         final AtomicInteger maxConcurrent = new AtomicInteger();
         try (ScriptedHttpServer server = recordingServer(4, maxConcurrent)) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 4);
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 4);
             final HttpRequest request = server.request();
 
             runConcurrently(32, () -> transport.execute(request));
@@ -61,7 +61,7 @@ class ConcurrencyLimitingHttpTransportTest {
     void execute_shouldReachFullConcurrency_whenDelegateIsNotLimited() throws Exception {
         final AtomicInteger maxConcurrent = new AtomicInteger();
         try (ScriptedHttpServer server = recordingServer(32, maxConcurrent)) {
-            final HttpTransport delegate = HttpTransports.okHttp();
+            final HttpTransport delegate = HttpTransports.create();
             final HttpRequest request = server.request();
 
             runConcurrently(32, () -> delegate.execute(request));
@@ -104,7 +104,7 @@ class ConcurrencyLimitingHttpTransportTest {
     void stream_shouldBlockSecondCall_whenFirstResponseIsNotClosed() throws Exception {
         try (ScriptedHttpServer server = streamingServer()) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 1);
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 1);
             final HttpRequest request = server.request();
             final ExecutorService executor = Executors.newSingleThreadExecutor();
             try (HttpStreamResponse first = transport.stream(request)) {
@@ -129,7 +129,7 @@ class ConcurrencyLimitingHttpTransportTest {
     void stream_shouldReleaseSlotOnce_whenResponseClosedTwice() throws Exception {
         try (ScriptedHttpServer server = streamingServer()) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 2);
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 2);
             final HttpRequest request = server.request();
             final HttpStreamResponse first = transport.stream(request);
             first.close();
@@ -158,7 +158,7 @@ class ConcurrencyLimitingHttpTransportTest {
         try (ScriptedHttpServer server =
                 new ScriptedHttpServer((call, exchange) -> exchange.sendResponseHeaders(500, -1))) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 1);
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 1);
             final HttpRequest request = server.request();
 
             final HttpStreamResponse first = transport.stream(request);
@@ -183,7 +183,7 @@ class ConcurrencyLimitingHttpTransportTest {
             exchange.sendResponseHeaders(200, -1);
         })) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 1);
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 1);
             final HttpRequest request = server.request();
             final ExecutorService executor = Executors.newFixedThreadPool(2);
             try {
@@ -218,7 +218,7 @@ class ConcurrencyLimitingHttpTransportTest {
     void execute_shouldFailWithNonRetryableTimeout_whenNoSlotFreesWithinMaxSlotWait() throws Exception {
         try (ScriptedHttpServer server = streamingServer()) {
             final ConcurrencyLimitingHttpTransport transport =
-                    new ConcurrencyLimitingHttpTransport(HttpTransports.okHttp(), 1, Duration.ofMillis(100));
+                    new ConcurrencyLimitingHttpTransport(HttpTransports.create(), 1, Duration.ofMillis(100));
             final HttpRequest request = server.request();
             final HttpStreamResponse held = transport.stream(request);
 

@@ -288,7 +288,7 @@ class HttpClientAuthRenewalTest {
 
     @Test
     void isRenewableAfterRejection_shouldBeFalse_whenAuthDoesNotOverrideIt() {
-        assertThat(AuthenticationProviders.none().isRenewableAfterRejection(Authentication.ofBearer("x")))
+        assertThat(AuthenticationProviders.none().canRenew(Authentication.ofBearer("x")))
                 .isFalse();
     }
 

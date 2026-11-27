@@ -22,18 +22,18 @@ public abstract class AbstractClosedEnumTest<E extends Enum<E>, W> extends Abstr
      * Creates the test of one closed enum.
      *
      * @param type the enum
-     * @param fromWire resolves a constant from its wire value
-     * @param wireValue gives the wire value of a constant
+     * @param of resolves a constant from its wire value
+     * @param value gives the wire value of a constant
      * @param unknown a wire value no constant has
      */
     protected AbstractClosedEnumTest(
-            final Class<E> type, final Function<W, E> fromWire, final Function<E, W> wireValue, final W unknown) {
-        super(type, fromWire, wireValue, null);
+            final Class<E> type, final Function<W, E> of, final Function<E, W> value, final W unknown) {
+        super(type, of, value, null);
         this.unknown = requireNonNull(unknown, "unknown");
     }
 
     @Test
-    protected final void fromWire_shouldRefuse_whenTheValueIsUnknown() {
+    protected final void of_shouldRefuse_whenTheValueIsUnknown() {
         final Throwable thrown = catchThrowable(() -> resolve(unknown));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);

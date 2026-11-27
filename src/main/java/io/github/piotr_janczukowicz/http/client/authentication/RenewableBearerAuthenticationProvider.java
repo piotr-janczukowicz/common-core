@@ -14,12 +14,11 @@ final class RenewableBearerAuthenticationProvider implements AuthenticationProvi
 
     private final Supplier<String> tokens;
     private final BearerAuthenticationCache cache = new BearerAuthenticationCache();
-    private final Predicate<String> isRenewableAfterRejection;
+    private final Predicate<String> canRenew;
 
-    RenewableBearerAuthenticationProvider(
-            final Supplier<String> tokens, final Predicate<String> isRenewableAfterRejection) {
+    RenewableBearerAuthenticationProvider(final Supplier<String> tokens, final Predicate<String> canRenew) {
         this.tokens = requireNonNull(tokens, "tokens");
-        this.isRenewableAfterRejection = requireNonNull(isRenewableAfterRejection, "isRenewableAfterRejection");
+        this.canRenew = requireNonNull(canRenew, "canRenew");
     }
 
     @Override
@@ -28,8 +27,8 @@ final class RenewableBearerAuthenticationProvider implements AuthenticationProvi
     }
 
     @Override
-    public boolean isRenewableAfterRejection(final Authentication rejected) {
-        return isRenewableAfterRejection.test(rejected.value());
+    public boolean canRenew(final Authentication rejected) {
+        return canRenew.test(rejected.value());
     }
 
     @Override

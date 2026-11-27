@@ -7,29 +7,29 @@ import io.github.piotr_janczukowicz.testsupport.enums.AbstractClosedStringEnumTe
 class SampleClosedEnumTest extends AbstractClosedStringEnumTest<SampleClosedEnumTest.Mode> {
 
     SampleClosedEnumTest() {
-        super(Mode.class, Mode::fromWire, Mode::wireValue, "unknown-value");
+        super(Mode.class, Mode::of, Mode::value, "unknown-value");
     }
 
     enum Mode {
         READ("read"),
         WRITE("write");
 
-        private final String wireValue;
+        private final String value;
 
-        Mode(final String wireValue) {
-            this.wireValue = wireValue;
+        Mode(final String value) {
+            this.value = value;
         }
 
-        String wireValue() {
-            return wireValue;
+        String value() {
+            return value;
         }
 
-        static Mode fromWire(final String value) {
+        static Mode of(final String value) {
             if (value == null) {
                 throw new NullPointerException("value");
             }
             for (final Mode mode : values()) {
-                if (mode.wireValue.equals(value)) {
+                if (mode.value.equals(value)) {
                     return mode;
                 }
             }

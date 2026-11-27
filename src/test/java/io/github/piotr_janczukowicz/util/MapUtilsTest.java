@@ -36,13 +36,13 @@ class MapUtilsTest {
     }
 
     @Test
-    void copyKeepingNulls_shouldKeepTheOrderAndTheNulls_whenValuesHasThem() {
+    void copyWithNullValues_shouldKeepTheOrderAndTheNulls_whenValuesHasThem() {
         final Map<String, Object> values = new LinkedHashMap<>();
         values.put("z", 1);
         values.put("a", null);
         values.put("m", "x");
 
-        final Map<String, Object> copy = MapUtils.copyKeepingNulls(values);
+        final Map<String, Object> copy = MapUtils.copyWithNullValues(values);
 
         assertSoftly(softly -> {
             softly.assertThat(copy).isEqualTo(values).isNotSameAs(values);
@@ -52,10 +52,10 @@ class MapUtilsTest {
     }
 
     @Test
-    void copyKeepingNulls_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+    void copyWithNullValues_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
         final Map<String, Object> values = new HashMap<>(Map.of("a", "b"));
 
-        final Map<String, Object> copy = MapUtils.copyKeepingNulls(values);
+        final Map<String, Object> copy = MapUtils.copyWithNullValues(values);
         values.put("c", "d");
 
         assertSoftly(softly -> {
@@ -66,87 +66,50 @@ class MapUtilsTest {
     }
 
     @Test
-    void copyKeepingNulls_shouldThrow_whenValuesIsNull() {
-        final Throwable thrown = catchThrowable(() -> MapUtils.copyKeepingNulls(null));
-
-        assertThat(thrown).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    void copyKeepingNullsOrNull_shouldReturnNull_whenValuesIsNull() {
-        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(null);
+    void copyWithNullValues_shouldReturnNull_whenValuesIsNull() {
+        final Map<String, Object> copy = MapUtils.copyWithNullValues(null);
 
         assertThat(copy).isNull();
     }
 
     @Test
-    void copyKeepingNullsOrNull_shouldKeepTheOrderAndTheNulls_whenValuesHasThem() {
-        final Map<String, Object> values = new LinkedHashMap<>();
-        values.put("z", 1);
-        values.put("a", null);
-        values.put("m", "x");
-
-        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(values);
-
-        assertSoftly(softly -> {
-            softly.assertThat(copy).isEqualTo(values).isNotSameAs(values);
-            softly.assertThat(copy.keySet()).containsExactly("z", "a", "m");
-            softly.assertThat(copy).containsEntry("a", null);
-        });
-    }
-
-    @Test
-    void copyKeepingNullsOrNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
-        final Map<String, Object> values = new HashMap<>(Map.of("a", "b"));
-
-        final Map<String, Object> copy = MapUtils.copyKeepingNullsOrNull(values);
-        values.put("c", "d");
-
-        assertSoftly(softly -> {
-            softly.assertThat(copy).containsOnlyKeys("a");
-            softly.assertThat(catchThrowable(() -> copy.put("e", "f")))
-                    .isInstanceOf(UnsupportedOperationException.class);
-        });
-    }
-
-    @Test
-    void copyOrNull_shouldReturnNull_whenValuesIsNull() {
-        final Map<String, String> copy = MapUtils.copyOrNull(null);
+    void copy_shouldReturnNull_whenValuesIsNull() {
+        final Map<String, String> copy = MapUtils.copy(null);
 
         assertThat(copy).isNull();
     }
 
     @Test
-    void copyOrNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+    void copy_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
         final Map<String, String> values = new HashMap<>(Map.of("a", "b"));
 
-        final Map<String, String> copy = MapUtils.copyOrNull(values);
+        final Map<String, String> copy = MapUtils.copy(values);
 
         assertThat(copy).isEqualTo(values).isNotSameAs(values);
     }
 
     @Test
-    void copyOrNull_shouldThrow_whenValuesHasANullElement() {
+    void copy_shouldThrow_whenValuesHasANullElement() {
         final Map<String, String> values = new HashMap<>();
         values.put("a", null);
 
-        final Throwable thrown = catchThrowable(() -> MapUtils.copyOrNull(values));
+        final Throwable thrown = catchThrowable(() -> MapUtils.copy(values));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void copyOrEmpty_shouldReturnAnEmptyCollection_whenValuesIsNull() {
-        final Map<String, String> copy = MapUtils.copyOrEmpty(null);
+    void copyNonNull_shouldReturnAnEmptyCollection_whenValuesIsNull() {
+        final Map<String, String> copy = MapUtils.copyNonNull(null);
 
         assertThat(copy).isEmpty();
     }
 
     @Test
-    void copyOrEmpty_shouldReturnACopy_whenValuesIsGiven() {
+    void copyNonNull_shouldReturnACopy_whenValuesIsGiven() {
         final Map<String, String> values = new HashMap<>(Map.of("a", "b"));
 
-        final Map<String, String> copy = MapUtils.copyOrEmpty(values);
+        final Map<String, String> copy = MapUtils.copyNonNull(values);
 
         assertThat(copy).isEqualTo(values).isNotSameAs(values);
     }

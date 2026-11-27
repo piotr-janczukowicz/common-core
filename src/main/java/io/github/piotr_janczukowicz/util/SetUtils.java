@@ -34,7 +34,7 @@ public final class SetUtils {
      * @throws NullPointerException if {@code values} has a {@code null} element
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
-    public static <T> @Nullable Set<T> copyOrNull(@Nullable final Set<T> values) {
+    public static <T> @Nullable Set<T> copy(@Nullable final Set<T> values) {
         if (values == null) {
             return null;
         }
@@ -49,7 +49,7 @@ public final class SetUtils {
      * @return an unmodifiable copy of {@code values}, or an empty set if {@code values} is {@code null}
      * @throws NullPointerException if {@code values} has a {@code null} element
      */
-    public static <T> Set<T> copyOrEmpty(@Nullable final Set<T> values) {
+    public static <T> Set<T> copyNonNull(@Nullable final Set<T> values) {
         if (values == null) {
             return Set.of();
         }

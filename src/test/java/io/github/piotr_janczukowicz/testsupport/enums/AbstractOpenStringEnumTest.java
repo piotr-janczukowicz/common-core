@@ -18,22 +18,22 @@ public abstract class AbstractOpenStringEnumTest<E extends Enum<E>> extends Abst
      * Creates the test of one open string enum.
      *
      * @param type the enum
-     * @param fromWire resolves a constant from its wire value
-     * @param wireValue gives the wire value of a constant
+     * @param of resolves a constant from its wire value
+     * @param value gives the wire value of a constant
      * @param unknown a wire value no constant has
      * @param unrecognized the constant an unknown wire value resolves to
      */
     protected AbstractOpenStringEnumTest(
             final Class<E> type,
-            final Function<String, E> fromWire,
-            final Function<E, String> wireValue,
+            final Function<String, E> of,
+            final Function<E, String> value,
             final String unknown,
             final E unrecognized) {
-        super(type, fromWire, wireValue, unknown, unrecognized);
+        super(type, of, value, unknown, unrecognized);
     }
 
     @Test
-    protected final void fromWire_shouldRefuseNull_whenTheValueIsNull() {
+    protected final void of_shouldRefuseNull_whenTheValueIsNull() {
         final Throwable thrown = catchThrowable(() -> resolve(null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("value");

@@ -46,24 +46,24 @@ class ListUtilsTest {
     }
 
     @Test
-    void copyOrNull_shouldReturnNull_whenValuesIsNull() {
-        final List<String> copy = ListUtils.copyOrNull(null);
+    void copy_shouldReturnNull_whenValuesIsNull() {
+        final List<String> copy = ListUtils.copy(null);
 
         assertThat(copy).isNull();
     }
 
     @Test
-    void copyOrNull_shouldReturnAnEmptyList_whenValuesIsEmpty() {
-        final List<String> copy = ListUtils.copyOrNull(List.of());
+    void copy_shouldReturnAnEmptyList_whenValuesIsEmpty() {
+        final List<String> copy = ListUtils.copy(List.of());
 
         assertThat(copy).isNotNull().isEmpty();
     }
 
     @Test
-    void copyOrNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+    void copy_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
         final List<String> values = new ArrayList<>(List.of("a", "b"));
 
-        final List<String> copy = ListUtils.copyOrNull(values);
+        final List<String> copy = ListUtils.copy(values);
         values.add("c");
 
         assertSoftly(softly -> {
@@ -73,26 +73,26 @@ class ListUtilsTest {
     }
 
     @Test
-    void copyOrNull_shouldThrow_whenValuesHasANullElement() {
+    void copy_shouldThrow_whenValuesHasANullElement() {
         final List<String> values = Arrays.asList("a", null);
 
-        final Throwable thrown = catchThrowable(() -> ListUtils.copyOrNull(values));
+        final Throwable thrown = catchThrowable(() -> ListUtils.copy(values));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void copyOrEmpty_shouldReturnAnEmptyList_whenValuesIsNull() {
-        final List<String> copy = ListUtils.copyOrEmpty(null);
+    void copyNonNull_shouldReturnAnEmptyList_whenValuesIsNull() {
+        final List<String> copy = ListUtils.copyNonNull(null);
 
         assertThat(copy).isEmpty();
     }
 
     @Test
-    void copyOrEmpty_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
+    void copyNonNull_shouldReturnAnUnmodifiableCopy_whenValuesIsGiven() {
         final List<String> values = new ArrayList<>(List.of("a", "b"));
 
-        final List<String> copy = ListUtils.copyOrEmpty(values);
+        final List<String> copy = ListUtils.copyNonNull(values);
         values.add("c");
 
         assertSoftly(softly -> {
@@ -102,10 +102,10 @@ class ListUtilsTest {
     }
 
     @Test
-    void copyOrEmpty_shouldThrow_whenValuesHasANullElement() {
+    void copyNonNull_shouldThrow_whenValuesHasANullElement() {
         final List<String> values = Arrays.asList("a", null);
 
-        final Throwable thrown = catchThrowable(() -> ListUtils.copyOrEmpty(values));
+        final Throwable thrown = catchThrowable(() -> ListUtils.copyNonNull(values));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }

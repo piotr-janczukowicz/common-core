@@ -19,8 +19,8 @@ public final class HttpTransports {
      *
      * @return transport
      */
-    public static HttpTransport okHttp() {
-        return okHttp(HttpTransportConfiguration.defaults());
+    public static HttpTransport create() {
+        return create(HttpTransportConfiguration.defaults());
     }
 
     /**
@@ -30,7 +30,7 @@ public final class HttpTransports {
      * @return transport
      * @throws NullPointerException if {@code configuration} is {@code null}
      */
-    public static HttpTransport okHttp(final HttpTransportConfiguration configuration) {
+    public static HttpTransport create(final HttpTransportConfiguration configuration) {
         return new OkHttpTransport(requireNonNull(configuration, CONFIGURATION));
     }
 }

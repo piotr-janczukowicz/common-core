@@ -21,27 +21,24 @@ import org.junit.jupiter.params.provider.MethodSource;
 abstract class AbstractEnumTest<E extends Enum<E>, W> {
 
     private final Class<E> type;
-    private final Function<W, E> fromWire;
-    private final Function<E, W> wireValue;
+    private final Function<W, E> of;
+    private final Function<E, W> value;
     private final @Nullable E fallback;
 
     /**
      * Creates the test of one enum.
      *
      * @param type the enum
-     * @param fromWire resolves a constant from its wire value
-     * @param wireValue gives the wire value of a constant
+     * @param of resolves a constant from its wire value
+     * @param value gives the wire value of a constant
      * @param fallback the constant an unknown wire value resolves to, which the round trip leaves out, or {@code null}
      *     for an enum that refuses an unknown wire value
      */
     AbstractEnumTest(
-            final Class<E> type,
-            final Function<W, E> fromWire,
-            final Function<E, W> wireValue,
-            @Nullable final E fallback) {
+            final Class<E> type, final Function<W, E> of, final Function<E, W> value, @Nullable final E fallback) {
         this.type = requireNonNull(type, "type");
-        this.fromWire = requireNonNull(fromWire, "fromWire");
-        this.wireValue = requireNonNull(wireValue, "wireValue");
+        this.of = requireNonNull(of, "of");
+        this.value = requireNonNull(value, "value");
         this.fallback = fallback;
     }
 
@@ -49,16 +46,16 @@ abstract class AbstractEnumTest<E extends Enum<E>, W> {
      * Resolves a constant from a wire value.
      *
      * @param wire the wire value
-     * @return the constant {@code fromWire} gives
+     * @return the constant {@code of} gives
      */
     final E resolve(final @Nullable W wire) {
-        return fromWire.apply(wire);
+        return of.apply(wire);
     }
 
     @ParameterizedTest
     @MethodSource("constants")
-    protected final void fromWire_shouldReturnTheConstant_whenTheWireValueIsGiven(final E constant) {
-        final E decoded = fromWire.apply(wireValue.apply(constant));
+    protected final void of_shouldReturnTheConstant_whenTheWireValueIsGiven(final E constant) {
+        final E decoded = of.apply(value.apply(constant));
 
         assertThat(decoded).isEqualTo(constant);
     }

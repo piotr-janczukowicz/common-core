@@ -138,7 +138,7 @@ class RetryingHttpTransportIntegrationTest {
 
         final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
-        final HttpTransport delegate = HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        final HttpTransport delegate = HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
@@ -155,7 +155,7 @@ class RetryingHttpTransportIntegrationTest {
     }
 
     private static RetryingHttpTransport newTransport(final RetryingHttpTransport.Sleeper sleeper) {
-        final HttpTransport delegate = HttpTransports.okHttp(HttpTransportConfiguration.builder()
+        final HttpTransport delegate = HttpTransports.create(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
         final RetryConfiguration configuration = RetryConfiguration.builder()

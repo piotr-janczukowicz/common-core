@@ -292,7 +292,7 @@ public final class BufferedJson implements AutoCloseable {
      * @param <T> type the deserializer reads
      * @return the value, or {@code null} for an object with no properties
      */
-    public static <T> @Nullable T readUnlessEmptyObject(
+    public static <T> @Nullable T readNonEmpty(
             final JsonParser parser, final DeserializationContext context, final ValueDeserializer<T> deserializer) {
         try (BufferedJson json = capture(parser, context)) {
             if (json.isEmptyObject()) {

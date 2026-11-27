@@ -36,7 +36,7 @@ final class EmptyObjectAsNullDeserializer extends ValueDeserializer<Object> {
         if (parser.currentToken() != JsonToken.START_OBJECT) {
             return delegate().deserialize(parser, context);
         }
-        return BufferedJson.readUnlessEmptyObject(parser, context, delegate());
+        return BufferedJson.readNonEmpty(parser, context, delegate());
     }
 
     @Override

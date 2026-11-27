@@ -79,14 +79,14 @@ public final class ModelArchitectureRules {
                 .resideInAPackage("..test..");
     }
 
-    /** The wire value of an enum constant: its {@code wireValue()} when it has one, else its name. */
-    public static String wireValue(final Class<?> type, final Object constant) {
+    /** The wire value of an enum constant: its {@code value()} when it has one, else its name. */
+    public static String value(final Class<?> type, final Object constant) {
         try {
-            return String.valueOf(type.getMethod("wireValue").invoke(constant));
+            return String.valueOf(type.getMethod("value").invoke(constant));
         } catch (NoSuchMethodException e) {
             return ((Enum<?>) constant).name();
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(type.getName() + " has no readable wireValue()", e);
+            throw new IllegalStateException(type.getName() + " has no readable value()", e);
         }
     }
 
@@ -129,7 +129,7 @@ public final class ModelArchitectureRules {
         final Class<?> type = clazz.reflect();
         for (final Object constant : type.getEnumConstants()) {
             final String name = ((Enum<?>) constant).name();
-            final String wire = wireValue(type, constant);
+            final String wire = value(type, constant);
             if (UNRECOGNIZED.equals(name) && !UNRECOGNIZED_WIRE.equals(wire)) {
                 events.add(SimpleConditionEvent.violated(
                         clazz, clazz.getName() + ".UNRECOGNIZED must have the wire value unrecognized"));

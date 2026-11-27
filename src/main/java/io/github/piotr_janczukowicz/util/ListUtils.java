@@ -37,7 +37,7 @@ public final class ListUtils {
      * @throws NullPointerException if {@code values} has a {@code null} element
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
-    public static <T> @Nullable List<T> copyOrNull(@Nullable final List<T> values) {
+    public static <T> @Nullable List<T> copy(@Nullable final List<T> values) {
         if (values == null) {
             return null;
         }
@@ -52,7 +52,7 @@ public final class ListUtils {
      * @return an unmodifiable copy of {@code values}, or an empty list if {@code values} is {@code null}
      * @throws NullPointerException if {@code values} has a {@code null} element
      */
-    public static <T> List<T> copyOrEmpty(@Nullable final List<T> values) {
+    public static <T> List<T> copyNonNull(@Nullable final List<T> values) {
         if (values == null) {
             return List.of();
         }

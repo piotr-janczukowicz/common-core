@@ -20,7 +20,7 @@ import java.util.List;
  * larger limit is passed; a longer stream then fails with {@link BoundedReadLimitException} instead of an
  * {@link OutOfMemoryError}.
  *
- * <p>{@link #copyBounded(InputStream, OutputStream, long)} copies a stream to another one under the same kind of limit,
+ * <p>{@link #copyAtMost(InputStream, OutputStream, long)} copies a stream to another one under the same kind of limit,
  * without buffering it.
  *
  * <p>{@link #closeSuppressing(AutoCloseable, Throwable)} closes a resource while keeping the failure that caused the
@@ -106,7 +106,7 @@ public final class IoUtils {
      * @throws BoundedReadLimitException if {@code source} holds more than {@code maxBytes} bytes
      * @throws IOException if reading or writing fails
      */
-    public static long copyBounded(final InputStream source, final OutputStream target, final long maxBytes)
+    public static long copyAtMost(final InputStream source, final OutputStream target, final long maxBytes)
             throws IOException {
         requireNonNull(source, "source");
         requireNonNull(target, "target");

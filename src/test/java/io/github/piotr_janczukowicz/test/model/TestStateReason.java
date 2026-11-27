@@ -6,31 +6,31 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.github.piotr_janczukowicz.util.EnumUtils;
 
-/** An enum shaped like the generated wire enums: a wire value, and a {@code fromWire} that rejects an unknown value. */
+/** An enum shaped like the generated wire enums: a wire value, and a {@code of} that rejects an unknown value. */
 public enum TestStateReason {
     COMPLETED("completed"),
     NOT_PLANNED("not_planned");
 
-    private static final EnumUtils.WireIndex<TestStateReason> WIRE_INDEX =
-            EnumUtils.index(TestStateReason.class, TestStateReason::wireValue);
+    private static final EnumUtils.ValueIndex<TestStateReason> WIRE_INDEX =
+            EnumUtils.index(TestStateReason.class, TestStateReason::value);
 
-    private final String wireValue;
+    private final String value;
 
-    TestStateReason(final String wireValue) {
-        this.wireValue = wireValue;
+    TestStateReason(final String value) {
+        this.value = value;
     }
 
     @JsonValue
-    public String wireValue() {
-        return wireValue;
+    public String value() {
+        return value;
     }
 
     @JsonCreator
-    public static TestStateReason fromWire(final String value) {
+    public static TestStateReason of(final String value) {
         requireNonNull(value, "value");
 
         return WIRE_INDEX
-                .fromWire(value)
+                .of(value)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown test state reason: " + value));
     }
 }

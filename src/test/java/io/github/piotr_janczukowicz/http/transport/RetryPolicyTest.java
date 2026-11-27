@@ -113,7 +113,7 @@ class RetryPolicyTest {
             names = {"PUT", "DELETE"})
     void afterIoFailure_shouldBePresent_whenMethodOptedIn(final HttpMethod method) {
         final RetryPolicy policy = policy(RetryConfiguration.builder()
-                .ioRetryableMethods(Set.of(HttpMethod.GET, method))
+                .retriedMethods(Set.of(HttpMethod.GET, method))
                 .build());
 
         assertThat(policy.afterIoFailure(request(method), IO_FAILURE, 1)).isPresent();
@@ -587,7 +587,7 @@ class RetryPolicyTest {
     @Test
     void serverErrorDelay_shouldBePresent_whenPostIsAllowListed() {
         final RetryPolicy policy = policy(RetryConfiguration.builder()
-                .ioRetryableMethods(Set.of(HttpMethod.POST))
+                .retriedMethods(Set.of(HttpMethod.POST))
                 .fullJitter(false)
                 .build());
         final HttpResponse unavailable =
@@ -922,7 +922,7 @@ class RetryPolicyTest {
                     }
 
                     @Override
-                    public Optional<RateLimitSignal> detectExhaustion(
+                    public Optional<RateLimitSignal> detectSpent(
                             final HttpResponse response, final HttpRequest request, final Clock clock) {
                         return Optional.of(signal);
                     }

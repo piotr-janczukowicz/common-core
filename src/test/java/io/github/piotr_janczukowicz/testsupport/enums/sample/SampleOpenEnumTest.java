@@ -7,7 +7,7 @@ import io.github.piotr_janczukowicz.testsupport.enums.AbstractOpenStringEnumTest
 class SampleOpenEnumTest extends AbstractOpenStringEnumTest<SampleOpenEnumTest.Level> {
 
     SampleOpenEnumTest() {
-        super(Level.class, Level::fromWire, Level::wireValue, "unknown-value", Level.UNRECOGNIZED);
+        super(Level.class, Level::of, Level::value, "unknown-value", Level.UNRECOGNIZED);
     }
 
     enum Level {
@@ -15,22 +15,22 @@ class SampleOpenEnumTest extends AbstractOpenStringEnumTest<SampleOpenEnumTest.L
         HIGH("high"),
         UNRECOGNIZED("unrecognized");
 
-        private final String wireValue;
+        private final String value;
 
-        Level(final String wireValue) {
-            this.wireValue = wireValue;
+        Level(final String value) {
+            this.value = value;
         }
 
-        String wireValue() {
-            return wireValue;
+        String value() {
+            return value;
         }
 
-        static Level fromWire(final String value) {
+        static Level of(final String value) {
             if (value == null) {
                 throw new NullPointerException("value");
             }
             for (final Level level : values()) {
-                if (level != UNRECOGNIZED && level.wireValue.equals(value)) {
+                if (level != UNRECOGNIZED && level.value.equals(value)) {
                     return level;
                 }
             }

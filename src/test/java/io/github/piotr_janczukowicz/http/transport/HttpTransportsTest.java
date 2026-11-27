@@ -17,21 +17,21 @@ class HttpTransportsTest {
                 .responseTimeout(Duration.ofSeconds(5))
                 .build();
 
-        try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (final HttpTransport transport = HttpTransports.create(configuration)) {
             assertThat(transport).isNotNull();
         }
     }
 
     @Test
     void constructor_shouldUseDefaults_whenNoArgs() {
-        try (final HttpTransport transport = HttpTransports.okHttp()) {
+        try (final HttpTransport transport = HttpTransports.create()) {
             assertThat(transport).isNotNull();
         }
     }
 
     @Test
     void constructor_shouldThrow_whenConfigurationNull() {
-        final Throwable thrown = catchThrowable(() -> HttpTransports.okHttp(null));
+        final Throwable thrown = catchThrowable(() -> HttpTransports.create(null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("configuration");
     }

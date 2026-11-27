@@ -18,7 +18,7 @@ public final class JsonNodes {
      * @return the text of the field, or {@code null} if the field is missing, {@code null}, or not a JSON string
      * @throws NullPointerException if {@code node} is {@code null}
      */
-    public static @Nullable String textOrNull(final JsonNode node, final String field) {
+    public static @Nullable String text(final JsonNode node, final String field) {
         final JsonNode value = node.get(field);
         if (value == null || !value.isString()) {
             return null;

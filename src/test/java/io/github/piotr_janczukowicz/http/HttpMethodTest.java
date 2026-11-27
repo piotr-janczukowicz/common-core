@@ -14,7 +14,7 @@ class HttpMethodTest {
             value = HttpMethod.class,
             names = {"POST", "PUT", "PATCH"})
     void usesEmptyBodyWhenAbsent_shouldBeTrue_whenMethodHasEmptyBody(final HttpMethod method) {
-        assertThat(method.isEmptyBodySentWhenAbsent()).isTrue();
+        assertThat(method.expectsBody()).isTrue();
     }
 
     @ParameterizedTest
@@ -23,7 +23,7 @@ class HttpMethodTest {
             names = {"POST", "PUT", "PATCH"},
             mode = EnumSource.Mode.EXCLUDE)
     void usesEmptyBodyWhenAbsent_shouldBeFalse_whenMethodOmitsBody(final HttpMethod method) {
-        assertThat(method.isEmptyBodySentWhenAbsent()).isFalse();
+        assertThat(method.expectsBody()).isFalse();
     }
 
     @ParameterizedTest

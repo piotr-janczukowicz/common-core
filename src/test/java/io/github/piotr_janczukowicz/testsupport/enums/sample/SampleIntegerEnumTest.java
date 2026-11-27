@@ -7,26 +7,26 @@ import io.github.piotr_janczukowicz.testsupport.enums.AbstractClosedEnumTest;
 class SampleIntegerEnumTest extends AbstractClosedEnumTest<SampleIntegerEnumTest.Priority, Integer> {
 
     SampleIntegerEnumTest() {
-        super(Priority.class, Priority::fromWire, Priority::wireValue, -12_345);
+        super(Priority.class, Priority::of, Priority::value, -12_345);
     }
 
     enum Priority {
         NORMAL(0),
         URGENT(1);
 
-        private final int wireValue;
+        private final int value;
 
-        Priority(final int wireValue) {
-            this.wireValue = wireValue;
+        Priority(final int value) {
+            this.value = value;
         }
 
-        int wireValue() {
-            return wireValue;
+        int value() {
+            return value;
         }
 
-        static Priority fromWire(final int value) {
+        static Priority of(final int value) {
             for (final Priority priority : values()) {
-                if (priority.wireValue == value) {
+                if (priority.value == value) {
                     return priority;
                 }
             }

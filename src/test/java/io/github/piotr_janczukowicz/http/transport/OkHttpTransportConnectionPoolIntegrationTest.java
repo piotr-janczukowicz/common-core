@@ -58,7 +58,7 @@ class OkHttpTransportConnectionPoolIntegrationTest {
                 HttpTransportConfiguration.builder().maxIdleConnections(THREADS).build();
 
         final int connections;
-        try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
+        try (HttpTransport transport = HttpTransports.create(configuration)) {
             connections = hammer(transport);
         }
 
@@ -71,7 +71,7 @@ class OkHttpTransportConnectionPoolIntegrationTest {
                 HttpTransportConfiguration.builder().maxIdleConnections(1).build();
 
         final int tightConnections;
-        try (HttpTransport transport = HttpTransports.okHttp(tight)) {
+        try (HttpTransport transport = HttpTransports.create(tight)) {
             tightConnections = hammer(transport);
         }
 
