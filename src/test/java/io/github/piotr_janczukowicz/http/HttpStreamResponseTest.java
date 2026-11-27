@@ -16,7 +16,7 @@ class HttpStreamResponseTest {
 
     @Test
     void streaming_shouldExposeStatusHeadersAndHeader_whenBodyIsLive() throws Exception {
-        final HttpHeaders headers = HttpHeaders.fromWire(Map.of(ETAG, List.of(" \"v1\" "), "X-Blank", List.of(" ")));
+        final HttpHeaders headers = HttpHeaders.ofLists(Map.of(ETAG, List.of(" \"v1\" "), "X-Blank", List.of(" ")));
 
         try (final HttpStreamResponse response =
                 HttpStreamResponse.streaming(200, headers, new ByteArrayInputStream(new byte[] {1}))) {

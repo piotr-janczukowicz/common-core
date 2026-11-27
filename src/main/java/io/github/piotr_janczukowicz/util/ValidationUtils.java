@@ -695,19 +695,18 @@ public final class ValidationUtils {
     /**
      * Requires {@code values} to contain exactly {@code size} elements.
      *
-     * @param values collection to check
+     * <p>{@code null} passes and is returned unchanged.
+     *
+     * @param values collection to check, or {@code null}
      * @param size required size
      * @param fieldName name of the checked value, used in the exception message
      * @param <T> collection type
      * @return {@code values}
-     * @throws NullPointerException if {@code values} is {@code null}
      * @throws IllegalArgumentException if {@code values} does not have {@code size} elements
      */
-    public static <T extends Collection<?>> T requireSizeExactly(
-            final T values, final int size, final String fieldName) {
-        requireNonNull(values, fieldName);
-
-        if (values.size() != size) {
+    public static <T extends Collection<?>> @Nullable T requireSizeExactly(
+            @Nullable final T values, final int size, final String fieldName) {
+        if (values != null && values.size() != size) {
             throw invalid(fieldName, "must have exactly " + size + ELEMENTS);
         }
         return values;
@@ -716,19 +715,19 @@ public final class ValidationUtils {
     /**
      * Requires {@code map} to contain exactly {@code size} entries.
      *
-     * @param map map to check
+     * <p>{@code null} passes and is returned unchanged.
+     *
+     * @param map map to check, or {@code null}
      * @param size required size
      * @param fieldName name of the checked value, used in the exception message
      * @param <K> key type
      * @param <V> value type
      * @return {@code map}
-     * @throws NullPointerException if {@code map} is {@code null}
      * @throws IllegalArgumentException if {@code map} does not have {@code size} entries
      */
-    public static <K, V> Map<K, V> requireSizeExactly(final Map<K, V> map, final int size, final String fieldName) {
-        requireNonNull(map, fieldName);
-
-        if (map.size() != size) {
+    public static <K, V> @Nullable Map<K, V> requireSizeExactly(
+            @Nullable final Map<K, V> map, final int size, final String fieldName) {
+        if (map != null && map.size() != size) {
             throw invalid(fieldName, "must have exactly " + size + ENTRIES);
         }
         return map;

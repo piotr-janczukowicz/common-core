@@ -128,7 +128,7 @@ public final class BufferedJson implements AutoCloseable {
      * @return the constant
      * @throws DatabindException if the property is missing or {@code null}, or {@code toEnum} rejects its value
      */
-    public <E> E requiredWire(final String field, final Function<String, E> toEnum) {
+    public <E> E requiredEnum(final String field, final Function<String, E> toEnum) {
         final String value = requiredText(field);
         try {
             return toEnum.apply(value);

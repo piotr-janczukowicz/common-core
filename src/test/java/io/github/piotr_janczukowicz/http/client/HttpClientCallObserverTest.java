@@ -113,7 +113,7 @@ class HttpClientCallObserverTest {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of(
+                        HttpHeaders.ofLists(Map.of(
                                 LOCATION,
                                 List.of("https://api.example.test/elsewhere"),
                                 "X-Request-Id",

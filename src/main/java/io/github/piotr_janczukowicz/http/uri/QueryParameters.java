@@ -117,7 +117,7 @@ public final class QueryParameters {
      * @throws IllegalArgumentException if {@code name} is blank
      * @throws NullPointerException if {@code toValue} returns {@code null} for {@code value}
      */
-    public <E> QueryParameters wire(final String name, final @Nullable E value, final Function<E, ?> toValue) {
+    public <E> QueryParameters value(final String name, final @Nullable E value, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
         requireNonNull(toValue, TO_VALUE);
         if (value != null) {
@@ -158,8 +158,7 @@ public final class QueryParameters {
      * @throws IllegalArgumentException if {@code values} holds {@code null}
      * @throws NullPointerException if {@code toValue} returns {@code null} for an item
      */
-    public <E> QueryParameters wireList(
-            final String name, final @Nullable List<E> values, final Function<E, ?> toValue) {
+    public <E> QueryParameters list(final String name, final @Nullable List<E> values, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
         requireNonNull(toValue, TO_VALUE);
         if (values != null && !values.isEmpty()) {
@@ -236,7 +235,7 @@ public final class QueryParameters {
      * @throws IllegalArgumentException if {@code name} is blank
      * @throws NullPointerException if {@code toValue} returns {@code null} for an item
      */
-    public <E> QueryParameters wireRepeated(
+    public <E> QueryParameters repeated(
             final String name, final @Nullable List<E> values, final Function<E, ?> toValue) {
         requireNotBlank(name, NAME);
         requireNonNull(toValue, TO_VALUE);

@@ -483,7 +483,7 @@ class HttpClientTest {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of("Location", List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of("Location", List.of("https://api.example.test/next"))),
                         null));
         final RedirectPolicy policy = new RedirectPolicy(1, Set.of(HttpMethod.GET), Set.of());
         try (final HttpClient client =

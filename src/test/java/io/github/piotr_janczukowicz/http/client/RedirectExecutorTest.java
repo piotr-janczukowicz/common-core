@@ -613,7 +613,7 @@ class RedirectExecutorTest {
 
     private static HttpResponse redirect(final HttpStatus status, final String location) {
         return new HttpResponse(
-                status.code(), HttpHeaders.fromWire(Map.of(LOCATION, List.of(location))), HttpBody.absent());
+                status.code(), HttpHeaders.ofLists(Map.of(LOCATION, List.of(location))), HttpBody.absent());
     }
 
     private RedirectExecutor.StreamExchange streamAfterRedirect(final HttpStatus status, final String location)

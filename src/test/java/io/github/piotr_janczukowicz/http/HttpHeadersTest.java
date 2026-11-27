@@ -185,100 +185,100 @@ class HttpHeadersTest {
     }
 
     @Test
-    void fromWire_shouldReturnEmpty_whenMapNull() {
+    void ofLists_shouldReturnEmpty_whenMapNull() {
         final Map<String, List<String>> headers = null;
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
-    void fromWire_shouldReturnEmpty_whenMapEmpty() {
-        final HttpHeaders result = HttpHeaders.fromWire(Map.of());
+    void ofLists_shouldReturnEmpty_whenMapEmpty() {
+        final HttpHeaders result = HttpHeaders.ofLists(Map.of());
 
         assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
-    void fromWire_shouldSkipNullOrBlankNames_whenPresent() {
+    void ofLists_shouldSkipNullOrBlankNames_whenPresent() {
         final Map<String, List<String>> headers = new HashMap<>();
         headers.put(null, List.of("lost"));
         headers.put("  ", List.of("blank"));
         headers.put("X-Kept", List.of("kept"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.asMap()).containsOnlyKeys("X-Kept");
     }
 
     @Test
-    void fromWire_shouldSkipPseudoHeaders_whenNameStartsWithColon() {
+    void ofLists_shouldSkipPseudoHeaders_whenNameStartsWithColon() {
         final Map<String, List<String>> headers = new LinkedHashMap<>();
         headers.put(":status", List.of("200"));
         headers.put("X-Kept", List.of("kept"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.asMap()).containsOnlyKeys("X-Kept");
     }
 
     @Test
-    void fromWire_shouldSkipName_whenValueListNull() {
+    void ofLists_shouldSkipName_whenValueListNull() {
         final Map<String, List<String>> headers = new LinkedHashMap<>();
         headers.put("X-Null", null);
         headers.put("X-Kept", List.of("kept"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.asMap()).containsOnlyKeys("X-Kept");
     }
 
     @Test
-    void fromWire_shouldSkipName_whenValueListEmpty() {
+    void ofLists_shouldSkipName_whenValueListEmpty() {
         final Map<String, List<String>> headers = new LinkedHashMap<>();
         headers.put("X-Empty", List.of());
         headers.put("X-Kept", List.of("kept"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.asMap()).containsOnlyKeys("X-Kept");
     }
 
     @Test
-    void fromWire_shouldSkipNullElements_whenListHasNulls() {
+    void ofLists_shouldSkipNullElements_whenListHasNulls() {
         final Map<String, List<String>> headers = Map.of("X-Mixed", Arrays.asList(null, "kept"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.get("X-Mixed")).contains("kept");
     }
 
     @Test
-    void fromWire_shouldKeepSingleValueAsReceived_whenValueHasWhitespaceAndNonAscii() {
+    void ofLists_shouldKeepSingleValueAsReceived_whenValueHasWhitespaceAndNonAscii() {
         final Map<String, List<String>> headers = Map.of("X-Test", List.of(" padded é "));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.get("X-Test")).contains(" padded é ");
     }
 
     @Test
-    void fromWire_shouldJoinValuesInOrder_whenSeveralValues() {
+    void ofLists_shouldJoinValuesInOrder_whenSeveralValues() {
         final Map<String, List<String>> headers = Map.of("X-Test", List.of("one", "two"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.get("X-Test")).contains("one, two");
     }
 
     @Test
-    void fromWire_shouldMergeCaseVariants_whenNameRepeatsInOtherCase() {
+    void ofLists_shouldMergeCaseVariants_whenNameRepeatsInOtherCase() {
         final Map<String, List<String>> headers = new LinkedHashMap<>();
         headers.put("X-Test", List.of("one"));
         headers.put("x-test", List.of("two"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertSoftly(softly -> {
             softly.assertThat(result.asMap()).containsOnlyKeys("X-Test");
@@ -287,13 +287,13 @@ class HttpHeadersTest {
     }
 
     @Test
-    void fromWire_shouldKeepForbiddenNames_whenResponseHeadersGiven() {
+    void ofLists_shouldKeepForbiddenNames_whenResponseHeadersGiven() {
         final Map<String, List<String>> headers = Map.of(
                 "Content-Length", List.of("5"),
                 "Transfer-Encoding", List.of("chunked"),
                 "Upgrade", List.of("websocket"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertSoftly(softly -> {
             softly.assertThat(result.get("Content-Length")).contains("5");
@@ -303,10 +303,10 @@ class HttpHeadersTest {
     }
 
     @Test
-    void fromWire_shouldNotThrow_whenValueHasControlCharacter() {
+    void ofLists_shouldNotThrow_whenValueHasControlCharacter() {
         final Map<String, List<String>> headers = Map.of("X-Test", List.of("a\r\nb\u0000"));
 
-        final HttpHeaders result = HttpHeaders.fromWire(headers);
+        final HttpHeaders result = HttpHeaders.ofLists(headers);
 
         assertThat(result.get("X-Test")).contains("a\r\nb\u0000");
     }
@@ -427,7 +427,7 @@ class HttpHeadersTest {
 
     @Test
     void with_shouldAcceptForbiddenName_whenResponseHeaders() {
-        final HttpHeaders base = HttpHeaders.fromWire(Map.of("X-Kept", List.of("1")));
+        final HttpHeaders base = HttpHeaders.ofLists(Map.of("X-Kept", List.of("1")));
 
         final HttpHeaders result = base.with("Content-Length", "5");
 
@@ -468,7 +468,7 @@ class HttpHeadersTest {
     void merge_shouldReturnSameInstance_whenEveryLayerEmpty() {
         final HttpHeaders base = HttpHeaders.of("A", "1");
 
-        final HttpHeaders merged = base.merge(HttpHeaders.empty(), HttpHeaders.fromWire(Map.of()));
+        final HttpHeaders merged = base.merge(HttpHeaders.empty(), HttpHeaders.ofLists(Map.of()));
 
         assertThat(merged).isSameAs(base);
     }
@@ -489,7 +489,7 @@ class HttpHeadersTest {
     @Test
     void merge_shouldCheckAndCopyEntries_whenValidResponseHeadersMergedIntoRequestHeaders() {
         final HttpHeaders base = HttpHeaders.of("A", "1");
-        final HttpHeaders response = HttpHeaders.fromWire(Map.of("X-Kept", List.of("2")));
+        final HttpHeaders response = HttpHeaders.ofLists(Map.of("X-Kept", List.of("2")));
 
         final HttpHeaders merged = base.merge(response);
 
@@ -549,7 +549,7 @@ class HttpHeadersTest {
     @Test
     void merge_shouldThrow_whenRequestHeadersGetForbiddenResponseEntry() {
         final HttpHeaders base = HttpHeaders.of("A", "1");
-        final HttpHeaders response = HttpHeaders.fromWire(Map.of("Content-Length", List.of("5")));
+        final HttpHeaders response = HttpHeaders.ofLists(Map.of("Content-Length", List.of("5")));
 
         final Throwable thrown = catchThrowable(() -> base.merge(response));
 
@@ -560,7 +560,7 @@ class HttpHeadersTest {
 
     @Test
     void merge_shouldThrow_whenEmptyRequestHeadersGetForbiddenResponseEntry() {
-        final HttpHeaders response = HttpHeaders.fromWire(Map.of("Content-Length", List.of("5")));
+        final HttpHeaders response = HttpHeaders.ofLists(Map.of("Content-Length", List.of("5")));
 
         final HttpHeaders headers = HttpHeaders.empty();
 
@@ -573,8 +573,8 @@ class HttpHeadersTest {
 
     @Test
     void merge_shouldCopyEntriesAsIs_whenResponseHeadersMergedIntoResponseHeaders() {
-        final HttpHeaders base = HttpHeaders.fromWire(Map.of("X-Kept", List.of("1")));
-        final HttpHeaders response = HttpHeaders.fromWire(Map.of("Content-Length", List.of("5")));
+        final HttpHeaders base = HttpHeaders.ofLists(Map.of("X-Kept", List.of("1")));
+        final HttpHeaders response = HttpHeaders.ofLists(Map.of("Content-Length", List.of("5")));
 
         final HttpHeaders merged = base.merge(response);
 
@@ -586,7 +586,7 @@ class HttpHeadersTest {
 
     @Test
     void merge_shouldCopyEntries_whenRequestHeadersMergedIntoResponseHeaders() {
-        final HttpHeaders base = HttpHeaders.fromWire(Map.of("X-Kept", List.of("1")));
+        final HttpHeaders base = HttpHeaders.ofLists(Map.of("X-Kept", List.of("1")));
         final HttpHeaders request = HttpHeaders.of("A", "1");
 
         final HttpHeaders merged = base.merge(request);
@@ -647,7 +647,7 @@ class HttpHeadersTest {
     @Test
     void without_shouldKeepResponseRules_whenAllNamesRemoved() {
         final HttpHeaders emptied =
-                HttpHeaders.fromWire(Map.of("Content-Length", List.of("5"))).without("Content-Length");
+                HttpHeaders.ofLists(Map.of("Content-Length", List.of("5"))).without("Content-Length");
 
         final HttpHeaders result = emptied.with("Content-Length", "5");
 
@@ -704,7 +704,7 @@ class HttpHeadersTest {
     @Test
     void equals_shouldIgnoreProfile_whenEntriesMatch() {
         final HttpHeaders request = HttpHeaders.of("A", "1");
-        final HttpHeaders response = HttpHeaders.fromWire(Map.of("A", List.of("1")));
+        final HttpHeaders response = HttpHeaders.ofLists(Map.of("A", List.of("1")));
 
         final boolean equal = request.equals(response);
 

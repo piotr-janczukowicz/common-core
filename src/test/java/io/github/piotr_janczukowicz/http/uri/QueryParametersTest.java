@@ -38,7 +38,7 @@ class QueryParametersTest {
                 .text("state", "opened")
                 .value("confidential", true)
                 .value("created_after", Instant.parse("2026-01-01T00:00:00Z"))
-                .wire("order_by", Order.CREATED, Order::value)
+                .value("order_by", Order.CREATED, Order::value)
                 .build();
 
         assertThat(query)
@@ -58,9 +58,9 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .text("a", null)
                 .value("b", null)
-                .wire("c", noOrder, Order::value)
+                .value("c", noOrder, Order::value)
                 .list("d", null)
-                .wireList("e", noOrders, Order::value)
+                .list("e", noOrders, Order::value)
                 .map("f", null)
                 .build();
 
@@ -74,7 +74,7 @@ class QueryParametersTest {
         final Map<String, String> query = parameters
                 .list("labels", List.of("a", "b"))
                 .list("ids", List.of(1L, 2L))
-                .wireList("order", List.of(Order.CREATED, Order.CREATED), Order::value)
+                .list("order", List.of(Order.CREATED, Order.CREATED), Order::value)
                 .build();
 
         assertThat(query)
@@ -149,7 +149,7 @@ class QueryParametersTest {
     void wire_shouldRejectANullWireValue_whenTheFunctionReturnsNull() {
         final QueryParameters parameters = QueryParameters.builder();
 
-        final Throwable thrown = catchThrowable(() -> parameters.wire("order_by", Order.CREATED, order -> null));
+        final Throwable thrown = catchThrowable(() -> parameters.value("order_by", Order.CREATED, order -> null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order_by");
     }
@@ -159,7 +159,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = List.of(Order.CREATED);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, order -> null));
+        final Throwable thrown = catchThrowable(() -> parameters.list("order", values, order -> null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order");
     }
@@ -169,7 +169,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = Arrays.asList(Order.CREATED, null);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireList("order", values, Order::value));
+        final Throwable thrown = catchThrowable(() -> parameters.list("order", values, Order::value));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("order");
     }
@@ -227,9 +227,8 @@ class QueryParametersTest {
 
     @Test
     void wireList_shouldLeaveOutTheParameter_whenTheListIsEmpty() {
-        final Map<String, String> query = QueryParameters.builder()
-                .wireList("a", List.of(), String::length)
-                .build();
+        final Map<String, String> query =
+                QueryParameters.builder().list("a", List.of(), String::length).build();
 
         assertThat(query).isEmpty();
     }
@@ -238,7 +237,7 @@ class QueryParametersTest {
     void wire_shouldRejectANullFunction_whenTheValueIsNull() {
         final QueryParameters parameters = QueryParameters.builder();
 
-        final Throwable thrown = catchThrowable(() -> parameters.wire("a", null, null));
+        final Throwable thrown = catchThrowable(() -> parameters.value("a", null, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
@@ -250,7 +249,7 @@ class QueryParametersTest {
         final Map<String, List<String>> query = parameters
                 .text("state", "opened")
                 .repeated("owner[]", List.of("a", "b"))
-                .wireRepeated("order", List.of(Order.CREATED), Order::value)
+                .repeated("order", List.of(Order.CREATED), Order::value)
                 .list("labels", List.of("x", "y"))
                 .buildValues();
 
@@ -270,8 +269,8 @@ class QueryParametersTest {
         final Map<String, List<String>> query = parameters
                 .repeated("a", null)
                 .repeated("b", List.of())
-                .wireRepeated("c", noOrders, Order::value)
-                .wireRepeated("d", List.of(), Order::value)
+                .repeated("c", noOrders, Order::value)
+                .repeated("d", List.of(), Order::value)
                 .buildValues();
 
         assertThat(query).isEmpty();
@@ -305,7 +304,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
 
         final Map<String, List<String>> query =
-                parameters.wireRepeated("order", values, Order::value).buildValues();
+                parameters.repeated("order", values, Order::value).buildValues();
 
         assertThat(query).containsExactly(Map.entry("order", List.of("created_at")));
     }
@@ -333,7 +332,7 @@ class QueryParametersTest {
     void wireRepeated_shouldRejectANullFunction_whenTheValuesAreNull() {
         final QueryParameters parameters = QueryParameters.builder();
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireRepeated("a", null, null));
+        final Throwable thrown = catchThrowable(() -> parameters.repeated("a", null, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("toValue");
     }
@@ -343,7 +342,7 @@ class QueryParametersTest {
         final QueryParameters parameters = QueryParameters.builder();
         final List<Order> values = List.of(Order.CREATED);
 
-        final Throwable thrown = catchThrowable(() -> parameters.wireRepeated("order", values, order -> null));
+        final Throwable thrown = catchThrowable(() -> parameters.repeated("order", values, order -> null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("order");
     }

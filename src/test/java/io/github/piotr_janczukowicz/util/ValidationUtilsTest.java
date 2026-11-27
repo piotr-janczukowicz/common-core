@@ -340,14 +340,12 @@ class ValidationUtilsTest {
     }
 
     @Test
-    void requireSizeExactly_shouldThrow_whenNull() {
+    void requireSizeExactly_shouldReturnNull_whenNull() {
         final List<String> values = null;
-        final int size = 1;
-        final String fieldName = "items";
 
-        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSizeExactly(values, size, fieldName));
+        final List<String> result = ValidationUtils.requireSizeExactly(values, 1, "items");
 
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("items must not be null");
+        assertThat(result).isNull();
     }
 
     @Test
@@ -1040,14 +1038,12 @@ class ValidationUtilsTest {
     }
 
     @Test
-    void requireSizeExactly_shouldThrow_whenMapNull() {
+    void requireSizeExactly_shouldReturnNull_whenMapNull() {
         final Map<String, String> values = null;
-        final int size = 1;
-        final String fieldName = "props";
 
-        final Throwable thrown = catchThrowable(() -> ValidationUtils.requireSizeExactly(values, size, fieldName));
+        final Map<String, String> result = ValidationUtils.requireSizeExactly(values, 1, "props");
 
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("props must not be null");
+        assertThat(result).isNull();
     }
 
     @Test

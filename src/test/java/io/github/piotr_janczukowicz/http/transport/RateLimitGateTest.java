@@ -192,7 +192,7 @@ class RateLimitGateTest {
         Arrays.fill(large, (byte) 9);
         final HttpResponse big = new HttpResponse(
                 429,
-                HttpHeaders.fromWire(Map.of(
+                HttpHeaders.ofLists(Map.of(
                         CONTENT_LENGTH, List.of("65536"), "X-Custom", List.of("kept"), RETRY_AFTER, List.of("1"))),
                 HttpBody.of(large));
         final HttpRequest request = request("https://api.example.test/user", SECRET);
@@ -213,7 +213,7 @@ class RateLimitGateTest {
     void block_shouldDropContentLengthInAnyCase_whenBodyIsCut() {
         final byte[] large = new byte[64 * 1024];
         final HttpResponse big = new HttpResponse(
-                429, HttpHeaders.fromWire(Map.of("content-length", List.of("65536"))), HttpBody.of(large));
+                429, HttpHeaders.ofLists(Map.of("content-length", List.of("65536"))), HttpBody.of(large));
         final HttpRequest request = request("https://api.example.test/user", SECRET);
 
         gate.block(request, "bucket-a", Duration.ofSeconds(60), big);
@@ -399,7 +399,7 @@ class RateLimitGateTest {
     void rejection_shouldReplayHeadersWithFramingNames_whenResponseCameFromTheWire() {
         final HttpResponse wire = new HttpResponse(
                 429,
-                HttpHeaders.fromWire(Map.of(
+                HttpHeaders.ofLists(Map.of(
                         CONTENT_LENGTH, List.of("3"),
                         TRANSFER_ENCODING, List.of("identity"),
                         DATE, List.of("Fri, 09 Oct 2026 12:00:00 GMT"))),
@@ -421,7 +421,7 @@ class RateLimitGateTest {
     void rejection_shouldKeepJoinedValuesOnce_whenHeaderHadSeveralValues() {
         final HttpResponse wire = new HttpResponse(
                 429,
-                HttpHeaders.fromWire(Map.of(
+                HttpHeaders.ofLists(Map.of(
                         "Link",
                                 List.of(
                                         "<https://api.example.test/a>; rel=\"next\"",

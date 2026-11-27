@@ -45,7 +45,7 @@ public record HttpResponse(int statusCode, HttpHeaders headers, HttpBody body) {
 
     /**
      * Value of header {@code name}, trimmed, when it is not blank. A header the server sent several times is one value
-     * with the parts joined by {@code ", "}; see {@link HttpHeaders#fromWire}.
+     * with the parts joined by {@code ", "}; see {@link HttpHeaders#ofLists}.
      *
      * @param name header name
      * @return header value, or empty

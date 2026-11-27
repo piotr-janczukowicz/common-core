@@ -32,7 +32,7 @@ class ExhaustedRejectionTest {
     void of_shouldKeepOnlyReplayableHeaders_whenResponseHasMixedHeaders() {
         final HttpResponse response = new HttpResponse(
                 HttpStatus.TOO_MANY_REQUESTS.code(),
-                HttpHeaders.fromWire(Map.of(
+                HttpHeaders.ofLists(Map.of(
                         "Retry-After", List.of("30"),
                         "X-RateLimit-Remaining", List.of("0"),
                         "CONTENT-LENGTH", List.of("12"),

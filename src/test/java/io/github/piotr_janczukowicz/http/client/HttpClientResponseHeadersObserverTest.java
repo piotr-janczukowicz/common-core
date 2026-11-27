@@ -129,7 +129,7 @@ class HttpClientResponseHeadersObserverTest {
 
     private static HttpResponse redirectTo(final String location) {
         return new HttpResponse(
-                HttpStatus.FOUND.code(), HttpHeaders.fromWire(Map.of(LOCATION, List.of(location))), HttpBody.absent());
+                HttpStatus.FOUND.code(), HttpHeaders.ofLists(Map.of(LOCATION, List.of(location))), HttpBody.absent());
     }
 
     private HttpClient client() {

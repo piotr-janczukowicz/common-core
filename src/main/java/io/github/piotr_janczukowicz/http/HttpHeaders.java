@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Headers made by {@link #of(String...)}, {@link #of(Map)} and {@link #with} are request headers: every entry has
  * passed {@link HttpHeadersValidator#requireValidRequestHeader}, and a value is stored without leading or trailing
- * whitespace. Headers made by {@link #fromWire} are what a server sent: they are not checked and are kept as received.
+ * whitespace. Headers made by {@link #ofLists} are what a server sent: they are not checked and are kept as received.
  * Merging response headers into request headers checks their entries against the request rules, so request headers stay
  * valid.
  *
@@ -116,8 +116,7 @@ public final class HttpHeaders {
      *     empty
      * @return response headers
      */
-    public static HttpHeaders fromWire(
-            final @Nullable Map<@Nullable String, @Nullable List<@Nullable String>> headers) {
+    public static HttpHeaders ofLists(final @Nullable Map<@Nullable String, @Nullable List<@Nullable String>> headers) {
         if (headers == null || headers.isEmpty()) {
             return EMPTY_RESPONSE;
         }

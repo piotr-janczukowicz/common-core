@@ -853,7 +853,7 @@ class AbstractHttpCallerTest {
         when(transport.execute(any()))
                 .thenReturn(new HttpResponse(
                         HttpStatus.FOUND.code(),
-                        HttpHeaders.fromWire(Map.of("Location", List.of("https://api.example.test/next"))),
+                        HttpHeaders.ofLists(Map.of("Location", List.of("https://api.example.test/next"))),
                         HttpBody.absent()));
 
         try (final HttpClient client = client()) {

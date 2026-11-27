@@ -323,6 +323,6 @@ final class OkHttpTransport implements HttpTransport {
         for (int i = 0; i < size; i++) {
             wire.computeIfAbsent(headers.name(i), name -> new ArrayList<>(2)).add(headers.value(i));
         }
-        return HttpHeaders.fromWire(wire);
+        return HttpHeaders.ofLists(wire);
     }
 }
