@@ -90,7 +90,6 @@ public final class MutationPacingHttpTransport implements HttpTransport {
 
     /**
      * Paces {@code methods} on {@code delegate}, reading time from {@code clock} and pausing with {@code sleeper}.
-     * Package-private so that tests can run without real waits.
      *
      * @param delegate transport that sends the requests; closed when this one is closed
      * @param minInterval least time between the starts of two paced requests, above zero

@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  * {@code $ref}.
  *
  * <p>A type that matches more than one catalog key lists them all in one annotation. Retention is
- * {@link RetentionPolicy#RUNTIME} so tests can discover annotated types without using dump locators.
+ * {@link RetentionPolicy#RUNTIME}, so the annotated types and their keys can be found by reflection.
  */
 @Documented
 @Target(ElementType.TYPE)
