@@ -17,6 +17,7 @@ import io.github.piotr_janczukowicz.test.http.RateLimitDetectors;
 import io.github.piotr_janczukowicz.test.http.StubHttpServer;
 import io.github.piotr_janczukowicz.testsupport.IntegrationTest;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -159,12 +160,12 @@ class RetryingHttpTransportIntegrationTest {
                 .responseTimeout(Duration.ofSeconds(5))
                 .build());
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .rateLimitDetector(RateLimitDetectors.resetHeader())
                 .defaultBackoff(Duration.ZERO)
                 .maxBackoff(Duration.ZERO)
                 .rateLimitJitter(Duration.ZERO)
                 .clockSkewMargin(Duration.ZERO)
                 .build();
-        return new RetryingHttpTransport(delegate, configuration, sleeper);
+        return new RetryingHttpTransport(
+                delegate, configuration, RateLimitDetectors.resetHeader(), sleeper, Clock.systemUTC());
     }
 }

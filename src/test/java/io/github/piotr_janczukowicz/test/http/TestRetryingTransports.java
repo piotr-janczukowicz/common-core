@@ -1,6 +1,7 @@
 package io.github.piotr_janczukowicz.test.http;
 
 import io.github.piotr_janczukowicz.http.transport.HttpTransport;
+import io.github.piotr_janczukowicz.http.transport.RateLimitDetector;
 import io.github.piotr_janczukowicz.http.transport.RetryConfiguration;
 import io.github.piotr_janczukowicz.http.transport.RetryingHttpTransport;
 import io.github.piotr_janczukowicz.testsupport.MutableClock;
@@ -35,6 +36,25 @@ public final class TestRetryingTransports {
             final Clock clock,
             final RandomGenerator random) {
         return new RetryingHttpTransport(delegate, configuration, pause::sleep, clock, random);
+    }
+
+    public static RetryingHttpTransport create(
+            final HttpTransport delegate,
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Pause pause,
+            final Clock clock) {
+        return new RetryingHttpTransport(delegate, configuration, detector, pause::sleep, clock);
+    }
+
+    public static RetryingHttpTransport create(
+            final HttpTransport delegate,
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Pause pause,
+            final Clock clock,
+            final RandomGenerator random) {
+        return new RetryingHttpTransport(delegate, configuration, detector, pause::sleep, clock, random);
     }
 
     public static Pause recordingAndAdvancing(final List<Duration> sleeps, final MutableClock clock) {

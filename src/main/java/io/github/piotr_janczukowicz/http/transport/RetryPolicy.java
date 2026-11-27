@@ -77,12 +77,20 @@ final class RetryPolicy {
     }
 
     RetryPolicy(final RetryConfiguration configuration, final Clock clock, final RandomGenerator random) {
+        this(configuration, requireNonNull(configuration, "configuration").rateLimitDetector(), clock, random);
+    }
+
+    RetryPolicy(
+            final RetryConfiguration configuration,
+            final RateLimitDetector rateLimitDetector,
+            final Clock clock,
+            final RandomGenerator random) {
         requireNonNull(configuration, "configuration");
         this.attempts = configuration.attempts();
         this.waits = configuration.waits();
         this.jitter = configuration.jitter();
         this.retryable = configuration.retryable();
-        this.rateLimitDetector = configuration.rateLimitDetector();
+        this.rateLimitDetector = requireNonNull(rateLimitDetector, "rateLimitDetector");
         this.totalDeadline = configuration.totalDeadline();
         this.clock = requireNonNull(clock, "clock");
         this.random = requireNonNull(random, "random");

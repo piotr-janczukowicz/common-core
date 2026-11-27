@@ -174,14 +174,13 @@ class RetryingHttpTransportRateLimitTest {
         script.add(limited(RETRY_AFTER, "30"));
         script.add(ok());
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .rateLimitDetector(RateLimitDetectors.bucketed())
                 .rateLimitJitter(Duration.ZERO)
                 .rateLimitEventListener(event -> {
                     throw new IllegalStateException("listener broke");
                 })
                 .build();
 
-        final HttpResponse response = execute(configuration, get("/user"));
+        final HttpResponse response = execute(configuration, RateLimitDetectors.bucketed(), get("/user"));
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(sleeps).containsExactly(Duration.ofSeconds(30));
@@ -212,7 +211,6 @@ class RetryingHttpTransportRateLimitTest {
         script.add(ok());
         script.add(ok());
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .rateLimitDetector(RateLimitDetectors.bucketed())
                 .maxRateLimitAttempts(2)
                 .rateLimitJitter(Duration.ofSeconds(10))
                 .build();
@@ -222,6 +220,7 @@ class RetryingHttpTransportRateLimitTest {
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 delegate,
                 configuration,
+                RateLimitDetectors.bucketed(),
                 duration -> {
                     log.add("sleep");
                     sleeps.add(duration);
@@ -425,6 +424,7 @@ class RetryingHttpTransportRateLimitTest {
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 delegate,
                 configuration,
+                RateLimitDetectors.spentQuota(),
                 duration -> {
                     if (racing[0]) {
                         sleeping.countDown();
@@ -878,7 +878,6 @@ class RetryingHttpTransportRateLimitTest {
         script.add(limited(RETRY_AFTER, "30"));
         script.add(ok());
         final RetryConfiguration configuration = RetryConfiguration.builder()
-                .rateLimitDetector(RateLimitDetectors.bucketed())
                 .rateLimitJitter(Duration.ZERO)
                 .rateLimitEventListener(event -> {
                     throw new IllegalStateException("listener broke");
@@ -886,7 +885,7 @@ class RetryingHttpTransportRateLimitTest {
                 .build();
 
         try (final LogCaptor logs = LogCaptor.forClass(RetryEvents.class)) {
-            execute(configuration, get("/user"));
+            execute(configuration, RateLimitDetectors.bucketed(), get("/user"));
 
             assertThat(logs.getWarnLogs())
                     .singleElement()
@@ -1135,17 +1134,30 @@ class RetryingHttpTransportRateLimitTest {
     }
 
     private HttpResponse execute(final RetryConfiguration configuration, final HttpRequest request) throws IOException {
-        try (final RetryingHttpTransport transport = transport(configuration, new FixedRandom())) {
+        return execute(configuration, RateLimitDetectors.spentQuota(), request);
+    }
+
+    private HttpResponse execute(
+            final RetryConfiguration configuration, final RateLimitDetector detector, final HttpRequest request)
+            throws IOException {
+        try (final RetryingHttpTransport transport = transport(configuration, detector, new FixedRandom())) {
             return transport.execute(request);
         }
     }
 
     private RetryingHttpTransport transport(final RetryConfiguration configuration, final RandomGenerator random)
             throws IOException {
+        return transport(configuration, RateLimitDetectors.spentQuota(), random);
+    }
+
+    private RetryingHttpTransport transport(
+            final RetryConfiguration configuration, final RateLimitDetector detector, final RandomGenerator random)
+            throws IOException {
         wire();
         return TestRetryingTransports.create(
                 delegate,
                 configuration,
+                detector,
                 duration -> {
                     log.add("sleep " + duration.toSeconds());
                     sleeps.add(duration);
@@ -1181,7 +1193,6 @@ class RetryingHttpTransportRateLimitTest {
     private RetryConfiguration config(final UnaryOperator<RetryConfiguration.Builder> customize) {
         return customize
                 .apply(RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.spentQuota())
                         .rateLimitJitter(Duration.ZERO)
                         .rateLimitEventListener(events::add))
                 .build();

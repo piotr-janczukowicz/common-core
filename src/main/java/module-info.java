@@ -1,3 +1,5 @@
+// The modules that get the internal package are not on this module's path.
+@SuppressWarnings("module")
 module common.core {
     requires transitive tools.jackson.databind;
     requires transitive okhttp3;
@@ -20,6 +22,9 @@ module common.core {
     exports io.github.piotr_janczukowicz.http;
     exports io.github.piotr_janczukowicz.http.client;
     exports io.github.piotr_janczukowicz.http.client.authentication;
+    exports io.github.piotr_janczukowicz.http.client.internal to
+            io.github.piotr_janczukowicz.githubclient,
+            io.github.piotr_janczukowicz.gitlabclient;
     exports io.github.piotr_janczukowicz.http.transport;
     exports io.github.piotr_janczukowicz.http.uri;
     exports io.github.piotr_janczukowicz.uri;

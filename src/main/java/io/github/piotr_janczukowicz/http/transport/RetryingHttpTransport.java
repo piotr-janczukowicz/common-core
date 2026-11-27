@@ -116,7 +116,28 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @throws NullPointerException if {@code delegate} or {@code configuration} is {@code null}
      */
     public RetryingHttpTransport(final HttpTransport delegate, final RetryConfiguration configuration) {
-        this(delegate, configuration, Thread::sleep);
+        this(delegate, configuration, (Sleeper) Thread::sleep);
+    }
+
+    /**
+     * Retrying wrapper over {@code delegate} with {@code configuration} that recognizes rate-limited responses with
+     * {@code detector}.
+     *
+     * @param delegate transport that performs each attempt
+     * @param configuration retry policy data
+     * @param detector recognizes rate-limited responses; {@link RateLimitDetector#defaults()} recognizes HTTP 429 only
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public RetryingHttpTransport(
+            final HttpTransport delegate, final RetryConfiguration configuration, final RateLimitDetector detector) {
+        this(
+                delegate,
+                configuration,
+                detector,
+                Thread::sleep,
+                Clock.systemUTC(),
+                new MonotonicClock(),
+                RetryPolicy.defaultRandom());
     }
 
     /**
@@ -171,6 +192,48 @@ public final class RetryingHttpTransport implements HttpTransport {
         this(delegate, configuration, sleeper, clock, clock, random);
     }
 
+    /**
+     * Retrying wrapper over {@code delegate} with a rate-limit detector and an injected pause and clock, so a test can
+     * run waits without real time. The clock serves both the retry policy and the rate-limit gate.
+     *
+     * @param delegate transport that performs each attempt
+     * @param configuration retry policy data
+     * @param detector recognizes rate-limited responses
+     * @param sleeper pause between attempts
+     * @param clock time source for reset times and gate blocks
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    public RetryingHttpTransport(
+            final HttpTransport delegate,
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Sleeper sleeper,
+            final Clock clock) {
+        this(delegate, configuration, detector, sleeper, clock, RetryPolicy.defaultRandom());
+    }
+
+    /**
+     * Retrying wrapper over {@code delegate} with a rate-limit detector and an injected pause, clock and random source,
+     * so a test can run waits and jitter deterministically.
+     *
+     * @param delegate transport that performs each attempt
+     * @param configuration retry policy data
+     * @param detector recognizes rate-limited responses
+     * @param sleeper pause between attempts
+     * @param clock time source for reset times and gate blocks
+     * @param random jitter source
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    public RetryingHttpTransport(
+            final HttpTransport delegate,
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Sleeper sleeper,
+            final Clock clock,
+            final RandomGenerator random) {
+        this(delegate, configuration, detector, sleeper, clock, clock, random);
+    }
+
     RetryingHttpTransport(
             final HttpTransport delegate,
             final RetryConfiguration configuration,
@@ -180,7 +243,25 @@ public final class RetryingHttpTransport implements HttpTransport {
             final RandomGenerator random) {
         this(
                 delegate,
-                new RetryPolicy(configuration, policyClock, random),
+                configuration,
+                requireNonNull(configuration, "configuration").rateLimitDetector(),
+                sleeper,
+                policyClock,
+                gateClock,
+                random);
+    }
+
+    RetryingHttpTransport(
+            final HttpTransport delegate,
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Sleeper sleeper,
+            final Clock policyClock,
+            final Clock gateClock,
+            final RandomGenerator random) {
+        this(
+                delegate,
+                new RetryPolicy(configuration, detector, policyClock, random),
                 gateFor(configuration, gateClock),
                 new RetryEvents(
                         configuration.rateLimitEventListener(),

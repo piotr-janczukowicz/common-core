@@ -259,11 +259,11 @@ class RetryingHttpTransportTest {
                 throw new IllegalStateException("detector failed");
             }
         };
-        final RetryConfiguration configuration =
-                RetryConfiguration.builder().rateLimitDetector(detector).build();
+        final RetryConfiguration configuration = RetryConfiguration.defaults();
 
         final Throwable thrown;
-        try (final RetryingHttpTransport transport = new RetryingHttpTransport(delegate, configuration, unused -> {})) {
+        try (final RetryingHttpTransport transport =
+                new RetryingHttpTransport(delegate, configuration, detector, unused -> {}, Clock.systemUTC())) {
             thrown = catchThrowable(() -> transport.stream(request));
         }
 
@@ -455,9 +455,41 @@ class RetryingHttpTransportTest {
     void constructor_shouldThrow_whenSleeperIsNull() {
         final RetryConfiguration config = RetryConfiguration.defaults();
 
-        final Throwable thrown = catchThrowable(() -> new RetryingHttpTransport(delegate, config, null));
+        final Throwable thrown =
+                catchThrowable(() -> new RetryingHttpTransport(delegate, config, (RetryingHttpTransport.Sleeper) null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("sleeper");
+    }
+
+    @Test
+    void constructor_shouldThrow_whenDetectorIsNull() {
+        final RetryConfiguration config = RetryConfiguration.defaults();
+
+        final Throwable thrown =
+                catchThrowable(() -> new RetryingHttpTransport(delegate, config, (RateLimitDetector) null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("rateLimitDetector");
+    }
+
+    @Test
+    void execute_shouldUseTheDetectorOfTheConstructor_whenOneIsGiven() throws Exception {
+        final HttpRequest request = getRequest();
+        final HttpResponse limited = new HttpResponse(HttpStatus.FORBIDDEN.code(), HttpHeaders.empty(), null);
+        final HttpResponse ok = new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null);
+        when(delegate.execute(request)).thenReturn(limited).thenReturn(ok);
+        final RateLimitDetector detector = (response, clock) -> Optional.of(new RateLimitSignal(Duration.ZERO, null));
+        final RetryConfiguration config = RetryConfiguration.builder()
+                .rateLimitJitter(Duration.ZERO)
+                .clockSkewMargin(Duration.ZERO)
+                .build();
+
+        final HttpResponse response;
+        try (final RetryingHttpTransport transport =
+                new RetryingHttpTransport(delegate, config, detector, unused -> {}, Clock.systemUTC())) {
+            response = transport.execute(request);
+        }
+
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
     }
 
     @Test
@@ -657,7 +689,8 @@ class RetryingHttpTransportTest {
         final RetryConfiguration configuration =
                 RetryConfiguration.builder().fullJitter(false).build();
 
-        try (final RetryingHttpTransport transport = new RetryingHttpTransport(delegate, configuration, sleeps::add)) {
+        try (final RetryingHttpTransport transport =
+                new RetryingHttpTransport(delegate, configuration, sleep -> sleeps.add(sleep))) {
             transport.execute(request);
         }
 
@@ -834,7 +867,7 @@ class RetryingHttpTransportTest {
 
         final HttpResponse response;
         try (final RetryingHttpTransport transport =
-                new RetryingHttpTransport(delegate, RetryConfiguration.defaults(), sleeps::add)) {
+                new RetryingHttpTransport(delegate, RetryConfiguration.defaults(), sleep -> sleeps.add(sleep))) {
             response = transport.execute(request);
         }
 

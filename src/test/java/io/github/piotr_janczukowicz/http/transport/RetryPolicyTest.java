@@ -370,12 +370,12 @@ class RetryPolicyTest {
     void rateLimitDelay_shouldUseResetAt_whenResetSignalled() {
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .fullJitter(false)
                         .rateLimitJitter(Duration.ZERO)
                         .clockSkewMargin(Duration.ZERO)
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 FIXED_CLOCK);
         final HttpResponse limited = HttpResponses.of(
                 HttpStatus.TOO_MANY_REQUESTS.code(), Map.of(RateLimitDetectors.RESET_HEADER, List.of("120")), null);
@@ -391,11 +391,11 @@ class RetryPolicyTest {
         final Clock localClock = Clock.fixed(date.plusSeconds(localClockSkewSeconds), ZoneOffset.UTC);
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .clockSkewMargin(Duration.ofSeconds(1))
                         .rateLimitJitter(Duration.ofSeconds(1))
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 localClock,
                 returning(0L));
 
@@ -407,11 +407,11 @@ class RetryPolicyTest {
         final Instant date = Instant.parse("2026-01-01T00:00:00Z");
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .clockSkewMargin(Duration.ofSeconds(1))
                         .rateLimitJitter(Duration.ofSeconds(1))
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 Clock.fixed(date.plusSeconds(30), ZoneOffset.UTC),
                 returningMax());
 
@@ -426,11 +426,11 @@ class RetryPolicyTest {
         final Instant date = Instant.parse("2026-01-01T00:00:00Z");
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .clockSkewMargin(Duration.ofSeconds(1))
                         .rateLimitJitter(Duration.ofSeconds(1))
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 Clock.fixed(date, ZoneOffset.UTC),
                 returning(0L));
 
@@ -442,11 +442,11 @@ class RetryPolicyTest {
     void rateLimitDelay_shouldUseClock_whenDateHeaderUnparseable() {
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .clockSkewMargin(Duration.ofSeconds(1))
                         .rateLimitJitter(Duration.ZERO)
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 FIXED_CLOCK);
         final HttpResponse limited = HttpResponses.of(
                 HttpStatus.TOO_MANY_REQUESTS.code(),
@@ -460,11 +460,11 @@ class RetryPolicyTest {
     void rateLimitDelay_shouldUseClock_whenDateHeaderAbsent() {
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .clockSkewMargin(Duration.ofSeconds(1))
                         .rateLimitJitter(Duration.ZERO)
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 FIXED_CLOCK);
         final HttpResponse limited = HttpResponses.of(
                 HttpStatus.TOO_MANY_REQUESTS.code(), Map.of(RateLimitDetectors.RESET_HEADER, List.of("10")), null);
@@ -519,11 +519,11 @@ class RetryPolicyTest {
     void rateLimitDelay_shouldMatchLegacyWait_whenRateLimitJitterAndMarginZero() {
         final RetryPolicy policy = policy(
                 RetryConfiguration.builder()
-                        .rateLimitDetector(RateLimitDetectors.resetHeader())
                         .rateLimitJitter(Duration.ZERO)
                         .clockSkewMargin(Duration.ZERO)
                         .maxRateLimitWait(Duration.ofHours(1))
                         .build(),
+                RateLimitDetectors.resetHeader(),
                 FIXED_CLOCK);
         final HttpResponse retryAfter =
                 HttpResponses.of(HttpStatus.TOO_MANY_REQUESTS.code(), Map.of(RETRY_AFTER, List.of("5")), null);
@@ -885,7 +885,7 @@ class RetryPolicyTest {
     void exhaustion_shouldReturnDetectorSignal_whenDetectorReportsSpentQuota() {
         final Instant reset = Instant.parse("2026-01-01T00:02:00Z");
         final RateLimitSignal signal = new RateLimitSignal(null, reset, "bucket-a");
-        final RetryPolicy policy = policy(exhaustionConfiguration(signal));
+        final RetryPolicy policy = policy(RetryConfiguration.defaults(), exhaustionDetector(signal));
         final HttpResponse ok = new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null);
 
         final Optional<RateLimitSignal> found = policy.exhaustion(request(HttpMethod.GET), ok);
@@ -913,21 +913,19 @@ class RetryPolicyTest {
         assertThat(wait).isEqualTo(Duration.ofSeconds(121));
     }
 
-    private static RetryConfiguration exhaustionConfiguration(final RateLimitSignal signal) {
-        return RetryConfiguration.builder()
-                .rateLimitDetector(new RateLimitDetector() {
-                    @Override
-                    public Optional<RateLimitSignal> detect(final HttpResponse response, final Clock clock) {
-                        return Optional.empty();
-                    }
+    private static RateLimitDetector exhaustionDetector(final RateLimitSignal signal) {
+        return new RateLimitDetector() {
+            @Override
+            public Optional<RateLimitSignal> detect(final HttpResponse response, final Clock clock) {
+                return Optional.empty();
+            }
 
-                    @Override
-                    public Optional<RateLimitSignal> detectSpent(
-                            final HttpResponse response, final HttpRequest request, final Clock clock) {
-                        return Optional.of(signal);
-                    }
-                })
-                .build();
+            @Override
+            public Optional<RateLimitSignal> detectSpent(
+                    final HttpResponse response, final HttpRequest request, final Clock clock) {
+                return Optional.of(signal);
+            }
+        };
     }
 
     private static Optional<Duration> rateLimitDelay(
@@ -1006,10 +1004,12 @@ class RetryPolicyTest {
     void rateLimit_shouldWaitForLaterOfRetryAfterAndReset_whenBothPresent() {
         final Instant date = Instant.parse("2026-01-01T00:00:00Z");
         final RetryPolicy policy = policy(
-                signalConfiguration(new RateLimitSignal(Duration.ofSeconds(10), date.plusSeconds(100), "bucket-a")),
+                signalConfiguration(),
+                signalDetector(new RateLimitSignal(Duration.ofSeconds(10), date.plusSeconds(100), "bucket-a")),
                 Clock.fixed(date.plusSeconds(30), ZoneOffset.UTC));
         final RetryPolicy longerRetryAfter = policy(
-                signalConfiguration(new RateLimitSignal(Duration.ofSeconds(200), date.plusSeconds(100), "bucket-a")),
+                signalConfiguration(),
+                signalDetector(new RateLimitSignal(Duration.ofSeconds(200), date.plusSeconds(100), "bucket-a")),
                 Clock.fixed(date.plusSeconds(30), ZoneOffset.UTC));
 
         assertSoftly(softly -> {
@@ -1023,8 +1023,8 @@ class RetryPolicyTest {
     void rateLimit_shouldWaitForReset_whenRetryAfterNonPositiveAndResetPresent(final long retryAfterSeconds) {
         final Instant date = Instant.parse("2026-01-01T00:00:00Z");
         final RetryPolicy policy = policy(
-                signalConfiguration(
-                        new RateLimitSignal(Duration.ofSeconds(retryAfterSeconds), date.plusSeconds(100), null)),
+                signalConfiguration(),
+                signalDetector(new RateLimitSignal(Duration.ofSeconds(retryAfterSeconds), date.plusSeconds(100), null)),
                 Clock.fixed(date, ZoneOffset.UTC));
 
         assertThat(rateLimitDelay(policy, dated(date), 1)).contains(Duration.ofSeconds(101));
@@ -1034,7 +1034,8 @@ class RetryPolicyTest {
     void rateLimit_shouldGiveUpAsTooLong_whenRequestedWaitExceedsMaxRateLimitWait() {
         final Instant date = Instant.parse("2026-01-01T00:00:00Z");
         final RetryPolicy policy = policy(
-                signalConfiguration(new RateLimitSignal(null, date.plus(Duration.ofMinutes(40)), "search")),
+                signalConfiguration(),
+                signalDetector(new RateLimitSignal(null, date.plus(Duration.ofMinutes(40)), "search")),
                 Clock.fixed(date, ZoneOffset.UTC));
 
         final RetryPolicy.RateLimitVerdict verdict =
@@ -1166,19 +1167,17 @@ class RetryPolicyTest {
 
     @Test
     void bucketOf_shouldReturnDetectorBucket_whenDetectorOverridesIt() {
-        final RetryPolicy custom = policy(RetryConfiguration.builder()
-                .rateLimitDetector(new RateLimitDetector() {
-                    @Override
-                    public Optional<RateLimitSignal> detect(final HttpResponse response, final Clock clock) {
-                        return Optional.empty();
-                    }
+        final RetryPolicy custom = policy(RetryConfiguration.defaults(), new RateLimitDetector() {
+            @Override
+            public Optional<RateLimitSignal> detect(final HttpResponse response, final Clock clock) {
+                return Optional.empty();
+            }
 
-                    @Override
-                    public String bucketOf(final HttpRequest request) {
-                        return "mine";
-                    }
-                })
-                .build());
+            @Override
+            public String bucketOf(final HttpRequest request) {
+                return "mine";
+            }
+        });
 
         assertSoftly(softly -> {
             softly.assertThat(custom.bucketOf(GET)).isEqualTo("mine");
@@ -1201,9 +1200,12 @@ class RetryPolicyTest {
         });
     }
 
-    private static RetryConfiguration signalConfiguration(final RateLimitSignal signal) {
+    private static RateLimitDetector signalDetector(final RateLimitSignal signal) {
+        return (response, clock) -> Optional.of(signal);
+    }
+
+    private static RetryConfiguration signalConfiguration() {
         return RetryConfiguration.builder()
-                .rateLimitDetector((response, clock) -> Optional.of(signal))
                 .rateLimitJitter(Duration.ZERO)
                 .clockSkewMargin(Duration.ofSeconds(1))
                 .maxRateLimitWait(Duration.ofMinutes(5))
@@ -1217,6 +1219,23 @@ class RetryPolicyTest {
 
     private static RetryPolicy policy(final RetryConfiguration configuration, final Clock clock) {
         return new RetryPolicy(configuration, clock);
+    }
+
+    private static RetryPolicy policy(
+            final RetryConfiguration configuration, final RateLimitDetector detector, final Clock clock) {
+        return new RetryPolicy(configuration, detector, clock, RetryPolicy.defaultRandom());
+    }
+
+    private static RetryPolicy policy(
+            final RetryConfiguration configuration,
+            final RateLimitDetector detector,
+            final Clock clock,
+            final RandomGenerator random) {
+        return new RetryPolicy(configuration, detector, clock, random);
+    }
+
+    private static RetryPolicy policy(final RetryConfiguration configuration, final RateLimitDetector detector) {
+        return policy(configuration, detector, Clock.systemUTC());
     }
 
     private static RetryPolicy policy(
