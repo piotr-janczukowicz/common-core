@@ -87,7 +87,7 @@ public final class ClientStack {
         }
     }
 
-    /** Adds the retry layer to a transport; {@code RetryingHttpTransport::new} in production, a double in tests. */
+    /** Wraps a transport in a retry layer. */
     @FunctionalInterface
     public interface RetryLayer {
 

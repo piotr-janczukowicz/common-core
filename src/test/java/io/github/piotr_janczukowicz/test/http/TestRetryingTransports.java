@@ -1,5 +1,6 @@
 package io.github.piotr_janczukowicz.test.http;
 
+import io.github.piotr_janczukowicz.http.client.internal.RetryingTransports;
 import io.github.piotr_janczukowicz.http.transport.HttpTransport;
 import io.github.piotr_janczukowicz.http.transport.RateLimitDetector;
 import io.github.piotr_janczukowicz.http.transport.RetryConfiguration;
@@ -26,7 +27,7 @@ public final class TestRetryingTransports {
             final RetryConfiguration configuration,
             final Pause pause,
             final Clock clock) {
-        return new RetryingHttpTransport(delegate, configuration, pause::sleep, clock);
+        return RetryingTransports.create(delegate, configuration, RateLimitDetector.defaults(), pause::sleep, clock);
     }
 
     public static RetryingHttpTransport create(
@@ -35,7 +36,8 @@ public final class TestRetryingTransports {
             final Pause pause,
             final Clock clock,
             final RandomGenerator random) {
-        return new RetryingHttpTransport(delegate, configuration, pause::sleep, clock, random);
+        return RetryingTransports.create(
+                delegate, configuration, RateLimitDetector.defaults(), pause::sleep, clock, random);
     }
 
     public static RetryingHttpTransport create(
@@ -44,7 +46,7 @@ public final class TestRetryingTransports {
             final RateLimitDetector detector,
             final Pause pause,
             final Clock clock) {
-        return new RetryingHttpTransport(delegate, configuration, detector, pause::sleep, clock);
+        return RetryingTransports.create(delegate, configuration, detector, pause::sleep, clock);
     }
 
     public static RetryingHttpTransport create(
@@ -54,7 +56,7 @@ public final class TestRetryingTransports {
             final Pause pause,
             final Clock clock,
             final RandomGenerator random) {
-        return new RetryingHttpTransport(delegate, configuration, detector, pause::sleep, clock, random);
+        return RetryingTransports.create(delegate, configuration, detector, pause::sleep, clock, random);
     }
 
     public static Pause recordingAndAdvancing(final List<Duration> sleeps, final MutableClock clock) {

@@ -11,6 +11,7 @@ import io.github.piotr_janczukowicz.http.HttpResponse;
 import io.github.piotr_janczukowicz.http.HttpStreamResponse;
 import io.github.piotr_janczukowicz.http.NonRetryableIOException;
 import io.github.piotr_janczukowicz.http.ResponseTooLargeException;
+import io.github.piotr_janczukowicz.http.internal.RetryingTransportAccess;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -93,6 +94,11 @@ public final class RetryingHttpTransport implements HttpTransport {
 
     private static final Logger LOG = LoggerFactory.getLogger(RetryingHttpTransport.class);
 
+    static {
+        RetryingTransportAccess.register((delegate, configuration, detector, sleeper, clock, random) ->
+                new RetryingHttpTransport(delegate, configuration, detector, sleeper, clock, clock, random));
+    }
+
     private final HttpTransport delegate;
     private final RetryPolicy policy;
     private final Sleeper sleeper;
@@ -142,22 +148,21 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Package-private so tests can inject a sleeper. The retry policy reads the system clock, because it turns the
-     * absolute reset times that a server names into waits; the rate-limit gate measures how long its blocks last on a
-     * monotonic clock, so that a step of the system clock does not stretch or end a block.
+     * Retrying wrapper with a given pause between attempts. The retry policy reads the system clock, because it turns
+     * the absolute reset times that a server names into waits; the rate-limit gate measures how long its blocks last on
+     * a monotonic clock, so that a step of the system clock does not stretch or end a block.
      *
      * @param delegate transport that performs one attempt
      * @param configuration retry policy data
      * @param sleeper pause between attempts
      */
-    public RetryingHttpTransport(
-            final HttpTransport delegate, final RetryConfiguration configuration, final Sleeper sleeper) {
+    RetryingHttpTransport(final HttpTransport delegate, final RetryConfiguration configuration, final Sleeper sleeper) {
         this(delegate, configuration, sleeper, Clock.systemUTC(), new MonotonicClock(), RetryPolicy.defaultRandom());
     }
 
     /**
-     * Retrying wrapper over {@code delegate} with an injected pause and clock, so a test can run waits without real
-     * time. The clock serves both the retry policy and the rate-limit gate.
+     * Retrying wrapper over {@code delegate} with an injected pause and clock, with a given pause and clock. The clock
+     * serves both the retry policy and the rate-limit gate.
      *
      * @param delegate transport that performs each attempt
      * @param configuration retry policy data
@@ -165,7 +170,7 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @param clock time source for reset times and gate blocks
      * @throws NullPointerException if any argument is {@code null}
      */
-    public RetryingHttpTransport(
+    RetryingHttpTransport(
             final HttpTransport delegate,
             final RetryConfiguration configuration,
             final Sleeper sleeper,
@@ -174,8 +179,7 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Retrying wrapper over {@code delegate} with an injected pause, clock and random source, so a test can run waits
-     * and jitter deterministically.
+     * Retrying wrapper over {@code delegate} with an injected pause, clock and random source, clock and random source.
      *
      * @param delegate transport that performs each attempt
      * @param configuration retry policy data
@@ -184,7 +188,7 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @param random jitter source
      * @throws NullPointerException if any argument is {@code null}
      */
-    public RetryingHttpTransport(
+    RetryingHttpTransport(
             final HttpTransport delegate,
             final RetryConfiguration configuration,
             final Sleeper sleeper,
@@ -194,8 +198,8 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Retrying wrapper over {@code delegate} with a rate-limit detector and an injected pause and clock, so a test can
-     * run waits without real time. The clock serves both the retry policy and the rate-limit gate.
+     * Retrying wrapper over {@code delegate} with a rate-limit detector, a given pause and a given clock. The clock
+     * serves both the retry policy and the rate-limit gate.
      *
      * @param delegate transport that performs each attempt
      * @param configuration retry policy data
@@ -204,7 +208,7 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @param clock time source for reset times and gate blocks
      * @throws NullPointerException if any argument is {@code null}
      */
-    public RetryingHttpTransport(
+    RetryingHttpTransport(
             final HttpTransport delegate,
             final RetryConfiguration configuration,
             final RateLimitDetector detector,
@@ -214,8 +218,7 @@ public final class RetryingHttpTransport implements HttpTransport {
     }
 
     /**
-     * Retrying wrapper over {@code delegate} with a rate-limit detector and an injected pause, clock and random source,
-     * so a test can run waits and jitter deterministically.
+     * Retrying wrapper over {@code delegate} with a rate-limit detector and a given pause, clock and random source.
      *
      * @param delegate transport that performs each attempt
      * @param configuration retry policy data
@@ -225,7 +228,7 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @param random jitter source
      * @throws NullPointerException if any argument is {@code null}
      */
-    public RetryingHttpTransport(
+    RetryingHttpTransport(
             final HttpTransport delegate,
             final RetryConfiguration configuration,
             final RateLimitDetector detector,
@@ -643,7 +646,7 @@ public final class RetryingHttpTransport implements HttpTransport {
         return interrupted;
     }
 
-    /** Pause between attempts; a test supplies one that advances a fake clock instead of waiting. */
+    /** Pause between attempts. */
     @FunctionalInterface
     public interface Sleeper {
 
