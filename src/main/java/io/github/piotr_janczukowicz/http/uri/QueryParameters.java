@@ -255,7 +255,7 @@ public final class QueryParameters {
      *
      * @return an unmodifiable map
      * @throws IllegalStateException if a parameter added with {@link #repeated(String, List)} or
-     *     {@link #wireRepeated(String, List, Function)} holds more than one value: its values are not joined, so the
+     *     {@link #repeated(String, List, Function)} holds more than one value: its values are not joined, so the
      *     request must take {@link #buildValues()}
      */
     public Map<String, String> build() {

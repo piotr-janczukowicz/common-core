@@ -19,9 +19,9 @@ import tools.jackson.databind.introspect.Annotated;
 /**
  * Jackson module that reads every class annotated with {@link ValueUnion} (picked by the first token) or
  * {@link PresenceUnion} (picked by the names of the object), and every property marked {@link EmptyObjectAsNull} or
- * {@link EpochInstant}, so that a model needs no Jackson databind type of its own. {@link JsonMappers#snakeCase()} adds
- * it. Writing needs nothing for unions: each branch writes itself; a property marked {@link EpochInstant} is also
- * written, as an integer count of its unit.
+ * {@link EpochInstant}, so that a model needs no Jackson databind type of its own.
+ * {@link io.github.piotr_janczukowicz.json.jackson.JsonMappers#snakeCase()} adds it. Writing needs nothing for unions:
+ * each branch writes itself; a property marked {@link EpochInstant} is also written, as an integer count of its unit.
  *
  * <p>The annotation is looked up on the class being read only, so a branch that implements a union is read as itself,
  * not as the union.

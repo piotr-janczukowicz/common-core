@@ -10,5 +10,5 @@ permissions:
 
 jobs:
   publish:
-    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-publish.yml@736dd7d218d81bcc26e0489f8853b711ad95f26d # v17
+    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-publish.yml@fed50ba5192dce79a5862e856be3d5463980a505 # v18
     secrets: inherit

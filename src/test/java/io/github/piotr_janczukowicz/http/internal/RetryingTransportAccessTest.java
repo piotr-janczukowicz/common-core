@@ -16,8 +16,12 @@ import io.github.piotr_janczukowicz.http.uri.ParsedUrl;
 import io.github.piotr_janczukowicz.test.http.ScriptedTransport;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +61,33 @@ class RetryingTransportAccessTest {
     }
 
     @Test
+    void create_shouldRegisterTheFactoryItself_whenTheTransportClassIsNotYetInitialized() throws Exception {
+        try (IsolatedClassLoader loader = new IsolatedClassLoader()) {
+            final Class<?> access = loader.loadClass(RetryingTransportAccess.class.getName());
+            final Method create = Arrays.stream(access.getMethods())
+                    .filter(method -> "create".equals(method.getName()))
+                    .findFirst()
+                    .orElseThrow();
+
+            final Throwable thrown = catchThrowable(() -> create.invoke(null, new Object[create.getParameterCount()]));
+
+            // the transport constructor rejects the null arguments, so the call reached a registered factory
+            assertThat(thrown)
+                    .cause()
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("configuration must not be null");
+        }
+    }
+
+    @Test
+    void load_shouldNotThrow_whenTheClassExists() {
+        final Throwable thrown =
+                catchThrowable(() -> RetryingTransportAccess.load(RetryingHttpTransport.class.getName()));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
     void register_shouldThrowNullPointerException_whenFactoryIsNull() {
         final Throwable thrown = catchThrowable(() -> RetryingTransportAccess.register(null));
 
@@ -78,5 +109,33 @@ class RetryingTransportAccessTest {
         final Throwable thrown = catchThrowable(constructor::newInstance);
 
         assertThat(thrown).hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
+
+    /** Defines this library's classes anew, so that their static state starts empty. */
+    private static final class IsolatedClassLoader extends URLClassLoader {
+
+        private static final String LIBRARY_PACKAGE = "io.github.piotr_janczukowicz.";
+
+        private IsolatedClassLoader() {
+            super(
+                    new URL[] {
+                        RetryingTransportAccess.class
+                                .getProtectionDomain()
+                                .getCodeSource()
+                                .getLocation()
+                    },
+                    RetryingTransportAccessTest.class.getClassLoader());
+        }
+
+        @Override
+        protected Class<?> loadClass(final String name, final boolean resolve) throws ClassNotFoundException {
+            if (!name.startsWith(LIBRARY_PACKAGE)) {
+                return super.loadClass(name, resolve);
+            }
+            synchronized (getClassLoadingLock(name)) {
+                final Class<?> loaded = findLoadedClass(name);
+                return loaded != null ? loaded : findClass(name);
+            }
+        }
     }
 }
