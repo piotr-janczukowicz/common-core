@@ -650,6 +650,30 @@ class ConditionalCachingHttpTransportTest {
     }
 
     @Test
+    void constructor_shouldThrow_whenCacheLimitsNull() {
+        final HttpTransport delegate = HttpTransportMocks.mock();
+
+        final Throwable thrown = catchThrowable(() -> new ConditionalCachingHttpTransport(delegate, null, Set.of()));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("cache");
+    }
+
+    @Test
+    void execute_shouldKeepAtMostMaxEntries_whenLimitsComeFromConfiguration() throws Exception {
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY, ETAG, "W/\"other\""), response(200, BODY));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(),
+                ConditionalCacheConfiguration.builder().maxEntries(1).build(),
+                Set.of(ACCEPT));
+        fetch(transport, URL, OTHER_URL);
+
+        transport.execute(get(URL, HttpHeaders.empty()));
+
+        assertThat(ifNoneMatch(delegate, 2)).isEmpty();
+    }
+
+    @Test
     void constructor_shouldThrow_whenVaryingHeaderBlank() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 

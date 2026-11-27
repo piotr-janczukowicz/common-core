@@ -128,6 +128,26 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
     }
 
     /**
+     * Caches GETs of {@code delegate}.
+     *
+     * @param delegate transport that sends the requests; closed when this one is closed
+     * @param cache limits of what is kept
+     * @param varyingHeaders header names whose values are part of the key, such as {@code Accept}; names are compared
+     *     without regard to case, and a blank name is refused
+     * @throws NullPointerException if an argument is {@code null}, or {@code varyingHeaders} contains {@code null}
+     * @throws IllegalArgumentException if a varying header name is blank
+     */
+    public ConditionalCachingHttpTransport(
+            final HttpTransport delegate, final ConditionalCacheConfiguration cache, final Set<String> varyingHeaders) {
+        this(
+                delegate,
+                requireNonNull(cache, "cache").maxEntries(),
+                cache.maxBodyBytes(),
+                cache.maxBytes(),
+                varyingHeaders);
+    }
+
+    /**
      * Sends a GET that has a kept copy as a conditional request, and keeps or refreshes the copy that the answer
      * supports; any other request is sent as it is. See the class description.
      *
