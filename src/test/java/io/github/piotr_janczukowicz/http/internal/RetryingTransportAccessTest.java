@@ -9,6 +9,7 @@ import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.http.HttpResponse;
+import io.github.piotr_janczukowicz.http.internal.inaccessible.InaccessibleTypes;
 import io.github.piotr_janczukowicz.http.transport.RateLimitDetector;
 import io.github.piotr_janczukowicz.http.transport.RetryConfiguration;
 import io.github.piotr_janczukowicz.http.transport.RetryingHttpTransport;
@@ -80,9 +81,8 @@ class RetryingTransportAccessTest {
     }
 
     @Test
-    void load_shouldNotThrow_whenTheClassExists() {
-        final Throwable thrown =
-                catchThrowable(() -> RetryingTransportAccess.load(RetryingHttpTransport.class.getName()));
+    void initialize_shouldNotThrow_whenTheClassIsAccessible() {
+        final Throwable thrown = catchThrowable(() -> RetryingTransportAccess.initialize(RetryingHttpTransport.class));
 
         assertThat(thrown).isNull();
     }
@@ -95,10 +95,15 @@ class RetryingTransportAccessTest {
     }
 
     @Test
-    void load_shouldThrowIllegalStateException_whenTheClassDoesNotExist() {
-        final Throwable thrown = catchThrowable(() -> RetryingTransportAccess.load("no.such.Type"));
+    void initialize_shouldThrowIllegalStateException_whenTheClassIsNotAccessible() {
+        final Class<?> hidden = InaccessibleTypes.packagePrivate();
 
-        assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("no.such.Type");
+        final Throwable thrown = catchThrowable(() -> RetryingTransportAccess.initialize(hidden));
+
+        assertThat(thrown)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(hidden.getName())
+                .hasCauseInstanceOf(IllegalAccessException.class);
     }
 
     @Test

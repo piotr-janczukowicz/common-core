@@ -6,6 +6,7 @@ import io.github.piotr_janczukowicz.http.transport.HttpTransport;
 import io.github.piotr_janczukowicz.http.transport.RateLimitDetector;
 import io.github.piotr_janczukowicz.http.transport.RetryConfiguration;
 import io.github.piotr_janczukowicz.http.transport.RetryingHttpTransport;
+import java.lang.invoke.MethodHandles;
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.random.RandomGenerator;
@@ -54,16 +55,16 @@ public final class RetryingTransportAccess {
             final Clock clock,
             final RandomGenerator random) {
         if (FACTORY.get() == null) {
-            load(RetryingHttpTransport.class.getName());
+            initialize(RetryingHttpTransport.class);
         }
         return FACTORY.get().create(delegate, configuration, detector, sleeper, clock, random);
     }
 
-    static void load(final String className) {
+    static void initialize(final Class<?> type) {
         try {
-            Class.forName(className);
-        } catch (final ClassNotFoundException missing) {
-            throw new IllegalStateException("Cannot load " + className, missing);
+            MethodHandles.lookup().ensureInitialized(type);
+        } catch (final IllegalAccessException denied) {
+            throw new IllegalStateException("Cannot initialize " + type.getName(), denied);
         }
     }
 
