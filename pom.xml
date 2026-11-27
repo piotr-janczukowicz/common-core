@@ -44,16 +44,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.networknt</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.tngtech.archunit</groupId>
-      <artifactId>archunit-junit6</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.wiremock</groupId>
       <artifactId>wiremock</artifactId>
       <scope>test</scope>
@@ -87,14 +77,6 @@
                 <exclude>io/github/piotr_janczukowicz/test/http/*Test.class</exclude>
                 <exclude>io/github/piotr_janczukowicz/testsupport/LoopbackHttpServerTest*.class</exclude>
                 <exclude>io/github/piotr_janczukowicz/testsupport/LoopbackPortsTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/architecture/ImportedClassesTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/architecture/ModelArchitectureRulesTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/CatalogChecksPointersTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/CatalogChecksSuppressionTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/JavaDocsSchemaComparatorTest*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/Sample*.class</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/enums/sample/**</exclude>
-                <exclude>io/github/piotr_janczukowicz/testsupport/catalog/*.json</exclude>
               </excludes>
               <archive>
                 <manifestEntries>

@@ -1,6 +1,0 @@
-{
-  "examples": [
-    {"from": "spec#/components/examples/xor/value", "json": {"text": "hi"}},
-    {"from": "spec#/components/examples/xor-bad/value", "json": {"number": "abc"}, "refused": "text into a number at /number"}
-  ]
-}

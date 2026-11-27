@@ -1,6 +1,0 @@
-{
-  "examples": [
-    {"from": "spec#/components/examples/sample/value", "json": {"name": "octocat", "count": 3}},
-    {"from": "spec#/components/examples/sample-bad/value", "json": {"name": "octocat", "count": "many"}, "refused": "text into a number at /count"}
-  ]
-}

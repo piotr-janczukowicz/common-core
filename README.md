@@ -36,8 +36,7 @@ OkHttp, Jackson 3 (`tools.jackson`) and SLF4J come with it. `org.jspecify` and `
 the module descriptor: nothing needs them at run time except your own use of the `@RecordBuilder` annotation processor.
 
 The test helpers are published as a test-jar: scripted transports and loopback servers for the HTTP stack, a mutable clock,
-the `@UnitTest` and `@IntegrationTest` tags, ArchUnit rules for models, and the base classes of the catalog tests that check
-models against an API description:
+the `@UnitTest` and `@IntegrationTest` tags:
 
 ```xml
 <dependency>
@@ -51,7 +50,7 @@ models against an API description:
 
 ## Utilities
 
-Packages `util`, `annotation`, `openapi.model` and `pagination` under `io.github.piotr_janczukowicz`. The code uses only the
+Packages `util`, `annotation` and `pagination` under `io.github.piotr_janczukowicz`. The code uses only the
 JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 
 ### What is in it
@@ -75,7 +74,6 @@ JDK and the [JSpecify](https://jspecify.dev) nullness annotations.
 | [`PageWalkGuard`](src/main/java/io/github/piotr_janczukowicz/pagination/PageWalkGuard.java) | Refuses a next link that was already followed, so a server cannot walk the caller in circles |
 | [`PageQueries`](src/main/java/io/github/piotr_janczukowicz/pagination/PageQueries.java) | `boundPerPage` picks the page size within an endpoint maximum, and `withParameters` adds page parameters to a base query |
 | `@RecordBuilder` | Generates a `RecordNameBuilder` for an annotated record at compile time, marked as generated for JaCoCo |
-| `@CatalogSchema`, `@CatalogSimpleXor`, `@SuppressSchemaTypeMismatch` | Runtime annotations that map a type to a schema, for tests that check models against an API description |
 
 ### Validate arguments
 
